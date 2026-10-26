@@ -3,6 +3,9 @@ name: MSBuild
 on:
   push:
     branches: [ "master" ]
+    # a version tag like 1.0.0 publishes a release; the updater downloads
+    # releases/download/<versionName>/EasyKey<versionName>-Windows.zip
+    tags: [ "[0-9]+.[0-9]+.[0-9]+" ]
   pull_request:
     branches: [ "master" ]
 
@@ -80,3 +83,47 @@ jobs:
       with:
         subject-name: ${{needs.build.outputs.subject-name}}
         subject-digest: sha256:${{needs.build.outputs.subject-digest}}
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: windows-latest
+    needs: build
+
+    permissions:
+      id-token: write
+      contents: write
+      attestations: write
+
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Check the tag matches version.json
+      shell: pwsh
+      run: |
+        $version = (Get-Content version.json | ConvertFrom-Json).latestWinVersion.versionName
+        if ($version -ne "${{ github.ref_name }}") {
+          throw "Tag ${{ github.ref_name }} does not match version.json versionName $version"
+        }
+
+    - name: Add MSBuild to PATH
+      uses: microsoft/setup-msbuild@v3
+
+    - name: Build x64
+      run: msbuild -m -target:Rebuild -p:Configuration=Release -p:Platform=x64 ${{env.SOLUTION_FILE_PATH}}
+
+    - name: Package
+      shell: pwsh
+      run: |
+        $out = "${{env.SOLUTION_FILE_PATH}}\x64\Release"
+        Compress-Archive -Path "$out\EasyKey.exe", "$out\EasyKeyUpdate.exe" -DestinationPath "EasyKey${{ github.ref_name }}-Windows.zip"
+
+    - name: Generate artifact attestation
+      uses: actions/attest-build-provenance@v4
+      with:
+        subject-path: EasyKey${{ github.ref_name }}-Windows.zip
+
+    - name: Publish the release
+      shell: pwsh
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: gh release create "${{ github.ref_name }}" "EasyKey${{ github.ref_name }}-Windows.zip" --title "EasyKey ${{ github.ref_name }}" --notes-file CHANGELOG.md --verify-tag
