@@ -2,6 +2,9 @@
 
 [Tiếng Việt](CHANGELOG.md) · **English**
 
+## Next version
+- The input method popup also shows when the input method is changed from the tray menu or the Settings window.
+
 ## 1.0.3 (Windows 11 x64)
 - Update checks run in the background, so the mouse and keyboard no longer stall while EasyKey checks for or downloads an update.
 - Added "Check for updates…" to the tray menu.

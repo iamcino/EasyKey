@@ -183,14 +183,16 @@ void AppDelegate::onInputMethodChangedFromHotKey() {
 
 void AppDelegate::onInputTypeFromHotKey() {
 	onInputType(vInputType);
-	SystemTrayHelper::updateData();
-	if (flyout)
-		flyout->notify(true);
 }
 
 void AppDelegate::showSwitchFlyout() {
 	if (flyout)
 		flyout->notify();
+}
+
+void AppDelegate::showInputTypeFlyout() {
+	if (flyout)
+		flyout->notify(true);
 }
 
 void AppDelegate::onElevatedWindow(const HWND& hWnd) {
@@ -380,6 +382,8 @@ void AppDelegate::onInputType(const int & type) {
 	if (settingsWindow) {
 		settingsWindow->fillData();
 	}
+	SystemTrayHelper::updateData();
+	showInputTypeFlyout();
 }
 
 void AppDelegate::onTableCode(const int & code) {

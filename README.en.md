@@ -84,3 +84,5 @@ A build of your own is not signed either, so you may see the warnings described 
 Copyright (C) 2026 Cino. Contact: duongtheson@proton.me
 
 EasyKey is free software, released under the [GNU GPL version 3](LICENSE). EasyKey is based on [OpenKey](https://github.com/tuyenvm/OpenKey), Copyright (C) 2019 Mai Vũ Tuyên, also under GPLv3. See [NOTICE](NOTICE).
+
+Some files were written from scratch for EasyKey and hold no OpenKey code (the window framework, the popup, dialogs, light/dark theming and the updater). They are also offered under the [MIT license](LICENSES/MIT.txt) so they can be reused in other projects. Each one carries `SPDX-License-Identifier: GPL-3.0-only OR MIT` in its header, and [NOTICE](NOTICE) lists them. EasyKey as a whole stays under GPLv3.
