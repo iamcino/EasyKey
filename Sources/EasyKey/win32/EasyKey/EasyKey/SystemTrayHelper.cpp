@@ -20,6 +20,9 @@ redistribute your new version, it MUST be open source.
 #include "Updater.h"
 
 #define WM_TRAYMESSAGE (WM_USER + 1)
+#ifndef WM_DWMCOLORIZATIONCOLORCHANGED
+#define WM_DWMCOLORIZATIONCOLORCHANGED 0x0320
+#endif
 #define TRAY_ICONUID 100
 
 #define POPUP_VIET_ON_OFF 900
@@ -85,6 +88,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 			SystemTrayHelper::updateData();
 		}
 		return DefWindowProc(hWnd, message, wParam, lParam);
+	case WM_APP + 7:
+		DestroyIcon((HICON)lParam); //a tinted icon the tray no longer shows
+		break;
+	case WM_DWMCOLORIZATIONCOLORCHANGED:
+		//the Windows accent changed
+		SystemTrayHelper::updateData();
+		break;
 	case WM_USER+2019:
 		AppDelegate::getInstance()->onControlPanel();
 		break;
@@ -224,9 +234,49 @@ void SystemTrayHelper::createPopupMenu() {
 	SetMenuDefaultItem(popupMenu, POPUP_CONTROL_PANEL, false);
 }
 
+//the same shape as source, filled with color; the caller destroys it
+static HICON tintIcon(const HICON& source, const COLORREF& color) {
+	ICONINFO info;
+	if (!GetIconInfo(source, &info))
+		return NULL;
+	BITMAP bm = {};
+	GetObject(info.hbmColor, sizeof(bm), &bm);
+	BITMAPINFO bmi = {};
+	bmi.bmiHeader.biSize = sizeof(bmi.bmiHeader);
+	bmi.bmiHeader.biWidth = bm.bmWidth;
+	bmi.bmiHeader.biHeight = -bm.bmHeight;
+	bmi.bmiHeader.biPlanes = 1;
+	bmi.bmiHeader.biBitCount = 32;
+	bmi.bmiHeader.biCompression = BI_RGB;
+	vector<DWORD> pixels(bm.bmWidth * bm.bmHeight);
+	HDC dc = GetDC(NULL);
+	bool read = GetDIBits(dc, info.hbmColor, 0, bm.bmHeight, pixels.data(), &bmi, DIB_RGB_COLORS) != 0;
+	HICON result = NULL;
+	if (read) {
+		//keep only the alpha, which is the glyph; icons take straight, not premultiplied, alpha
+		DWORD rgb = (GetRValue(color) << 16) | (GetGValue(color) << 8) | GetBValue(color);
+		for (DWORD& pixel : pixels)
+			pixel = (pixel & 0xFF000000) | rgb;
+		ICONINFO tinted = {};
+		tinted.fIcon = TRUE;
+		tinted.hbmColor = CreateDIBitmap(dc, &bmi.bmiHeader, CBM_INIT, pixels.data(), &bmi, DIB_RGB_COLORS);
+		tinted.hbmMask = CreateBitmap(bm.bmWidth, bm.bmHeight, 1, 1, NULL);
+		if (tinted.hbmColor && tinted.hbmMask)
+			result = CreateIconIndirect(&tinted);
+		if (tinted.hbmColor) DeleteObject(tinted.hbmColor);
+		if (tinted.hbmMask) DeleteObject(tinted.hbmMask);
+	}
+	ReleaseDC(NULL, dc);
+	DeleteObject(info.hbmColor);
+	DeleteObject(info.hbmMask);
+	return result;
+}
+
 static void loadTrayIcon() {
+	static HICON tinted = NULL;
 	int icon = 0;
-	//tray icon is a monochrome glyph, white on a dark taskbar and black on a light one
+	//tray icon is a monochrome glyph, white on a dark taskbar and black on a light one;
+	//in Vietnamese mode it takes the accent color so the mode shows at a glance
 	bool darkTaskbar = ThemeHelper::isTaskbarDarkMode();
 	if (vLanguage) {
 		icon = darkTaskbar ? IDI_ICON_STATUS_VIET_DARK : IDI_ICON_STATUS_VIET_LIGHT;
@@ -237,8 +287,14 @@ static void loadTrayIcon() {
 		lstrcpyn(nid.szTip, TR("EasyKey: đang gõ tiếng Anh", "EasyKey: typing English"), 128);
 	}
 	//load the small icon size directly so the tray does not downscale the 32px one
-	nid.hIcon = (HICON)LoadImage(GetModuleHandle(0), MAKEINTRESOURCE(icon), IMAGE_ICON,
+	HICON glyph = (HICON)LoadImage(GetModuleHandle(0), MAKEINTRESOURCE(icon), IMAGE_ICON,
 		GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), LR_SHARED);
+	HICON previous = tinted;
+	tinted = vLanguage ? tintIcon(glyph, ThemeHelper::getAccentColor(darkTaskbar, false)) : NULL;
+	nid.hIcon = tinted ? tinted : glyph;
+	//the tray copies the icon, so the old one can go once the new one is set
+	if (previous)
+		PostMessage(nid.hWnd, WM_APP + 7, 0, (LPARAM)previous);
 }
 
 void SystemTrayHelper::rebuildMenu() {

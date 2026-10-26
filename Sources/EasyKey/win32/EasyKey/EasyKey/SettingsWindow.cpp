@@ -1460,6 +1460,7 @@ void SettingsWindow::applyHex() {
 		APP_SET_DATA(vAccentDark, (int)color);
 	}
 	applyTheme();
+	SystemTrayHelper::updateData();
 }
 
 bool SettingsWindow::onHexKey(const UINT& uMsg, const WPARAM& key) {
