@@ -15,6 +15,7 @@ You can fork, modify, improve this program. If you
 redistribute your new version, it MUST be open source.
 -----------------------------------------------------------*/
 #include "AppDelegate.h"
+#include "ThemeHelper.h"
 
 static AppDelegate* _instance;
 
@@ -53,8 +54,7 @@ int vCheckNewVersion = 0;
 int vFixChromiumBrowser = 1;
 
 bool AppDelegate::isDialogMsg(MSG & msg) const {
-	return (mainDialog != NULL && IsDialogMessage(mainDialog->getHwnd(), &msg)) ||
-		(macroDialog != NULL && IsDialogMessage(macroDialog->getHwnd(), &msg)) || 
+	return (macroDialog != NULL && IsDialogMessage(macroDialog->getHwnd(), &msg)) || 
 		(convertDialog != NULL && IsDialogMessage(convertDialog->getHwnd(), &msg)) || 
 		(aboutDialog != NULL && IsDialogMessage(aboutDialog->getHwnd(), &msg));
 }
@@ -108,6 +108,9 @@ int AppDelegate::run(HINSTANCE hInstance) {
 	//init EasyKey Engine
 	EasyKeyManager::initEngine();
 
+	//dark or light popup menus, before the tray menu is built
+	ThemeHelper::applyMenuTheme();
+
 	//create system tray
 	SystemTrayHelper::createSystemTrayIcon(hInstance);
 	SystemTrayHelper::updateData();
@@ -136,20 +139,17 @@ int AppDelegate::run(HINSTANCE hInstance) {
 }
 
 void AppDelegate::createMainDialog() {
-	if (mainDialog == NULL) {
-		mainDialog = new MainControlDialog(hInstance, IDD_DIALOG_MAIN);
-		mainDialog->show();
+	if (settingsWindow == NULL) {
+		settingsWindow = new SettingsWindow(hInstance);
+		settingsWindow->show();
 	} else {
-		mainDialog->bringOnTop();
+		settingsWindow->bringOnTop();
 	}
 }
 
 void AppDelegate::closeDialog(BaseDialog * dialog) {
 	dialog->closeDialog();
-	if (mainDialog == dialog) {
-		delete mainDialog;
-		mainDialog = NULL;
-	} else if (aboutDialog == dialog) {
+	if (aboutDialog == dialog) {
 		delete aboutDialog;
 		aboutDialog = NULL;
 	} else if (macroDialog == dialog) {
@@ -161,10 +161,18 @@ void AppDelegate::closeDialog(BaseDialog * dialog) {
 	}
 }
 
+void AppDelegate::closeSettingsWindow() {
+	if (settingsWindow) {
+		settingsWindow->destroy();
+		delete settingsWindow;
+		settingsWindow = NULL;
+	}
+}
+
 void AppDelegate::onInputMethodChangedFromHotKey() {
 	APP_SET_DATA(vLanguage, vLanguage);
-	if (mainDialog) {
-		mainDialog->fillData();
+	if (settingsWindow) {
+		settingsWindow->fillData();
 	}
 	SystemTrayHelper::updateData();
 }
@@ -196,44 +204,22 @@ void AppDelegate::onDefaultConfig() {
 	APP_SET_DATA(vTempOffOpenKey, 0);
 	APP_SET_DATA(vFixChromiumBrowser, 1);
 
-	if (mainDialog) {
-		mainDialog->fillData();
+	if (settingsWindow) {
+		settingsWindow->fillData();
 	}
 	SystemTrayHelper::updateData();
 }
 
 void AppDelegate::onToggleVietnamese() {
 	APP_SET_DATA(vLanguage, vLanguage ? 0 : 1);
-	if (mainDialog) {
-		mainDialog->fillData();
+	if (settingsWindow) {
+		settingsWindow->fillData();
 	}
 	
 	if (vUseSmartSwitchKey) {
 		string& exe = EasyKeyHelper::getLastAppExecuteName();
 		setAppInputMethodStatus(exe, vLanguage | (vCodeTable << 1));
 		saveSmartSwitchKeyData();
-	}
-}
-
-void AppDelegate::onToggleCheckSpelling() {
-	APP_SET_DATA(vCheckSpelling, vCheckSpelling ? 0 : 1);
-	if (mainDialog) {
-		mainDialog->fillData();
-	}
-	vSetCheckSpelling();
-}
-
-void AppDelegate::onToggleUseSmartSwitchKey() {
-	APP_SET_DATA(vUseSmartSwitchKey, vUseSmartSwitchKey ? 0 : 1);
-	if (mainDialog) {
-		mainDialog->fillData();
-	}
-}
-
-void AppDelegate::onToggleUseMacro() {
-	APP_SET_DATA(vUseMacro, vUseMacro ? 0 : 1);
-	if (mainDialog) {
-		mainDialog->fillData();
 	}
 }
 
@@ -268,15 +254,15 @@ void AppDelegate::onQuickConvert() {
 
 void AppDelegate::onInputType(const int & type) {
 	APP_SET_DATA(vInputType, type);
-	if (mainDialog) {
-		mainDialog->fillData();
+	if (settingsWindow) {
+		settingsWindow->fillData();
 	}
 }
 
 void AppDelegate::onTableCode(const int & code) {
 	APP_SET_DATA(vCodeTable, code);
-	if (mainDialog) {
-		mainDialog->fillData();
+	if (settingsWindow) {
+		settingsWindow->fillData();
 	}
 	if (vRememberCode) {
 		setAppInputMethodStatus(EasyKeyHelper::getFrontMostAppExecuteName(), vLanguage | (vCodeTable << 1));

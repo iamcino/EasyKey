@@ -19,6 +19,7 @@ redistribute your new version, it MUST be open source.
 #include <Urlmon.h>
 #include <fstream>
 #include <sstream>
+#include <cwctype>
 
 #pragma comment(lib, "version.lib")
 #pragma comment(lib, "Urlmon.lib")
@@ -311,6 +312,35 @@ wstring EasyKeyHelper::getVersionString() {
 	if (GetModuleFileName(NULL, szFilename, MAX_PATH) == 0) { 
 		return _T("");
 	}
+}
+
+wstring EasyKeyHelper::getHotKeyString(const int& hotKey) {
+	wstring text;
+	static const struct { int mask; LPCTSTR name; } modifiers[] = {
+		{ 0x100, _T("Ctrl") }, { 0x200, _T("Alt") }, { 0x400, _T("Win") }, { 0x800, _T("Shift") }
+	};
+	for (int i = 0; i < 4; i++) {
+		if (hotKey & modifiers[i].mask) {
+			if (!text.empty())
+				text += _T(" + ");
+			text += modifiers[i].name;
+		}
+	}
+	unsigned short key = GET_SWITCH_KEY(hotKey);
+	if (key != 0xFE && key != 0) {
+		if (!text.empty())
+			text += _T(" + ");
+		if (key == VK_SPACE) {
+			text += _T("Space");
+		} else if (wchar_t c = (wchar_t)keyCodeToCharacter(key)) {
+			text += (wchar_t)towupper(c);
+		} else {
+			TCHAR name[32] = { 0 };
+			GetKeyNameText(MapVirtualKey(key, MAPVK_VK_TO_VSC) << 16, name, 32);
+			text += name[0] ? name : _T("?");
+		}
+	}
+	return text;
 }
 
 wstring EasyKeyHelper::getContentOfUrl(LPCTSTR url){

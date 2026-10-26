@@ -16,7 +16,7 @@ redistribute your new version, it MUST be open source.
 -----------------------------------------------------------*/
 #pragma once
 #include "stdafx.h"
-#include "MainControlDialog.h"
+#include "SettingsWindow.h"
 #include "AboutDialog.h"
 #include "ConvertToolDialog.h"
 #include "MacroDialog.h"
@@ -25,7 +25,8 @@ class BaseDialog;
 class AppDelegate {
 private:
 	HINSTANCE hInstance;
-	BaseDialog* mainDialog = NULL, *aboutDialog = NULL, *macroDialog = NULL, *convertDialog = NULL;
+	SettingsWindow* settingsWindow = NULL;
+	BaseDialog* aboutDialog = NULL, *macroDialog = NULL, *convertDialog = NULL;
 private:
 	bool isDialogMsg(MSG &msg) const;
 	void checkUpdate();
@@ -35,14 +36,12 @@ public:
 	int run(HINSTANCE hInstance);
 	void createMainDialog();
 	void closeDialog(BaseDialog* dialog);
+	void closeSettingsWindow();
 public: //event
 	void onInputMethodChangedFromHotKey();
 	void onDefaultConfig();
 
 	void onToggleVietnamese();
-	void onToggleCheckSpelling();
-	void onToggleUseSmartSwitchKey();
-	void onToggleUseMacro();
 
 	void onMacroTable();
 	void onConvertTool();

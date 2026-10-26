@@ -36,6 +36,10 @@ public:
 
 	//apply title bar color and backdrop, call again when the theme changes
 	static void applyWindowFrame(const HWND& hWnd);
+	//solid title bar in the given color, for windows that paint their own client area
+	static void applySolidWindowFrame(const HWND& hWnd, const COLORREF& captionColor);
+	//light or dark popup menus for the whole app, call again when the theme changes
+	static void applyMenuTheme();
 	//replace the dialog template font of every control with Segoe UI Variable
 	static void applyDialogFont(const HWND& hDlg);
 };

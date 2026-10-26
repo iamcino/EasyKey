@@ -48,6 +48,9 @@ public:
 	static DWORD getVersionNumber();
 	static wstring getVersionString();
 
+	//"Ctrl + Shift + Z" for a hotkey stored like vSwitchKeyStatus, empty if none is set
+	static wstring getHotKeyString(const int& hotKey);
+
 	static wstring getContentOfUrl(LPCTSTR url);
 };
 

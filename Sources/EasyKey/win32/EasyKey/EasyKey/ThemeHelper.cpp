@@ -23,8 +23,17 @@ redistribute your new version, it MUST be open source.
 //DWM values are spelled out so the project still builds with older SDKs
 #define DWMWA_DARK_MODE_BEFORE_20H1 19
 #define DWMWA_DARK_MODE 20
+#define DWMWA_CAPTION_COLOR 35
 #define DWMWA_BACKDROP_TYPE 38
+#define DWM_BACKDROP_NONE 1
 #define DWM_BACKDROP_MICA 2
+
+//undocumented uxtheme exports (by ordinal) used by Explorer for dark menus, Windows 10 1903 and later
+#define UXTHEME_SET_PREFERRED_APP_MODE 135
+#define UXTHEME_FLUSH_MENU_THEMES 136
+enum PreferredAppMode { AppModeDefault, AppModeAllowDark, AppModeForceDark, AppModeForceLight };
+typedef PreferredAppMode(WINAPI *SetPreferredAppModeFunc)(PreferredAppMode);
+typedef void(WINAPI *FlushMenuThemesFunc)();
 
 #define UI_FONT_FACE _T("Segoe UI Variable Text")
 #define UI_FONT_FALLBACK _T("Segoe UI")
@@ -145,15 +154,47 @@ void ThemeHelper::applyDialogFont(const HWND& hDlg) {
 	EnumChildWindows(hDlg, applyFontToChild, (LPARAM)getUIFont(getDpi(hDlg)));
 }
 
-void ThemeHelper::applyWindowFrame(const HWND& hWnd) {
-	BOOL dark = isAppDarkMode() ? TRUE : FALSE;
+static void applyDarkTitleBar(const HWND& hWnd) {
+	BOOL dark = ThemeHelper::isAppDarkMode() ? TRUE : FALSE;
 	if (FAILED(DwmSetWindowAttribute(hWnd, DWMWA_DARK_MODE, &dark, sizeof(dark))))
 		DwmSetWindowAttribute(hWnd, DWMWA_DARK_MODE_BEFORE_20H1, &dark, sizeof(dark));
+}
+
+static void repaintFrame(const HWND& hWnd) {
+	if (IsWindowVisible(hWnd)) //repaint the caption now instead of on next activation
+		SetWindowPos(hWnd, NULL, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+}
+
+void ThemeHelper::applyWindowFrame(const HWND& hWnd) {
+	applyDarkTitleBar(hWnd);
 
 	//Mica, Windows 11 22H2 and later. The dialog body stays opaque, so it shows in the title bar
 	int backdrop = DWM_BACKDROP_MICA;
 	DwmSetWindowAttribute(hWnd, DWMWA_BACKDROP_TYPE, &backdrop, sizeof(backdrop));
+	repaintFrame(hWnd);
+}
 
-	if (IsWindowVisible(hWnd)) //repaint the caption now instead of on next activation
-		SetWindowPos(hWnd, NULL, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+void ThemeHelper::applySolidWindowFrame(const HWND& hWnd, const COLORREF& captionColor) {
+	applyDarkTitleBar(hWnd);
+	//Mica would not match a client area painted in a fixed color, so the caption uses that color too
+	int backdrop = DWM_BACKDROP_NONE;
+	DwmSetWindowAttribute(hWnd, DWMWA_BACKDROP_TYPE, &backdrop, sizeof(backdrop));
+	DwmSetWindowAttribute(hWnd, DWMWA_CAPTION_COLOR, &captionColor, sizeof(captionColor));
+	repaintFrame(hWnd);
+}
+
+void ThemeHelper::applyMenuTheme() {
+	HMODULE uxtheme = GetModuleHandle(_T("uxtheme.dll"));
+	if (!uxtheme)
+		uxtheme = LoadLibraryEx(_T("uxtheme.dll"), NULL, LOAD_LIBRARY_SEARCH_SYSTEM32);
+	if (!uxtheme)
+		return;
+	SetPreferredAppModeFunc setPreferredAppMode =
+		(SetPreferredAppModeFunc)GetProcAddress(uxtheme, MAKEINTRESOURCEA(UXTHEME_SET_PREFERRED_APP_MODE));
+	FlushMenuThemesFunc flushMenuThemes =
+		(FlushMenuThemesFunc)GetProcAddress(uxtheme, MAKEINTRESOURCEA(UXTHEME_FLUSH_MENU_THEMES));
+	if (!setPreferredAppMode || !flushMenuThemes)
+		return;
+	setPreferredAppMode(isAppDarkMode() ? AppModeForceDark : AppModeForceLight);
+	flushMenuThemes();
 }

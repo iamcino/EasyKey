@@ -23,7 +23,7 @@ Nếu máy đã có OpenKey, lần chạy đầu EasyKey tự chép cài đặt 
 - Nhớ chế độ Việt/Anh và bảng mã riêng cho từng ứng dụng.
 - Sửa lỗi lặp chữ ở ô có gợi ý tự động, kể cả thanh địa chỉ Chrome và Edge.
 - Công cụ chuyển mã văn bản.
-- Giao diện Windows 11: hỗ trợ DPI cao, thanh tiêu đề tối, biểu tượng khay theo màu thanh tác vụ.
+- Giao diện Windows 11 gọn trong một trang, chế độ sáng/tối theo Windows, hỗ trợ DPI cao, biểu tượng khay theo màu thanh tác vụ.
 - Không hiện ô ngôn ngữ trên thanh tác vụ.
 
 ## Build từ mã nguồn

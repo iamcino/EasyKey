@@ -54,7 +54,7 @@
     <ClInclude Include="BaseDialog.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="MainControlDialog.h">
+    <ClInclude Include="SettingsWindow.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="EasyKeyManager.h">
@@ -116,7 +116,7 @@
     <ClCompile Include="BaseDialog.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="MainControlDialog.cpp">
+    <ClCompile Include="SettingsWindow.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="EasyKeyManager.cpp">
@@ -166,12 +166,6 @@
     </Image>
     </Image>
     <Image Include="OKButton.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="ExitButton.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="DefaultButton.ico">
       <Filter>Resource Files</Filter>
     </Image>
     <Image Include="StartConvert.ico">
