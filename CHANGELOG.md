@@ -2,6 +2,9 @@
 
 **Tiếng Việt** · [English](CHANGELOG.en.md)
 
+## Bản tiếp theo
+- Popup kiểu gõ cũng hiện khi đổi kiểu gõ từ menu ở khay hệ thống hay trong cửa sổ Cài đặt.
+
 ## 1.0.3 (Windows 11 x64)
 - Kiểm tra cập nhật chạy ngầm, chuột và phím không còn bị khựng trong lúc kiểm tra hay tải bản mới.
 - Thêm "Kiểm tra cập nhật…" vào menu ở khay hệ thống.

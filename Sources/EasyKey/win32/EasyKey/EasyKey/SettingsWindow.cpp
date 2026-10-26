@@ -1047,6 +1047,7 @@ void SettingsWindow::activate(const int& index, const int& part) {
 	case K_SEGBUTTON:
 		APP_SET_DATA(vInputType, item.id);
 		SystemTrayHelper::updateData();
+		AppDelegate::getInstance()->showInputTypeFlyout();
 		layout();
 		InvalidateRect(hWnd, NULL, FALSE);
 		break;
