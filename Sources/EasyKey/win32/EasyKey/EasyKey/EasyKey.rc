@@ -104,7 +104,7 @@ BEGIN
                     "SysLink",WS_TABSTOP,105,91,175,10
     CONTROL         "<a>OpenKey</a> của Mai Vũ Tuyên (GPLv3)",IDC_SYSLINK_FANPAGE,
                     "SysLink",WS_TABSTOP,105,104,175,10
-    CTEXT           "© 2026 duongtheson@proton.me",IDC_STATIC_APP_SUB_TITLE5,60,142,170,8
+    CTEXT           "© 2026 Cino",IDC_STATIC_APP_SUB_TITLE5,60,142,170,8
     PUSHBUTTON      "Kiểm tra bản mới...",IDC_BUTTON_CHECK_VERSION,44,117,75,14
 END
 
@@ -274,9 +274,9 @@ BEGIN
     CONTROL         "<a>OpenKey</a> của Mai Vũ Tuyên © 2019",IDC_SYSLINK_FANPAGE,
                     "SysLink",WS_TABSTOP,81,29,184,10
     LTEXT           "EasyKey là phần mềm mã nguồn mở, miễn phí, phát hành theo giấy phép GPLv3. Góp ý và báo lỗi qua email hoặc trên GitHub.",IDC_STATIC_APP_SUB_TITLE5,39,61,234,28
-    LTEXT           "© 2026 - ",IDC_STATIC_APP_SUB_TITLE6,39,94,30,8
+    LTEXT           "© 2026 Cino - ",IDC_STATIC_APP_SUB_TITLE6,39,94,50,8
     CONTROL         "<a>duongtheson@proton.me</a>",IDC_SYSLINK_AUTHOR_EMAIL,
-                    "SysLink",WS_TABSTOP,69,94,120,10
+                    "SysLink",WS_TABSTOP,89,94,120,10
     LTEXT           "Phien ban",IDC_STATIC_APP_VERSION_INFO,39,50,227,8
     PUSHBUTTON      "Mã nguồn...",IDC_BUTTON_GO_SOURCE_CODE,226,91,50,14
 END
@@ -422,7 +422,7 @@ BEGIN
             VALUE "FileDescription", "EasyKey - Bộ gõ Tiếng Việt"
             VALUE "FileVersion", "1.0.0.0"
             VALUE "InternalName", "EasyKey.exe"
-            VALUE "LegalCopyright", "Copyright (C) 2026 duongtheson@proton.me. Based on OpenKey, Copyright (C) 2019 Mai Vũ Tuyên. GPLv3."
+            VALUE "LegalCopyright", "Copyright (C) 2026 Cino. Based on OpenKey, Copyright (C) 2019 Mai Vũ Tuyên. GPLv3."
             VALUE "OriginalFilename", "EasyKey.exe"
             VALUE "ProductName", "EasyKey"
             VALUE "ProductVersion", "1.0.0.0"

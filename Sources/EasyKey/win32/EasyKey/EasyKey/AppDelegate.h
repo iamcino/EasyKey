@@ -7,7 +7,7 @@ Github: https://github.com/tuyenvm/OpenKey
 Fanpage: https://www.facebook.com/OpenKeyVN
 
 EasyKey - Vietnamese input for Windows 11, based on OpenKey.
-Copyright (C) 2026 duongtheson@proton.me
+Copyright (C) 2026 Cino
 
 This file is belong to the OpenKey project, Win32 version
 which is released under GPL license.

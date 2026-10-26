@@ -177,7 +177,7 @@ BEGIN
             VALUE "FileDescription", "Update Helper for EasyKey"
             VALUE "FileVersion", "1.0.0.0"
             VALUE "InternalName", "EasyKeyUpdate.exe"
-            VALUE "LegalCopyright", "Copyright (C) 2026 duongtheson@proton.me. Based on OpenKey, Copyright (C) 2019 Mai Vu Tuyen. GPLv3."
+            VALUE "LegalCopyright", "Copyright (C) 2026 Cino. Based on OpenKey, Copyright (C) 2019 Mai Vu Tuyen. GPLv3."
             VALUE "OriginalFilename", "EasyKeyUpdate.exe"
             VALUE "ProductName", "EasyKey Auto Update"
             VALUE "ProductVersion", "1.0.0.0"
