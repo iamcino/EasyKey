@@ -42,6 +42,8 @@ public: //event
 	void onInputMethodChangedFromHotKey();
 	void onInputTypeFromHotKey();
 	void showSwitchFlyout();
+	//the popup with the input method, after it changed from the hotkey, the tray menu or Settings
+	void showInputTypeFlyout();
 	//the foreground window runs with more rights than EasyKey, so typing there is not seen
 	void onElevatedWindow(const HWND& hWnd);
 	//display language or accent color changed

@@ -1,11 +1,13 @@
 ﻿/*----------------------------------------------------------
-EasyKey - Vietnamese input for Windows 11, based on OpenKey.
+EasyKey - Vietnamese input for Windows 11.
 Copyright (C) 2026 Cino
 
-This file is belong to the OpenKey project, Win32 version
-which is released under GPL license.
-You can fork, modify, improve this program. If you
-redistribute your new version, it MUST be open source.
+SPDX-License-Identifier: GPL-3.0-only OR MIT
+
+This file was written for EasyKey and holds no OpenKey code.
+Inside EasyKey it is used under the GNU GPL version 3, like
+the rest of the program. On its own you may also use it under
+the MIT license, see LICENSES/MIT.txt.
 -----------------------------------------------------------*/
 #include <windows.h>
 #include <winhttp.h>

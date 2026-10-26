@@ -3,6 +3,7 @@
 **Tiếng Việt** · [English](CHANGELOG.en.md)
 
 ## Bản tiếp theo
+- Popup kiểu gõ cũng hiện khi đổi kiểu gõ từ menu ở khay hệ thống hay trong cửa sổ Cài đặt.
 - Khi bật "Chạy với quyền admin", EasyKey tự khởi động qua Task Scheduler bằng API của Windows thay cho lệnh schtasks. Tác vụ không còn bị Windows dừng sau 72 giờ, vẫn chạy khi máy dùng pin, và nếu không tạo được tác vụ thì EasyKey vẫn khởi động cùng Windows (không có quyền admin).
 - Dọn phần đầu các file mã nguồn: ghi công OpenKey (Mai Vũ Tuyên) được giữ, thêm SPDX GPL-3.0-only; bỏ file mã cho macOS không còn dùng.
 

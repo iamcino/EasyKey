@@ -11,5 +11,17 @@ EasyKey is a modified version of OpenKey:
   https://github.com/tuyenvm/OpenKey
   Released under the GNU General Public License version 3.
 
+Files written for EasyKey that hold no OpenKey code are also offered under
+the MIT license (LICENSES/MIT.txt), so they can be reused outside EasyKey.
+Each of them says so in its header with
+"SPDX-License-Identifier: GPL-3.0-only OR MIT":
+  Sources/EasyKey/win32/EasyKey/EasyKey/FluentUi.*
+  Sources/EasyKey/win32/EasyKey/EasyKey/FluentWindow.*
+  Sources/EasyKey/win32/EasyKey/EasyKey/MessageWindow.*
+  Sources/EasyKey/win32/EasyKey/EasyKey/FlyoutWindow.*
+  Sources/EasyKey/win32/EasyKey/EasyKey/ThemeHelper.*
+  Sources/EasyKey/win32/EasyKey/EasyKey/Updater.*
+Every other file, and EasyKey as a whole, is under the GNU GPL version 3.
+
 Changes from OpenKey are listed in CHANGELOG.md and in the git history.
 The original copyright notices are kept in the source files.
