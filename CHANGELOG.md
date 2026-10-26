@@ -2,6 +2,9 @@
 
 **Tiếng Việt** · [English](CHANGELOG.en.md)
 
+## Bản tiếp theo
+- Sửa lỗi gõ thừa chữ trên Chrome, Edge ở các trang tự xử lý phím như trang luyện gõ (ví dụ "số" thành "sốôô"), cả Telex và VNI.
+
 ## 1.0.1 (Windows 11 x64)
 - Mở bảng gõ tắt ngay trong cửa sổ cài đặt: "Nâng cao" › "Gõ" › "Bảng gõ tắt".
 - Esc trả lại phím vừa gõ giờ chạy được trong khung chat web như Facebook (EasyKey giữ luôn lần nhả phím Esc, nên trang web không đóng khung chat).

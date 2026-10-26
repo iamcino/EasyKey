@@ -682,13 +682,12 @@ LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 			if (vFixRecommendBrowser && pData->extCode != 4) {
 				if (vFixChromiumBrowser && 
 					std::find(_chromiumBrowser.begin(), _chromiumBrowser.end(), EasyKeyHelper::getLastAppExecuteName()) != _chromiumBrowser.end()) {
-					//select the last character so the suggestion is replaced with it; with nothing to delete
-					//(e.g. upper case first char) selecting would eat the character before the caret
-					if (pData->backspaceCount > 0) {
+					//select the last character so the backspace takes the suggestion with it; with nothing to delete
+					//(e.g. upper case first char) selecting would eat the character before the caret.
+					//Always send the backspaces: pages that track keys themselves (typing tests) ignore the
+					//selection, so typing over it would leave the old letter there ("so6" gave "soô")
+					if (pData->backspaceCount > 0)
 						SendCombineKey(KEY_LEFT_SHIFT, KEY_LEFT, 0, KEYEVENTF_EXTENDEDKEY);
-						if (pData->backspaceCount == 1)
-							pData->backspaceCount--;
-					}
 				} else {
 					SendEmptyCharacter();
 					pData->backspaceCount++;
