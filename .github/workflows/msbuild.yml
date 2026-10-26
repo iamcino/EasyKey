@@ -19,8 +19,28 @@ permissions:
   contents: read
 
 jobs:
+  engine-tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Configure engine tests
+      run: cmake -S Sources/OpenKey/tests -B build/tests
+
+    - name: Build engine tests
+      run: cmake --build build/tests --config Release
+
+    - name: Run engine tests
+      run: ctest --test-dir build/tests -C Release --output-on-failure
+
   build:
     runs-on: windows-latest
+    needs: engine-tests
 
     steps:
     - uses: actions/checkout@v4
