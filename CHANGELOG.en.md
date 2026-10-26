@@ -2,6 +2,10 @@
 
 [Tiếng Việt](CHANGELOG.md) · **English**
 
+## Next version
+- Open the shortcut list from the settings window: "Advanced" › "Typing" › "Shortcut list".
+- Esc to put back the typed keys now works in web chats such as Facebook (EasyKey also holds back the Esc key release, so the page does not close the chat).
+
 ## 1.0.0 (Windows 11 x64)
 The first release of EasyKey.
 

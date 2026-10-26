@@ -57,7 +57,7 @@ enum Option {
 
 enum Action {
 	ACT_EXPAND = 100, ACT_CAPTURE, ACT_ABOUT, ACT_CHECK_UPDATE, ACT_DEFAULT_CONFIG,
-	ACT_SPELLING_GUIDE, ACT_UNINSTALL
+	ACT_SPELLING_GUIDE, ACT_UNINSTALL, ACT_MACRO_TABLE
 };
 
 #define CUSTOM_ACCENT (ThemeHelper::ACCENT_PRESETS + 1)
@@ -75,6 +75,7 @@ static const RowInfo advancedRows[] = {
 	{ K_SUBTOGGLE, OPT_SPELLING, _T("Gõ thông minh"), _T("Smart typing"), _T("Chỉ bỏ dấu khi đúng chính tả, gõ sai thì trả lại phím"), _T("Marks only real words, puts the keys back otherwise") },
 	{ K_SUBTOGGLE, OPT_MODERN, _T("Dấu kiểu mới: hoà, thuý"), _T("Modern marks: hoà, thuý") },
 	{ K_SUBTOGGLE, OPT_MACRO, _T("Gõ tắt: ko → không"), _T("Shortcuts: ko → không") },
+	{ K_SUBBUTTON, ACT_MACRO_TABLE, _T("Bảng gõ tắt"), _T("Shortcut list") },
 	{ K_SUBTOGGLE, OPT_ESCAPE, _T("Esc trả lại phím vừa gõ: việt → vieejt"), _T("Esc puts back the keys typed: việt → vieejt") },
 	{ K_GROUP, 0, _T("Giao diện"), _T("Appearance") },
 	{ K_SUBLABEL, 0, NULL, NULL },
@@ -878,6 +879,8 @@ void SettingsWindow::paintItem(Gdiplus::Graphics& g, const Item& item, const int
 			text = T(_T("Xem cách sửa"), _T("How to fix"));
 		else if (item.id == ACT_UNINSTALL)
 			text = T(_T("Gỡ"), _T("Remove"));
+		else if (item.id == ACT_MACRO_TABLE)
+			text = T(_T("Mở"), _T("Open"));
 		drawText(g, text, ctl, fontSmall, active ? pal.text : pal.disabled, 1, 1);
 		break;
 	}
@@ -1208,6 +1211,9 @@ void SettingsWindow::doAction(const int& action) {
 		break;
 	case ACT_SPELLING_GUIDE:
 		ShellExecute(NULL, _T("open"), SPELLING_GUIDE_URL, NULL, NULL, SW_SHOWNORMAL);
+		break;
+	case ACT_MACRO_TABLE:
+		AppDelegate::getInstance()->onMacroTable();
 		break;
 	case ACT_DEFAULT_CONFIG:
 		if (MessageBox(hWnd, T(_T("Bạn có chắc chắn muốn đưa mọi cài đặt về mặc định?"), _T("Reset every setting to its default?")), _T("EasyKey"),

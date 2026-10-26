@@ -71,6 +71,8 @@ static int _languageTemp = 0; //use for smart switch key
 static vector<Byte> savedSmartSwitchKeyData; ////use for smart switch key
 
 static bool _hasJustUsedHotKey = false;
+//Esc that put back the typed keys: its key up is swallowed too, web chats (Facebook...) act on it
+static bool _escapeRestored = false;
 
 static INPUT backspaceEvent[2];
 static INPUT keyEvent[2];
@@ -572,9 +574,15 @@ LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 	if (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN) {
 		//LOG(L"Key down: %d\n", keyboardData->vkCode);
 		SetModifierMask((Uint16)keyboardData->vkCode);
+		if (keyboardData->vkCode == VK_ESCAPE)
+			_escapeRestored = false;
 	} else if (wParam == WM_KEYUP || wParam == WM_SYSKEYUP) {
 		//LOG(L"Key up: %d\n", keyboardData->vkCode);
 		UnsetModifierMask((Uint16)keyboardData->vkCode);
+		if (keyboardData->vkCode == VK_ESCAPE && _escapeRestored) {
+			_escapeRestored = false;
+			return -1;
+		}
 	}
 	if (!_isFlagKey && wParam != WM_KEYUP && wParam != WM_SYSKEYUP)
 		_keycode = (Uint16)keyboardData->vkCode;
@@ -667,6 +675,7 @@ LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 			}
 			return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
 		} else if (pData->code == vWillProcess || pData->code == vRestore || pData->code == vRestoreAndStartNewSession) { //handle result signal
+			_escapeRestored = _keycode == VK_ESCAPE;
 			//fix autocomplete
 			if (vFixRecommendBrowser && pData->extCode != 4) {
 				if (vFixChromiumBrowser && 
