@@ -62,7 +62,10 @@ int vLastVersion = 0;
 
 int vShowOnStartUp = 0;
 int vShowSwitchFlyout = 1;
+int vSwitchInputType = 0;
+int vInputTypeHotKey = 0xFE0000FE; //no key set
 int vUiLanguage = 0;
+int vThemeMode = 0;
 int vAccentColor = 0;
 int vAccentLight = RGB(0x4F, 0x46, 0xE5);
 int vAccentDark = RGB(0xA5, 0xB4, 0xFC);
@@ -180,6 +183,13 @@ void AppDelegate::onInputMethodChangedFromHotKey() {
 		settingsWindow->fillData();
 	}
 	SystemTrayHelper::updateData();
+}
+
+void AppDelegate::onInputTypeFromHotKey() {
+	onInputType(vInputType);
+	SystemTrayHelper::updateData();
+	if (flyout)
+		flyout->notify(true);
 }
 
 void AppDelegate::showSwitchFlyout() {
@@ -304,7 +314,10 @@ void AppDelegate::onDefaultConfig() {
 
 	APP_SET_DATA(vShowOnStartUp, 0);
 	APP_SET_DATA(vShowSwitchFlyout, 1);
+	APP_SET_DATA(vSwitchInputType, 0);
+	APP_SET_DATA(vInputTypeHotKey, 0xFE0000FE);
 	APP_SET_DATA(vUiLanguage, 0);
+	APP_SET_DATA(vThemeMode, 0);
 	APP_SET_DATA(vAccentColor, 0);
 	APP_SET_DATA(vAccentAutoDark, 1);
 	APP_SET_DATA(vRunWithWindows, 1);
@@ -328,6 +341,7 @@ void AppDelegate::onToggleVietnamese() {
 	if (settingsWindow) {
 		settingsWindow->fillData();
 	}
+	showSwitchFlyout();
 	
 	if (vUseSmartSwitchKey) {
 		string& exe = EasyKeyHelper::getLastAppExecuteName();

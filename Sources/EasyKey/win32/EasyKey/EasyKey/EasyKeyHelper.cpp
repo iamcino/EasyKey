@@ -373,7 +373,7 @@ static const map<wstring, LPCTSTR> _english = {
 	{ L"Đóng", L"Close" },
 	{ L"Tùy chọn chung", L"Options" },
 	{ L"Chuyển mã", L"Convert" },
-	{ L"Lựa chọn", L"Code tables" },
+	{ L"Lựa chọn", L"Encodings" },
 	{ L"Chuyển sang chữ HOA", L"UPPERCASE" },
 	{ L"Loại bỏ dấu câu", L"Remove tone marks" },
 	{ L"Chuyển sang chữ thường", L"lowercase" },

@@ -67,7 +67,8 @@ private:
 	int dragStartY = 0, dragStartScroll = 0;
 
 	bool capturing = false;
-	int savedSwitchKey = 0, captureModifiers = 0;
+	int captureTarget = 0; //0 the switch key, 1 the input method key
+	int savedSwitchKey = 0, savedInputKey = 0, captureModifiers = 0;
 	int hexEditing = -1; //custom accent field being typed in: 0 light, 1 dark
 	wstring hexBuffer;
 private:
@@ -86,6 +87,7 @@ private:
 	int maxScroll() const;
 	void scrollTo(int y);
 	void ensureVisible(const int& item);
+	void revealGroup(const int& group);
 	bool getThumb(RECT& track, RECT& thumb) const;
 
 	void paint(HDC hdc);
@@ -112,8 +114,9 @@ private:
 	bool onHexKey(const UINT& uMsg, const WPARAM& key);
 	void applyHex();
 
-	void startCapture();
+	void startCapture(const int& target);
 	void endCapture(const bool& save, const int& hotKey);
+	bool isHotKeyTaken(const int& hotKey) const;
 	bool onCaptureKey(const UINT& uMsg, const WPARAM& vk);
 public:
 	SettingsWindow(const HINSTANCE& hInstance);

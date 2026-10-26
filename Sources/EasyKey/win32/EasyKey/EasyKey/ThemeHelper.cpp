@@ -68,6 +68,8 @@ static bool isHighContrast() {
 bool ThemeHelper::isAppDarkMode() {
 	if (isHighContrast())
 		return false;
+	if (vThemeMode != 0)
+		return vThemeMode == 2;
 	return getPersonalizeValue(_T("AppsUseLightTheme"), 1) == 0;
 }
 

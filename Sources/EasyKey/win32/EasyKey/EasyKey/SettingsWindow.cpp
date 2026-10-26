@@ -39,24 +39,24 @@ redistribute your new version, it MUST be open source.
 
 enum ItemKind {
 	K_LANG, K_HOTKEY, K_SECTION, K_SEGMENT, K_SEGBUTTON, K_EXPANDER,
-	K_GROUP, K_SUBTOGGLE, K_SUBCOMBO, K_SUBBUTTON, K_SUBSEG, K_UILANG, K_SUBLABEL, K_SWATCH, K_HEXFIELD, K_NOTE,
+	K_GROUP, K_SUBTOGGLE, K_SUBCOMBO, K_SUBBUTTON, K_SUBSEG, K_UILANG, K_THEME, K_SUBLABEL, K_SWATCH, K_HEXFIELD, K_NOTE,
 	K_LINK, K_VERSION
 };
 
 enum Option {
 	OPT_NONE, OPT_LANGUAGE, OPT_CODE_TABLE,
 	OPT_SPELLING, OPT_MODERN, OPT_MACRO, OPT_RUN_WITH_WINDOWS,
-	OPT_ESCAPE, OPT_ZWJF, OPT_TEMP_OFF_SPELLING,
+	OPT_ESCAPE, OPT_INPUT_HOTKEY, OPT_ZWJF, OPT_TEMP_OFF_SPELLING,
 	OPT_QUICK_TELEX, OPT_QUICK_START, OPT_QUICK_END, OPT_CAPS_FIRST, OPT_MACRO_ENGLISH, OPT_MACRO_AUTO_CAPS,
 	OPT_SMART_SWITCH, OPT_REMEMBER_CODE, OPT_TEMP_OFF_EASYKEY,
 	OPT_CLIPBOARD, OPT_FLYOUT, OPT_BEEP,
-	OPT_WARN_CONFLICT, OPT_RUN_AS_ADMIN, OPT_CHECK_UPDATE,
+	OPT_WARN_CONFLICT, OPT_RUN_AS_ADMIN, OPT_DESKTOP_SHORTCUT, OPT_CHECK_UPDATE,
 	OPT_AUTO_DARK
 };
 
 enum Action {
 	ACT_EXPAND = 100, ACT_CAPTURE, ACT_ABOUT, ACT_DEFAULT_CONFIG,
-	ACT_SPELLING_GUIDE, ACT_UNINSTALL, ACT_MACRO_TABLE
+	ACT_SPELLING_GUIDE, ACT_UNINSTALL, ACT_MACRO_TABLE, ACT_CAPTURE_INPUT
 };
 
 #define CUSTOM_ACCENT (ThemeHelper::ACCENT_PRESETS + 1)
@@ -76,11 +76,12 @@ static const RowInfo advancedRows[] = {
 	{ K_SUBTOGGLE, OPT_MACRO, _T("Gõ tắt: ko → không"), _T("Shortcuts: ko → không") },
 	{ K_SUBBUTTON, ACT_MACRO_TABLE, _T("Bảng gõ tắt"), _T("Shortcut list") },
 	{ K_SUBTOGGLE, OPT_ESCAPE, _T("Esc trả lại phím vừa gõ: việt → vieejt"), _T("Esc puts back the keys typed: việt → vieejt") },
+	{ K_SUBTOGGLE, OPT_INPUT_HOTKEY, _T("Đổi kiểu gõ bằng phím tắt"), _T("Switch input method with keys"), _T("Telex → VNI → Simple Telex, khi đang gõ tiếng Việt"), _T("Telex → VNI → Simple Telex, while typing Vietnamese") },
 	{ K_GROUP, 2, _T("Giao diện"), _T("Appearance") },
 	{ K_SUBLABEL, 0, NULL, NULL },
-	{ K_GROUP, 3, _T("Bảng mã"), _T("Code table") },
-	{ K_SUBCOMBO, OPT_CODE_TABLE, _T("Bảng mã cũ"), _T("Legacy code table"), _T("Chỉ dùng cho văn bản và font cũ"), _T("Only for old documents and fonts") },
-	{ K_SUBTOGGLE, OPT_REMEMBER_CODE, _T("Nhớ bảng mã theo từng ứng dụng"), _T("Remember the code table per app") },
+	{ K_GROUP, 3, _T("Bảng mã"), _T("Character encoding") },
+	{ K_SUBCOMBO, OPT_CODE_TABLE, _T("Bảng mã cũ"), _T("Legacy encoding"), _T("Chỉ dùng cho văn bản và font cũ"), _T("Only for old documents and fonts") },
+	{ K_SUBTOGGLE, OPT_REMEMBER_CODE, _T("Nhớ bảng mã theo từng ứng dụng"), _T("Remember the encoding per app") },
 	{ K_GROUP, 4, _T("Chính tả"), _T("Spelling") },
 	{ K_SUBTOGGLE, OPT_ZWJF, _T("Cho phép z, w, j, f làm phụ âm đầu"), _T("Allow z, w, j, f as first consonants") },
 	{ K_SUBTOGGLE, OPT_TEMP_OFF_SPELLING, _T("Tạm tắt chính tả bằng phím Ctrl"), _T("Hold Ctrl to skip spell check") },
@@ -90,7 +91,7 @@ static const RowInfo advancedRows[] = {
 	{ K_SUBTOGGLE, OPT_QUICK_START, _T("Phụ âm đầu: f → ph, j → gi, w → qu"), _T("First consonants: f → ph, j → gi, w → qu") },
 	{ K_SUBTOGGLE, OPT_QUICK_END, _T("Phụ âm cuối: g → ng, h → nh, k → ch"), _T("Last consonants: g → ng, h → nh, k → ch") },
 	{ K_SUBTOGGLE, OPT_CAPS_FIRST, _T("Viết hoa chữ cái đầu câu"), _T("Capitalize the first letter of sentences") },
-	{ K_SUBTOGGLE, OPT_MACRO_ENGLISH, _T("Gõ tắt cả khi đang gõ tiếng Anh"), _T("Shortcuts in English mode too") },
+	{ K_SUBTOGGLE, OPT_MACRO_ENGLISH, _T("Gõ tắt cả khi đang gõ tiếng Anh"), _T("Also use shortcuts in English mode") },
 	{ K_SUBTOGGLE, OPT_MACRO_AUTO_CAPS, _T("Tự viết hoa theo từ gõ tắt"), _T("Match the capitalization of shortcuts") },
 	{ K_GROUP, 6, _T("Ứng dụng"), _T("Apps") },
 	{ K_SUBTOGGLE, OPT_SMART_SWITCH, _T("Nhớ chế độ Việt/Anh theo từng ứng dụng"), _T("Remember Vietnamese/English per app") },
@@ -102,6 +103,7 @@ static const RowInfo advancedRows[] = {
 	{ K_SUBTOGGLE, OPT_RUN_WITH_WINDOWS, _T("Chạy cùng Windows"), _T("Start with Windows") },
 	{ K_SUBTOGGLE, OPT_WARN_CONFLICT, _T("Cảnh báo khi bộ gõ khác đang chạy"), _T("Warn when another Vietnamese keyboard runs") },
 	{ K_SUBTOGGLE, OPT_RUN_AS_ADMIN, _T("Chạy với quyền Admin"), _T("Run as administrator"), _T("Để gõ được trong ứng dụng chạy quyền Admin"), _T("To type in apps that run as administrator") },
+	{ K_SUBTOGGLE, OPT_DESKTOP_SHORTCUT, _T("Lối tắt trên màn hình nền"), _T("Desktop shortcut") },
 	{ K_SUBTOGGLE, OPT_CHECK_UPDATE, _T("Tự kiểm tra bản mới khi khởi động"), _T("Check for updates at start") },
 	{ K_SUBBUTTON, ACT_DEFAULT_CONFIG, _T("Đưa mọi cài đặt về mặc định"), _T("Reset all settings") },
 	{ K_SUBBUTTON, ACT_UNINSTALL, _T("Gỡ EasyKey khỏi Windows"), _T("Remove EasyKey from Windows"), _T("Xoá chạy cùng Windows, lối tắt và cài đặt"), _T("Removes startup, shortcut and settings") },
@@ -340,6 +342,7 @@ void SettingsWindow::destroy() {
 	if (capturing) {
 		capturing = false;
 		vSwitchKeyStatus = savedSwitchKey;
+		vInputTypeHotKey = savedInputKey;
 	}
 	if (hWnd) {
 		SetWindowLongPtr(hWnd, GWLP_USERDATA, 0);
@@ -474,7 +477,7 @@ void SettingsWindow::layout() {
 	push(K_LANG, 0, T(_T("Tiếng Anh"), _T("English")), NULL, makeRect(left + pad + half + gap, y + pad, inner - half - gap, s(56)));
 	int i = push(K_HOTKEY, 0, T(_T("Chuyển nhanh"), _T("Switch with")), NULL, makeRect(left + pad, y + pad + s(56) + gap, inner, s(32)));
 	items[i].linkAction = ACT_CAPTURE;
-	LPCTSTR linkText = capturing ? T(_T("Huỷ"), _T("Cancel")) : T(_T("Đổi phím"), _T("Change"));
+	LPCTSTR linkText = capturing && captureTarget == 0 ? T(_T("Huỷ"), _T("Cancel")) : T(_T("Đổi phím"), _T("Change"));
 	int linkWidth = textWidth(fontSmall, linkText) + s(16);
 	items[i].link = makeRect(items[i].rc.right - linkWidth, centerY(items[i].rc) - s(13), linkWidth, s(26));
 	y = heroArea.bottom + s(14);
@@ -495,7 +498,7 @@ void SettingsWindow::layout() {
 
 	//everything else is folded into one expander
 	int expander = add(K_EXPANDER, ACT_EXPAND, T(_T("Nâng cao"), _T("Advanced")),
-		T(_T("Gõ, giao diện, bảng mã, hệ thống"), _T("Typing, appearance, code table, system")), s(48));
+		T(_T("Gõ, giao diện, bảng mã, hệ thống"), _T("Typing, appearance, encoding, system")), s(48));
 	items[expander].ctl = makeRect(items[expander].rc.right - s(14) - s(16), centerY(items[expander].rc) - s(8), s(16), s(16));
 	items[expander].textRight = items[expander].ctl.left - s(12);
 	if (expanded) {
@@ -522,22 +525,28 @@ void SettingsWindow::layout() {
 			if (!groupOpen)
 				continue;
 			if (row.kind == K_SUBLABEL) {
-				//display language: three choices in a small segmented control
-				i = add(K_SUBSEG, 0, T(_T("Ngôn ngữ giao diện"), _T("Display language")), NULL, s(44));
-				items[i].afterLabel = afterLabel;
-				LPCTSTR names[] = { T(_T("Theo Windows"), _T("Windows")), _T("Tiếng Việt"), _T("English") };
-				int widths[3], total = s(4);
-				for (int n = 0; n < 3; n++) {
-					widths[n] = textWidth(fontCaption, names[n]) + s(16);
-					total += widths[n] + s(2);
-				}
-				items[i].ctl = makeRect(items[i].rc.right - s(14) - total, centerY(items[i].rc) - s(15), total, s(30));
-				items[i].textRight = items[i].ctl.left - s(10);
-				int x = items[i].ctl.left + s(2);
-				for (int n = 0; n < 3; n++) {
-					push(K_UILANG, n, names[n], NULL, makeRect(x, items[i].ctl.top + s(2), widths[n], s(26)));
-					x += widths[n] + s(2);
-				}
+				//display language and color mode: three choices each in a small segmented control
+				auto addChoices = [&](const int& id, const int& kind, LPCTSTR label, LPCTSTR* names) {
+					i = add(K_SUBSEG, id, label, NULL, s(44));
+					items[i].afterLabel = afterLabel;
+					afterLabel = false;
+					int widths[3], total = s(4);
+					for (int n = 0; n < 3; n++) {
+						widths[n] = textWidth(fontCaption, names[n]) + s(16);
+						total += widths[n] + s(2);
+					}
+					items[i].ctl = makeRect(items[i].rc.right - s(14) - total, centerY(items[i].rc) - s(15), total, s(30));
+					items[i].textRight = items[i].ctl.left - s(10);
+					int x = items[i].ctl.left + s(2);
+					for (int n = 0; n < 3; n++) {
+						push(kind, n, names[n], NULL, makeRect(x, items[i].ctl.top + s(2), widths[n], s(26)));
+						x += widths[n] + s(2);
+					}
+				};
+				LPCTSTR languages[] = { T(_T("Theo Windows"), _T("Windows")), _T("Tiếng Việt"), _T("English") };
+				addChoices(0, K_UILANG, T(_T("Ngôn ngữ giao diện"), _T("Display language")), languages);
+				LPCTSTR modes[] = { T(_T("Theo Windows"), _T("Windows")), T(_T("Sáng"), _T("Light")), T(_T("Tối"), _T("Dark")) };
+				addChoices(1, K_THEME, T(_T("Chế độ màu"), _T("Color mode")), modes);
 
 				//accent: label row, then the swatches, five to a row
 				add(K_SUBLABEL, 0, T(_T("Màu nhấn"), _T("Accent color")), T(_T("Trái: chế độ sáng · Phải: tối"), _T("Left: light mode · Right: dark")), s(36));
@@ -573,6 +582,14 @@ void SettingsWindow::layout() {
 				placeSwitch(items[i]);
 			else
 				placeField(items[i], row.kind == K_SUBCOMBO ? comboWidth : buttonWidth);
+			if (row.id == OPT_INPUT_HOTKEY && vSwitchInputType) {
+				//the keys, with a link to change them, under the switch
+				i = add(K_HOTKEY, 1, T(_T("Phím tắt"), _T("Keys")), NULL, s(40));
+				items[i].linkAction = ACT_CAPTURE_INPUT;
+				LPCTSTR text = capturing && captureTarget == 1 ? T(_T("Huỷ"), _T("Cancel")) : T(_T("Đổi phím"), _T("Change"));
+				int width = textWidth(fontSmall, text) + s(16);
+				items[i].link = makeRect(items[i].rc.right - s(8) - width, centerY(items[i].rc) - s(13), width, s(26));
+			}
 		}
 		y += s(6);
 		expandArea = makeRect(left, items[expander].rc.top, right - left, y - items[expander].rc.top);
@@ -664,6 +681,31 @@ void SettingsWindow::ensureVisible(const int& item) {
 		scrollTo(rc.top - s(8));
 	else if (rc.bottom + s(8) > scrollY + viewHeight())
 		scrollTo(rc.bottom + s(8) - viewHeight());
+}
+
+void SettingsWindow::revealGroup(const int& group) {
+	int header = -1;
+	for (int i = 0; i < (int)items.size(); i++) {
+		if (items[i].kind == K_GROUP && items[i].id == group) {
+			header = i;
+			break;
+		}
+	}
+	if (header < 0)
+		return;
+	int bottom = expandArea.bottom;
+	for (int i = header + 1; i < (int)items.size(); i++) {
+		if (items[i].kind == K_GROUP) {
+			bottom = items[i].rc.top;
+			break;
+		}
+	}
+	//scroll down until the group's last row shows, keeping its header in view
+	int top = items[header].rc.top - s(8);
+	if (bottom + s(8) > scrollY + viewHeight())
+		scrollTo(min(top, bottom + s(8) - viewHeight()));
+	else if (top < scrollY)
+		scrollTo(top);
 }
 
 bool SettingsWindow::getThumb(RECT& track, RECT& thumb) const {
@@ -795,12 +837,16 @@ void SettingsWindow::paintItem(Gdiplus::Graphics& g, const Item& item, const int
 		break;
 	}
 	case K_HOTKEY: {
-		int x = rc.left + s(8);
+		//0 the switch key under the language buttons, 1 the input method key in Nâng cao
+		bool mine = capturing && captureTarget == item.id;
+		if (item.id == 1)
+			divider();
+		int x = rc.left + s(item.id == 1 ? 14 : 8);
 		int labelWidth = textWidth(fontCaption, item.label);
 		drawText(g, item.label, makeRect(x, rc.top, labelWidth, rc.bottom - rc.top), fontCaption, pal.sub, 0, 1);
 		x += labelWidth + s(8);
 		RECT link = toView(item.link);
-		if (capturing) {
+		if (mine) {
 			if (captureModifiers) {
 				x = drawKeys(EasyKeyHelper::getHotKeyString(captureModifiers | 0xFE), x);
 				drawText(g, _T("+ …"), makeRect(x, rc.top, link.left - x, rc.bottom - rc.top), fontCaption, pal.sub, 0, 1);
@@ -808,7 +854,7 @@ void SettingsWindow::paintItem(Gdiplus::Graphics& g, const Item& item, const int
 				drawText(g, T(_T("Nhấn tổ hợp phím mới…"), _T("Press the new keys…")), makeRect(x, rc.top, link.left - x, rc.bottom - rc.top), fontCaption, pal.text, 0, 1);
 			}
 		} else {
-			wstring hotKey = EasyKeyHelper::getHotKeyString(vSwitchKeyStatus);
+			wstring hotKey = EasyKeyHelper::getHotKeyString(item.id == 1 ? vInputTypeHotKey : vSwitchKeyStatus);
 			if (hotKey.empty())
 				drawText(g, T(_T("Chưa đặt phím"), _T("No key set")), makeRect(x, rc.top, link.left - x, rc.bottom - rc.top), fontCaption, pal.text, 0, 1);
 			else
@@ -817,7 +863,7 @@ void SettingsWindow::paintItem(Gdiplus::Graphics& g, const Item& item, const int
 		bool linkHot = index == hotItem && hotPart == 1;
 		if (linkHot)
 			fillRound(g, link, (float)s(6), pal.cardHover);
-		drawText(g, capturing ? T(_T("Huỷ"), _T("Cancel")) : T(_T("Đổi phím"), _T("Change")), link, fontSmall, linkHot ? pal.linkHover : pal.link, 1, 1);
+		drawText(g, mine ? T(_T("Huỷ"), _T("Cancel")) : T(_T("Đổi phím"), _T("Change")), link, fontSmall, linkHot ? pal.linkHover : pal.link, 1, 1);
 		break;
 	}
 	case K_SECTION:
@@ -893,8 +939,9 @@ void SettingsWindow::paintItem(Gdiplus::Graphics& g, const Item& item, const int
 		drawLabel(fontBody, rc.left + s(14), pal.text, pal.sub);
 		fillRound(g, ctl, (float)s(8), pal.track, pal.stroke);
 		break;
-	case K_UILANG: {
-		bool on = item.id == vUiLanguage;
+	case K_UILANG:
+	case K_THEME: {
+		bool on = item.id == (item.kind == K_UILANG ? vUiLanguage : vThemeMode);
 		if (on)
 			fillRound(g, rc, (float)s(6), pal.field, pal.stroke);
 		else if (hot)
@@ -1071,6 +1118,8 @@ bool SettingsWindow::isInteractive(const int& item, const int& part) const {
 		return part == 0 && it.id != vInputType;
 	case K_UILANG:
 		return part == 0 && it.id != vUiLanguage;
+	case K_THEME:
+		return part == 0 && it.id != vThemeMode;
 	case K_SWATCH:
 		return part == 0 && it.id != vAccentColor;
 	case K_HEXFIELD:
@@ -1166,6 +1215,11 @@ void SettingsWindow::activate(const int& index, const int& part) {
 		APP_SET_DATA(vUiLanguage, item.id);
 		AppDelegate::getInstance()->onAppearanceChanged();
 		break;
+	case K_THEME:
+		APP_SET_DATA(vThemeMode, item.id);
+		ThemeHelper::applyMenuTheme();
+		AppDelegate::getInstance()->onAppearanceChanged();
+		break;
 	case K_SWATCH:
 		APP_SET_DATA(vAccentColor, item.id);
 		AppDelegate::getInstance()->onAppearanceChanged();
@@ -1184,12 +1238,18 @@ void SettingsWindow::activate(const int& index, const int& part) {
 	case K_LINK:
 		doAction(item.id);
 		break;
-	case K_GROUP:
-		openGroups ^= 1 << item.id;
+	case K_GROUP: {
+		//one group open at a time; opening one shows all of it
+		int group = item.id;
+		bool opening = (openGroups & (1 << group)) == 0;
+		openGroups = opening ? 1 << group : 0;
 		endHexEdit();
 		fitWindow(false);
+		if (opening)
+			revealGroup(group);
 		InvalidateRect(hWnd, NULL, FALSE);
 		break;
+	}
 	}
 }
 
@@ -1209,11 +1269,14 @@ void SettingsWindow::doAction(const int& action) {
 		InvalidateRect(hWnd, NULL, FALSE);
 		break;
 	case ACT_CAPTURE:
-		if (capturing)
-			endCapture(false, 0);
-		else
-			startCapture();
+	case ACT_CAPTURE_INPUT: {
+		int target = action == ACT_CAPTURE ? 0 : 1;
+		bool same = capturing && captureTarget == target;
+		endCapture(false, 0);
+		if (!same)
+			startCapture(target);
 		break;
+	}
 	case ACT_ABOUT:
 		AppDelegate::getInstance()->onEasyKeyAbout();
 		break;
@@ -1264,8 +1327,10 @@ bool SettingsWindow::getOption(const int& id) const {
 	case OPT_TEMP_OFF_EASYKEY: return vTempOffOpenKey != 0;
 	case OPT_CLIPBOARD: return vSendKeyStepByStep == 0;
 	case OPT_FLYOUT: return vShowSwitchFlyout != 0;
+	case OPT_INPUT_HOTKEY: return vSwitchInputType != 0;
 	case OPT_BEEP: return HAS_BEEP(switchKey) != 0;
 	case OPT_RUN_AS_ADMIN: return vRunAsAdmin != 0;
+	case OPT_DESKTOP_SHORTCUT: return EasyKeyManager::hasDesktopShortcut();
 	case OPT_CHECK_UPDATE: return vCheckNewVersion != 0;
 	case OPT_AUTO_DARK: return vAccentAutoDark != 0;
 	}
@@ -1289,6 +1354,7 @@ void SettingsWindow::setOption(const int& id, const bool& on) {
 	switch (id) {
 	case OPT_LANGUAGE:
 		APP_SET_DATA(vLanguage, val);
+		AppDelegate::getInstance()->showSwitchFlyout();
 		if (vUseSmartSwitchKey) {
 			setAppInputMethodStatus(EasyKeyHelper::getFrontMostAppExecuteName(), vLanguage | (vCodeTable << 1));
 			saveSmartSwitchKeyData();
@@ -1321,6 +1387,13 @@ void SettingsWindow::setOption(const int& id, const bool& on) {
 	case OPT_TEMP_OFF_EASYKEY: APP_SET_DATA(vTempOffOpenKey, val); break;
 	case OPT_CLIPBOARD: APP_SET_DATA(vSendKeyStepByStep, on ? 0 : 1); break;
 	case OPT_FLYOUT: APP_SET_DATA(vShowSwitchFlyout, val); break;
+	case OPT_INPUT_HOTKEY:
+		if (!on && capturing && captureTarget == 1)
+			endCapture(false, 0);
+		APP_SET_DATA(vSwitchInputType, val);
+		if (on && vInputTypeHotKey == 0xFE0000FE)
+			startCapture(1); //no keys yet, ask for them now
+		break;
 	case OPT_BEEP:
 		vSwitchKeyStatus = on ? (vSwitchKeyStatus | 0x8000) : (vSwitchKeyStatus & ~0x8000);
 		APP_SET_DATA(vSwitchKeyStatus, vSwitchKeyStatus);
@@ -1328,6 +1401,13 @@ void SettingsWindow::setOption(const int& id, const bool& on) {
 	case OPT_RUN_AS_ADMIN:
 		APP_SET_DATA(vRunAsAdmin, val);
 		requestRestartAsAdmin();
+		break;
+	case OPT_DESKTOP_SHORTCUT:
+		//the switch shows whether the shortcut is there, so off removes it
+		if (on)
+			EasyKeyManager::createDesktopShortcut();
+		else
+			EasyKeyManager::removeDesktopShortcut();
 		break;
 	case OPT_CHECK_UPDATE: APP_SET_DATA(vCheckNewVersion, val); break;
 	case OPT_AUTO_DARK:
@@ -1420,6 +1500,7 @@ void SettingsWindow::applyHex() {
 		APP_SET_DATA(vAccentDark, (int)color);
 	}
 	applyTheme();
+	SystemTrayHelper::updateData();
 }
 
 bool SettingsWindow::onHexKey(const UINT& uMsg, const WPARAM& key) {
@@ -1451,15 +1532,18 @@ bool SettingsWindow::onHexKey(const UINT& uMsg, const WPARAM& key) {
 
 /*-------------------------------- switch key capture --------------------------------*/
 
-void SettingsWindow::startCapture() {
+void SettingsWindow::startCapture(const int& target) {
 	if (capturing)
 		return;
 	endHexEdit();
 	capturing = true;
+	captureTarget = target;
 	savedSwitchKey = vSwitchKeyStatus;
+	savedInputKey = vInputTypeHotKey;
 	captureModifiers = 0;
-	//keep the keyboard hook from acting on the old hotkey while the new one is typed
+	//keep the keyboard hook from acting on the old hotkeys while the new one is typed
 	vSwitchKeyStatus = (savedSwitchKey & 0x8000) | 0xFE0000FE;
+	vInputTypeHotKey = 0xFE0000FE;
 	SetFocus(hWnd);
 	layout();
 	InvalidateRect(hWnd, NULL, FALSE);
@@ -1470,15 +1554,27 @@ void SettingsWindow::endCapture(const bool& save, const int& hotKey) {
 		return;
 	capturing = false;
 	vSwitchKeyStatus = savedSwitchKey;
-	if (save) {
+	vInputTypeHotKey = savedInputKey;
+	if (save && captureTarget == 0) {
 		vSwitchKeyStatus = (savedSwitchKey & 0x8000) | hotKey;
 		APP_SET_DATA(vSwitchKeyStatus, vSwitchKeyStatus);
 		SystemTrayHelper::updateData();
+	} else if (save) {
+		APP_SET_DATA(vInputTypeHotKey, hotKey);
+	} else if (captureTarget == 1 && vInputTypeHotKey == 0xFE0000FE) {
+		//turned on but no keys given: off again
+		APP_SET_DATA(vSwitchInputType, 0);
 	}
 	if (hWnd) {
 		layout();
 		InvalidateRect(hWnd, NULL, FALSE);
 	}
+}
+
+//the other hotkey already uses these keys
+bool SettingsWindow::isHotKeyTaken(const int& hotKey) const {
+	int other = captureTarget == 0 ? (vSwitchInputType ? savedInputKey : 0xFE0000FE) : (savedSwitchKey & ~0x8000);
+	return other != 0xFE0000FE && (other & ~0x8000) == hotKey;
 }
 
 bool SettingsWindow::onCaptureKey(const UINT& uMsg, const WPARAM& vk) {
@@ -1494,7 +1590,11 @@ bool SettingsWindow::onCaptureKey(const UINT& uMsg, const WPARAM& vk) {
 		if (vk == VK_ESCAPE && mods == 0) {
 			endCapture(false, 0);
 		} else if (mods != 0 && (vk == VK_SPACE || keyCodeToCharacter((Uint32)vk) != 0)) {
-			endCapture(true, mods | (int)vk | ((int)vk << 24));
+			int hotKey = mods | (int)vk | ((int)vk << 24);
+			if (isHotKeyTaken(hotKey))
+				MessageBeep(MB_OK);
+			else
+				endCapture(true, hotKey);
 		} else {
 			MessageBeep(MB_OK); //a hotkey needs at least one modifier and a typing key
 		}
@@ -1502,9 +1602,12 @@ bool SettingsWindow::onCaptureKey(const UINT& uMsg, const WPARAM& vk) {
 	}
 	//modifiers only, like Ctrl + Shift: saved when the first of them is released
 	if (mask && (captureModifiers & mask)) {
-		if (countModifiers(captureModifiers) >= 2) {
-			endCapture(true, captureModifiers | 0xFE | (0xFE << 24));
+		int hotKey = captureModifiers | 0xFE | (0xFE << 24);
+		if (countModifiers(captureModifiers) >= 2 && !isHotKeyTaken(hotKey)) {
+			endCapture(true, hotKey);
 		} else {
+			if (isHotKeyTaken(hotKey))
+				MessageBeep(MB_OK);
 			captureModifiers = 0;
 			InvalidateRect(hWnd, NULL, FALSE);
 		}

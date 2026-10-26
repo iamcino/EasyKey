@@ -84,7 +84,10 @@ extern int vUseSmartSwitchKey;
 extern int vUpperCaseFirstChar;
 extern int vShowOnStartUp;
 extern int vShowSwitchFlyout;
+extern int vSwitchInputType;  //the input method hotkey is on
+extern int vInputTypeHotKey;  //next input method while typing Vietnamese, same format as vSwitchKeyStatus
 extern int vUiLanguage;       //0 follow Windows, 1 Vietnamese, 2 English
+extern int vThemeMode;        //0 follow Windows, 1 light, 2 dark
 extern int vAccentColor;      //0 follow Windows, 1-7 presets, 8 custom
 extern int vAccentLight;      //custom accent for the light theme, COLORREF
 extern int vAccentDark;       //custom accent for the dark theme, COLORREF
