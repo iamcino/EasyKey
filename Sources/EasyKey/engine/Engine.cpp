@@ -113,6 +113,7 @@ static bool _isCaps = false;
 static int _spaceCount = 0; //add: July 30th, 2019
 static bool _hasHandledMacro = false; //for macro flag August 9th, 2019
 static Byte _upperCaseStatus = 0; //for Write upper case for the first letter; 2: will upper case
+static bool _sentenceFromWindow = false; //set by vStartSentence, the click that switched windows keeps it
 static bool _isCharKeyCode;
 static vector<Uint32> _specialChar;
 static bool _useSpellCheckingBefore;
@@ -1259,6 +1260,13 @@ void vTempOffEngine(const bool& off) {
     _willTempOffEngine = off;
 }
 
+void vStartSentence() {
+    if (vUpperCaseFirstChar) {
+        _upperCaseStatus = 2;
+        _sentenceFromWindow = true;
+    }
+}
+
 bool checkQuickConsonant() {
     if (_index <= 1) return false;
     l = 0;
@@ -1400,7 +1408,8 @@ void vKeyHandleEvent(const vKeyEvent& event,
             }
         }
         
-        if (vUpperCaseFirstChar) {
+        if (vUpperCaseFirstChar && !(event == vKeyEvent::Mouse && _sentenceFromWindow)) {
+            _sentenceFromWindow = false;
             if (data == KEY_DOT || (capsStatus == 1 && (data == KEY_SLASH || data == KEY_1))) //. ? !
                 _upperCaseStatus = 1;
             else if (data == KEY_ENTER || data == KEY_RETURN)
@@ -1562,6 +1571,7 @@ void vKeyHandleEvent(const vKeyEvent& event,
                 upperCaseFirstCharacter();
             }
             _upperCaseStatus = 0;
+            _sentenceFromWindow = false;
         }
         
         //case [ ]

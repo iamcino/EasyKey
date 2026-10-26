@@ -195,6 +195,13 @@ static void testTelex() {
     expectTyping("Telex", "xin? chaof", L"xin? Chào");
     expectTyping("Telex", "xin! chaof", L"xin! Chào");
     expectTyping("Telex", "xin chaof", L"xin chào");
+    vStartSentence();
+    expectTyping("Telex", "xin chaof", L"Xin chào");
+    vStartSentence();
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0); //the click that switched windows
+    expectTyping("Telex", "xin chaof", L"Xin chào");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0); //a click in the same window
+    expectTyping("Telex", "xin chaof", L"xin chào");
     vUpperCaseFirstChar = 0;
 }
 

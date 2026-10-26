@@ -752,6 +752,9 @@ LRESULT CALLBACK mouseHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 VOID CALLBACK winEventProcCallback(HWINEVENTHOOK hWinEventHook, DWORD dwEvent, HWND hwnd, LONG idObject, LONG idChild, DWORD dwEventThread, DWORD dwmsEventTime) {
 	if (hwnd && EasyKeyHelper::isWindowElevated(hwnd))
 		AppDelegate::getInstance()->onElevatedWindow(hwnd);
+	//typing in another window usually starts a new sentence
+	startNewSession();
+	vStartSentence();
 	//smart switch key
 	if (vUseSmartSwitchKey || vRememberCode) {
 		string& exe = EasyKeyHelper::getFrontMostAppExecuteName();

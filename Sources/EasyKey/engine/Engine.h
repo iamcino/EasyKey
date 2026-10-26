@@ -244,6 +244,11 @@ void vSetCheckSpelling();
 void vTempOffEngine(const bool& off=true);
 
 /**
+ * the next word starts a sentence, e.g. after switching to another window
+ */
+void vStartSentence();
+
+/**
  * some utils function
  */
 wstring utf8ToWideString(const string& str);
