@@ -86,7 +86,7 @@ static const RowInfo advancedRows[] = {
 	{ K_SUBTOGGLE, OPT_TEMP_OFF_SPELLING, _T("Tạm tắt chính tả bằng phím Ctrl"), _T("Hold Ctrl to skip spell check") },
 	{ K_SUBBUTTON, ACT_SPELLING_GUIDE, _T("Windows gạch đỏ chữ Việt?"), _T("Red underlines under Vietnamese?") },
 	{ K_GROUP, 5, _T("Gõ nhanh và gõ tắt"), _T("Quick typing and shortcuts") },
-	{ K_SUBTOGGLE, OPT_QUICK_TELEX, _T("Gõ nhanh: cc → ch, gg → gi, nn → ng…"), _T("Quick Telex: cc → ch, gg → gi, nn → ng…") },
+	{ K_SUBTOGGLE, OPT_QUICK_TELEX, _T("Gõ nhanh: cc → ch, gg → gi, nn → ng…"), _T("Quick typing: cc → ch, gg → gi, nn → ng…") },
 	{ K_SUBTOGGLE, OPT_QUICK_START, _T("Phụ âm đầu: f → ph, j → gi, w → qu"), _T("First consonants: f → ph, j → gi, w → qu") },
 	{ K_SUBTOGGLE, OPT_QUICK_END, _T("Phụ âm cuối: g → ng, h → nh, k → ch"), _T("Last consonants: g → ng, h → nh, k → ch") },
 	{ K_SUBTOGGLE, OPT_CAPS_FIRST, _T("Viết hoa chữ cái đầu câu"), _T("Capitalize the first letter of sentences") },
