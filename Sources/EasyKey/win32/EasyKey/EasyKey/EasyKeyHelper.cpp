@@ -1,18 +1,18 @@
 /*----------------------------------------------------------
-OpenKey - The Cross platform Open source Vietnamese Keyboard application.
+EasyKey - Vietnamese input for Windows 11.
+Copyright (C) 2026 Cino
 
+Based on OpenKey - The Cross platform Open source Vietnamese
+Keyboard application.
 Copyright (C) 2019 Mai Vu Tuyen
 Contact: maivutuyen.91@gmail.com
 Github: https://github.com/tuyenvm/OpenKey
-Fanpage: https://www.facebook.com/OpenKeyVN
 
-EasyKey - Vietnamese input for Windows 11, based on OpenKey.
-Copyright (C) 2026 Cino
+SPDX-License-Identifier: GPL-3.0-only
 
-This file is belong to the OpenKey project, Win32 version
-which is released under GPL license.
-You can fork, modify, improve this program. If you
-redistribute your new version, it MUST be open source.
+This file is part of EasyKey, a modified version of OpenKey,
+released under the GNU General Public License version 3.
+See LICENSE and NOTICE.
 -----------------------------------------------------------*/
 #include "EasyKeyHelper.h"
 #include <stdarg.h>
@@ -20,8 +20,15 @@ redistribute your new version, it MUST be open source.
 #include <Shlobj.h>
 #include <tlhelp32.h>
 #include <map>
+#include <taskschd.h>
+#include <comutil.h>
+#define SECURITY_WIN32
+#include <security.h>
 
 #pragma comment(lib, "version.lib")
+#pragma comment(lib, "taskschd.lib")
+#pragma comment(lib, "comsuppw.lib")
+#pragma comment(lib, "secur32.lib")
 
 static BYTE* _regData = 0;
 
@@ -101,24 +108,126 @@ BYTE * EasyKeyHelper::getRegBinary(LPCTSTR key, DWORD& outSize) {
 	return _regData;
 }
 
+//the "EasyKey" task in the root of Task Scheduler starts EasyKey as admin at logon.
+//Made through the Task Scheduler API instead of schtasks.exe: schtasks gives no error back and its
+//defaults stop the task after 72 hours and skip it on battery
+static bool registerAdminTask(const wstring& path) {
+	HRESULT comInit = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
+	bool ok = false;
+	ITaskService* service = NULL;
+	ITaskFolder* folder = NULL;
+	ITaskDefinition* task = NULL;
+	ITriggerCollection* triggers = NULL;
+	ITrigger* trigger = NULL;
+	ILogonTrigger* logonTrigger = NULL;
+	IPrincipal* principal = NULL;
+	ITaskSettings* settings = NULL;
+	IActionCollection* actions = NULL;
+	IAction* action = NULL;
+	IExecAction* execAction = NULL;
+	IRegisteredTask* registered = NULL;
+
+	//only the logon of the user who turned the option on
+	TCHAR user[256 + 1 + 256];
+	ULONG userSize = _countof(user);
+	if (!GetUserNameEx(NameSamCompatible, user, &userSize))
+		goto done;
+
+	if (FAILED(CoCreateInstance(CLSID_TaskScheduler, NULL, CLSCTX_INPROC_SERVER, IID_ITaskService, (void**)&service)))
+		goto done;
+	if (FAILED(service->Connect(_variant_t(), _variant_t(), _variant_t(), _variant_t())))
+		goto done;
+	if (FAILED(service->GetFolder(_bstr_t(L"\\"), &folder)))
+		goto done;
+	if (FAILED(service->NewTask(0, &task)))
+		goto done;
+
+	if (FAILED(task->get_Triggers(&triggers)) || FAILED(triggers->Create(TASK_TRIGGER_LOGON, &trigger)) ||
+		FAILED(trigger->QueryInterface(IID_ILogonTrigger, (void**)&logonTrigger)) ||
+		FAILED(logonTrigger->put_UserId(_bstr_t(user))))
+		goto done;
+
+	if (FAILED(task->get_Principal(&principal)) ||
+		FAILED(principal->put_LogonType(TASK_LOGON_INTERACTIVE_TOKEN)) ||
+		FAILED(principal->put_RunLevel(TASK_RUNLEVEL_HIGHEST)))
+		goto done;
+
+	if (FAILED(task->get_Settings(&settings)))
+		goto done;
+	settings->put_DisallowStartIfOnBatteries(VARIANT_FALSE);
+	settings->put_StopIfGoingOnBatteries(VARIANT_FALSE);
+	settings->put_ExecutionTimeLimit(_bstr_t(L"PT0S")); //no time limit
+	settings->put_MultipleInstances(TASK_INSTANCES_IGNORE_NEW);
+	settings->put_StartWhenAvailable(VARIANT_FALSE);
+
+	if (FAILED(task->get_Actions(&actions)) || FAILED(actions->Create(TASK_ACTION_EXEC, &action)) ||
+		FAILED(action->QueryInterface(IID_IExecAction, (void**)&execAction)) ||
+		FAILED(execAction->put_Path(_bstr_t(path.c_str()))))
+		goto done;
+
+	ok = SUCCEEDED(folder->RegisterTaskDefinition(_bstr_t(L"EasyKey"), task, TASK_CREATE_OR_UPDATE,
+		_variant_t(user), _variant_t(), TASK_LOGON_INTERACTIVE_TOKEN, _variant_t(L""), &registered));
+
+done:
+	if (registered) registered->Release();
+	if (execAction) execAction->Release();
+	if (action) action->Release();
+	if (actions) actions->Release();
+	if (settings) settings->Release();
+	if (principal) principal->Release();
+	if (logonTrigger) logonTrigger->Release();
+	if (trigger) trigger->Release();
+	if (triggers) triggers->Release();
+	if (task) task->Release();
+	if (folder) folder->Release();
+	if (service) service->Release();
+	if (SUCCEEDED(comInit))
+		CoUninitialize();
+	if (!ok) {
+		LOG(L"Can't register the EasyKey task\n");
+	}
+	return ok;
+}
+
+static void deleteAdminTask() {
+	HRESULT comInit = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
+	ITaskService* service = NULL;
+	ITaskFolder* folder = NULL;
+	if (SUCCEEDED(CoCreateInstance(CLSID_TaskScheduler, NULL, CLSCTX_INPROC_SERVER, IID_ITaskService, (void**)&service)) &&
+		SUCCEEDED(service->Connect(_variant_t(), _variant_t(), _variant_t(), _variant_t())) &&
+		SUCCEEDED(service->GetFolder(_bstr_t(L"\\"), &folder))) {
+		folder->DeleteTask(_bstr_t(L"EasyKey"), 0); //fails when there is no task, that's fine
+	}
+	if (folder) folder->Release();
+	if (service) service->Release();
+	if (SUCCEEDED(comInit))
+		CoUninitialize();
+}
+
+static void setRunValue(const bool& on) {
+	HKEY runKey;
+	if (RegOpenKeyEx(HKEY_CURRENT_USER, _runOnStartupKeyPath, NULL, KEY_ALL_ACCESS, &runKey) != ERROR_SUCCESS)
+		return;
+	if (on) {
+		wstring path = EasyKeyHelper::getFullPath();
+		RegSetValueEx(runKey, _T("EasyKey"), 0, REG_SZ, (byte*)path.c_str(), ((DWORD)path.size() + 1) * sizeof(TCHAR));
+	} else {
+		RegDeleteValue(runKey, _T("EasyKey"));
+	}
+	RegCloseKey(runKey);
+}
+
 void EasyKeyHelper::registerRunOnStartup(const int& val) {
 	if (val) {
-		if (vRunAsAdmin) {
-			string path = wideStringToUtf8(getFullPath());
-			char buff[MAX_PATH];
-			sprintf_s(buff, "schtasks /create /sc onlogon /tn EasyKey /rl highest /tr \"%s\" /f", path.c_str());
-			WinExec(buff, SW_HIDE);
+		//the task needs EasyKey running as admin; when that fails, start without admin rather than not at all
+		if (vRunAsAdmin && registerAdminTask(getFullPath())) {
+			setRunValue(false);
 		} else {
-			RegOpenKeyEx(HKEY_CURRENT_USER, _runOnStartupKeyPath, NULL, KEY_ALL_ACCESS, &hKey);
-			wstring path = getFullPath();
-			RegSetValueEx(hKey, _T("EasyKey"), 0, REG_SZ, (byte*)path.c_str(), ((DWORD)path.size() + 1) * sizeof(TCHAR));
-			RegCloseKey(hKey);
+			setRunValue(true);
 		}
 	} else {
-		RegOpenKeyEx(HKEY_CURRENT_USER, _runOnStartupKeyPath, NULL, KEY_ALL_ACCESS, &hKey);
-		RegDeleteValue(hKey, _T("EasyKey"));
-		RegCloseKey(hKey);
-		WinExec("schtasks /delete  /tn EasyKey /f", SW_HIDE);
+		setRunValue(false);
+		deleteAdminTask();
 	}
 }
 

@@ -3,6 +3,9 @@
 // Created by Tuyen Mai on 9/10/19.
 // Copyright (c) 2019 Tuyen Mai. All rights reserved.
 //
+//  Part of EasyKey, a modified version of OpenKey (https://github.com/tuyenvm/OpenKey).
+//  SPDX-License-Identifier: GPL-3.0-only
+//
 
 
 #ifndef OPENKEY_WIN32_H

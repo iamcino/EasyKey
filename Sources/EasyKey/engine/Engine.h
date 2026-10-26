@@ -5,6 +5,9 @@
 //  Created by Tuyen on 1/18/19.
 //  Copyright © 2019 Tuyen Mai. All rights reserved.
 //
+//  Part of EasyKey, a modified version of OpenKey (https://github.com/tuyenvm/OpenKey).
+//  SPDX-License-Identifier: GPL-3.0-only
+//
 
 #ifndef Engine_h
 #define Engine_h

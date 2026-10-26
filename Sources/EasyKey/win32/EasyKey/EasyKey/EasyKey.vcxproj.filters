@@ -81,9 +81,6 @@
     <ClInclude Include="EasyKeyManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\engine\platforms\mac.h">
-      <Filter>engine\platforms</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\engine\platforms\linux.h">
       <Filter>engine\platforms</Filter>
     </ClInclude>

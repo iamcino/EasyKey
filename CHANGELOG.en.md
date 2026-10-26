@@ -2,6 +2,10 @@
 
 [Tiếng Việt](CHANGELOG.md) · **English**
 
+## Next version
+- With "Run as admin" on, EasyKey now starts through Task Scheduler using the Windows API instead of the schtasks command. The task is no longer stopped by Windows after 72 hours, also runs on battery, and if the task can't be created EasyKey still starts with Windows (without admin rights).
+- Tidied the source file headers: the OpenKey credit (Mai Vu Tuyen) stays, with an SPDX GPL-3.0-only line; removed the unused macOS key code file.
+
 ## 1.0.3 (Windows 11 x64)
 - Update checks run in the background, so the mouse and keyboard no longer stall while EasyKey checks for or downloads an update.
 - Added "Check for updates…" to the tray menu.

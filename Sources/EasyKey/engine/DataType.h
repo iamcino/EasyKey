@@ -5,6 +5,9 @@
 //  Created by Tuyen on 1/18/19.
 //  Copyright © 2019 Tuyen Mai. All rights reserved.
 //
+//  Part of EasyKey, a modified version of OpenKey (https://github.com/tuyenvm/OpenKey).
+//  SPDX-License-Identifier: GPL-3.0-only
+//
 
 #ifndef DataType_h
 #define DataType_h
@@ -85,7 +88,7 @@ struct vKeyHookState {
 #elif _WIN32
 #include "platforms/win32.h"
 #else
-#include "platforms/mac.h"
+#error "EasyKey builds for Windows; Linux is only used for the engine tests"
 #endif
 
 //internal engine data
