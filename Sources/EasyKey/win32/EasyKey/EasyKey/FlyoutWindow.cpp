@@ -93,11 +93,12 @@ void FlyoutWindow::notify() {
 		PostMessage(hWnd, WM_FLYOUT_SHOW, 0, 0);
 }
 
-void FlyoutWindow::showMessage(const wstring& title, const wstring& detail) {
+void FlyoutWindow::showMessage(const wstring& title, const wstring& detail, const bool& warning) {
 	if (!hWnd)
 		return;
 	messageTitle = title;
 	messageDetail = detail;
+	messageWarning = warning;
 	PostMessage(hWnd, WM_FLYOUT_MESSAGE, 0, 0);
 }
 
@@ -219,13 +220,14 @@ void FlyoutWindow::render(const UINT& dpi, const RECT& workArea, const bool& mes
 
 		float badgeX = margin + s(12), badgeY = margin + (pillHeight - s(40)) / 2;
 		bool filled = vietnamese || message;
+		bool warningBadge = message && messageWarning;
 		Gdiplus::SolidBrush badgeBrush((Gdiplus::ARGB)(filled ? accentColor : (dark ? 0x14FFFFFF : 0x0D000000)));
 		g.FillEllipse(&badgeBrush, badgeX, badgeY, s(40), s(40));
 		Gdiplus::SolidBrush letterBrush((Gdiplus::ARGB)(filled ? (dark ? 0xFF000000 : 0xFFFFFFFF) : text));
 		Gdiplus::StringFormat centered(format);
 		centered.SetAlignment(Gdiplus::StringAlignmentCenter);
 		centered.SetLineAlignment(Gdiplus::StringAlignmentCenter);
-		g.DrawString(message ? _T("!") : vietnamese ? _T("V") : _T("E"), -1, badgeFont, Gdiplus::RectF(badgeX, badgeY, s(40), s(40)), &centered, &letterBrush);
+		g.DrawString(warningBadge ? _T("!") : vietnamese ? _T("V") : _T("E"), -1, badgeFont, Gdiplus::RectF(badgeX, badgeY, s(40), s(40)), &centered, &letterBrush);
 
 		float textX = badgeX + s(40) + s(14);
 		float middle = margin + pillHeight / 2;

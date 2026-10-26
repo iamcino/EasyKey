@@ -18,6 +18,7 @@ redistribute your new version, it MUST be open source.
 #include <stdarg.h>
 #include <cwctype>
 #include <Shlobj.h>
+#include <tlhelp32.h>
 #include <map>
 
 #pragma comment(lib, "version.lib")
@@ -27,6 +28,7 @@ static BYTE* _regData = 0;
 static LPCTSTR sk = TEXT("SOFTWARE\\EasyKey");
 static LPCTSTR _openKeyRegPath = TEXT("SOFTWARE\\TuyenMai\\OpenKey"); //settings of OpenKey, copied once on first run
 static HKEY hKey;
+static bool _firstRun = false;
 static LPCTSTR _runOnStartupKeyPath = _T("Software\\Microsoft\\Windows\\CurrentVersion\\Run");
 static TCHAR _executePath[MAX_PATH];
 static bool _hasGetPath = false;
@@ -48,6 +50,7 @@ void EasyKeyHelper::openRegKey() {
 	if (nError == ERROR_FILE_NOT_FOUND) 	{
 		nError = RegCreateKeyEx(HKEY_CURRENT_USER, sk, NULL, NULL, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, NULL, &hKey, NULL);
 		if (nError == ERROR_SUCCESS) {
+			_firstRun = true;
 			//first run: keep the settings and macros of an existing OpenKey install
 			RegCopyTree(HKEY_CURRENT_USER, _openKeyRegPath, hKey);
 		}
@@ -449,4 +452,39 @@ void EasyKeyHelper::removeFromSystem() {
 		DeleteFile(shortcut);
 	}
 	RegDeleteTree(HKEY_CURRENT_USER, sk);
+}
+
+bool EasyKeyHelper::isFirstRun() {
+	return _firstRun;
+}
+
+wstring EasyKeyHelper::findOtherKeyboard() {
+	//exe names start with these: UniKeyNT.exe, EVKey64.exe, OpenKey64.exe...
+	static const struct { LPCTSTR prefix, name; } keyboards[] = {
+		{ _T("unikey"), _T("UniKey") }, { _T("evkey"), _T("EVKey") }, { _T("openkey"), _T("OpenKey") },
+		{ _T("gotiengviet"), _T("GoTiengViet") }, { _T("vietkey"), _T("Vietkey") },
+	};
+	wstring found;
+	HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+	if (snapshot != INVALID_HANDLE_VALUE) {
+		PROCESSENTRY32 entry = { sizeof(entry) };
+		for (BOOL ok = Process32First(snapshot, &entry); ok && found.empty(); ok = Process32Next(snapshot, &entry)) {
+			wstring exe = entry.szExeFile;
+			for (wchar_t& c : exe)
+				c = towlower(c);
+			for (auto& keyboard : keyboards) {
+				if (exe.compare(0, lstrlen(keyboard.prefix), keyboard.prefix) == 0)
+					found = keyboard.name;
+			}
+		}
+		CloseHandle(snapshot);
+	}
+	if (found.empty()) {
+		//a Vietnamese keyboard of Windows (a TSF input method) also adds marks to what is typed
+		HWND foreground = GetForegroundWindow();
+		HKL layout = GetKeyboardLayout(foreground ? GetWindowThreadProcessId(foreground, NULL) : 0);
+		if (LOWORD((UINT_PTR)layout) == MAKELANGID(LANG_VIETNAMESE, SUBLANG_VIETNAMESE_VIETNAM))
+			found = TR("Bàn phím tiếng Việt của Windows", "The Windows Vietnamese keyboard");
+	}
+	return found;
 }

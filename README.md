@@ -9,8 +9,8 @@ Windows 11 x64.
 
 ## Cài đặt
 1. Tải `EasyKey<phiên bản>-Windows.zip` ở trang [Releases](https://github.com/iamcino/EasyKey/releases).
-2. Giải nén vào một thư mục cố định và chạy `EasyKey.exe`.
-3. Tắt các bộ gõ khác (UniKey, EVKey, OpenKey...) để tránh xung đột.
+2. Giải nén vào một thư mục cố định và chạy `EasyKey.exe`. Không cần thiết lập gì: mặc định là Telex, Unicode, chạy cùng Windows, bấm Alt + Z để chuyển Việt/Anh.
+3. Tắt các bộ gõ khác (UniKey, EVKey, OpenKey...) để tránh xung đột. EasyKey sẽ nhắc nếu thấy bộ gõ khác đang chạy.
 
 Nếu máy đã có OpenKey, lần chạy đầu EasyKey tự chép cài đặt và bảng gõ tắt sang. Cài đặt lưu ở `HKEY_CURRENT_USER\Software\EasyKey`.
 
@@ -31,11 +31,11 @@ Hãy cân nhắc trước khi dùng. Nếu tin tưởng, bạn có thể thêm t
 - Kiểu gõ Telex, VNI, Simple Telex.
 - Bảng mã Unicode. Bảng mã cũ Unicode tổ hợp, TCVN3 (ABC), VNI Windows nằm trong mục Nâng cao.
 - Đặt dấu kiểu mới (hoà, thuý) hoặc kiểu cũ (hòa, thúy).
-- Kiểm tra chính tả, tự khôi phục phím khi gõ sai.
+- Gõ thông minh: chỉ bỏ dấu khi đúng chính tả, gõ sai thì tự trả lại phím. Bấm Esc ngay sau một từ để lấy lại phím vừa gõ (việt → vieejt).
 - Gõ nhanh, gõ tắt phụ âm đầu và cuối, gõ tắt (macro) không giới hạn độ dài.
 - Nhớ chế độ Việt/Anh và bảng mã riêng cho từng ứng dụng.
 - Sửa lỗi lặp chữ ở ô có gợi ý tự động, kể cả thanh địa chỉ Chrome và Edge.
-- Công cụ chuyển mã văn bản.
+- Công cụ chuyển mã văn bản và bảng gõ tắt, mở từ menu khay.
 - Giao diện Windows 11 gọn trong một trang, tiếng Việt hoặc tiếng Anh, chế độ sáng/tối theo Windows, chọn màu nhấn hoặc mã màu riêng, hỗ trợ DPI cao, biểu tượng khay theo màu thanh tác vụ.
 - Tự kiểm tra và cài bản mới ngay trong EasyKey (luôn hỏi trước, kiểm tra mã SHA-256).
 - Gỡ sạch khỏi Windows bằng một nút trong Cài đặt.

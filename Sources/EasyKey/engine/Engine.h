@@ -187,6 +187,13 @@ extern int vOtherLanguage;
  */
 extern int vTempOffOpenKey;
 
+/*
+ * Esc while typing a word puts back the keys as typed (EasyKey)
+ * 0: No
+ * 1: Yes
+ */
+extern int vRestoreOnEscape;
+
 /**
  * Call this function first to receive data pointer
  */

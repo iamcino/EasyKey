@@ -54,6 +54,13 @@ jobs:
     - name: Build x64
       run: msbuild -m -target:Rebuild -p:Configuration=Release -p:Platform=x64 ${{env.SOLUTION_FILE_PATH}}
 
+    - name: Report the exe size
+      shell: pwsh
+      run: |
+        $size = (Get-Item "${{env.SOLUTION_FILE_PATH}}\x64\Release\EasyKey.exe").Length
+        Write-Output "EasyKey.exe: $size bytes"
+        "EasyKey.exe: $([math]::Round($size / 1KB)) KB ($size bytes)" >> $env:GITHUB_STEP_SUMMARY
+
     - name: Upload a Build Artifact
       id: upload
       uses: actions/upload-artifact@v7

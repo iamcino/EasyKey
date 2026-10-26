@@ -1220,6 +1220,31 @@ bool checkRestoreIfWrongSpelling(const int& handleCode) {
     return false;
 }
 
+//Esc right after a word puts back the keys as typed: "vieejt" instead of "việt"
+bool restoreRawKeys() {
+    if (_index == 0 || _stateIndex == 0 || _longWordHelper.size() > 0)
+        return false;
+    bool changed = _index != _stateIndex;
+    for (ii = 0; !changed && ii < _index; ii++)
+        changed = TypingWord[ii] != KeyStates[ii];
+    if (!changed)
+        return false;
+    Byte backspaceCount = _index, keyCount = _stateIndex;
+    for (i = 0; i < keyCount; i++)
+        hData[keyCount - 1 - i] = KeyStates[i];
+    startNewSession();
+    _specialChar.clear();
+    _typingStates.clear();
+    hMacroKey.clear();
+    vCheckSpelling = _useSpellCheckingBefore;
+    _willTempOffEngine = false;
+    hCode = vWillProcess;
+    hBPC = backspaceCount;
+    hNCC = keyCount;
+    hExt = 0;
+    return true;
+}
+
 void vTempOffSpellChecking() {
     if (_useSpellCheckingBefore) {
         vCheckSpelling = vCheckSpelling ? 0 : 1;
@@ -1318,6 +1343,8 @@ void vKeyHandleEvent(const vKeyEvent& event,
                      const bool& otherControlKey) {
     _isCaps = (capsStatus == 1 || //shift
                capsStatus == 2); //caps lock
+    if (data == KEY_ESC && state == KeyDown && vRestoreOnEscape && !otherControlKey && restoreRawKeys())
+        return;
     if ((IS_NUMBER_KEY(data) && capsStatus == 1)
         || otherControlKey || isWordBreak(event, state, data) || (_index == 0 && IS_NUMBER_KEY(data))) {
         hCode = vDoNothing;

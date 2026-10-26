@@ -104,7 +104,7 @@ void EasyKeyInit() {
 	APP_GET_DATA(vUseMacroInEnglishMode, 0);
 	APP_GET_DATA(vAutoCapsMacro, 0);
 	APP_GET_DATA(vSendKeyStepByStep, 1);
-	APP_GET_DATA(vShowOnStartUp, 1);
+	APP_GET_DATA(vShowOnStartUp, 0);
 	APP_GET_DATA(vShowSwitchFlyout, 1);
 	APP_GET_DATA(vUiLanguage, 0);
 	APP_GET_DATA(vAccentColor, 0);
@@ -125,6 +125,9 @@ void EasyKeyInit() {
 	APP_GET_DATA(vRememberCode, 1);
 	APP_GET_DATA(vOtherLanguage, 1);
 	APP_GET_DATA(vTempOffOpenKey, 0);
+	APP_GET_DATA(vRestoreOnEscape, 1);
+	APP_GET_DATA(vWarnOtherKeyboards, 1);
+	APP_GET_DATA(vLastVersion, 0);
 	APP_GET_DATA(vFixChromiumBrowser, 1);
 
 	//init convert tool

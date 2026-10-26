@@ -33,12 +33,13 @@ redistribute your new version, it MUST be open source.
 #define SETTINGS_CLASS _T("EasyKeySettingsWindow")
 #define WINDOW_STYLE (WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_THICKFRAME)
 #define WINDOW_WIDTH 440 //client width in DIPs
-#define MIN_WINDOW_HEIGHT 320
+#define MIN_WINDOW_HEIGHT 240
+#define MAX_FIT_HEIGHT 640 //opening Nâng cao grows the window up to this, then it scrolls
 #define SIDE 16 //space left and right of the cards
 #define SPELLING_GUIDE_URL _T("https://github.com/iamcino/EasyKey#ki%E1%BB%83m-tra-ch%C3%ADnh-t%E1%BA%A3-ti%E1%BA%BFng-vi%E1%BB%87t")
 
 enum ItemKind {
-	K_LANG, K_HOTKEY, K_SECTION, K_SEGMENT, K_SEGBUTTON, K_TILE, K_EXPANDER,
+	K_LANG, K_HOTKEY, K_SECTION, K_SEGMENT, K_SEGBUTTON, K_EXPANDER,
 	K_GROUP, K_SUBTOGGLE, K_SUBCOMBO, K_SUBBUTTON, K_SUBSEG, K_UILANG, K_SUBLABEL, K_SWATCH, K_HEXFIELD, K_NOTE,
 	K_LINK, K_VERSION
 };
@@ -46,21 +47,17 @@ enum ItemKind {
 enum Option {
 	OPT_NONE, OPT_LANGUAGE, OPT_CODE_TABLE,
 	OPT_SPELLING, OPT_MODERN, OPT_MACRO, OPT_RUN_WITH_WINDOWS,
-	OPT_RESTORE, OPT_ZWJF, OPT_TEMP_OFF_SPELLING,
+	OPT_ESCAPE, OPT_ZWJF, OPT_TEMP_OFF_SPELLING,
 	OPT_QUICK_TELEX, OPT_QUICK_START, OPT_QUICK_END, OPT_CAPS_FIRST, OPT_MACRO_ENGLISH, OPT_MACRO_AUTO_CAPS,
 	OPT_SMART_SWITCH, OPT_REMEMBER_CODE, OPT_FIX_BROWSER, OPT_FIX_CHROMIUM, OPT_TEMP_OFF_EASYKEY,
 	OPT_CLIPBOARD, OPT_FLYOUT, OPT_BEEP,
-	OPT_RUN_AS_ADMIN, OPT_SHOW_ON_STARTUP, OPT_DESKTOP_SHORTCUT, OPT_CHECK_UPDATE,
+	OPT_WARN_CONFLICT, OPT_RUN_AS_ADMIN, OPT_SHOW_ON_STARTUP, OPT_DESKTOP_SHORTCUT, OPT_CHECK_UPDATE,
 	OPT_AUTO_DARK
 };
 
 enum Action {
-	ACT_EXPAND = 100, ACT_CAPTURE, ACT_MACRO_TABLE, ACT_CONVERT_TOOL, ACT_ABOUT, ACT_CHECK_UPDATE, ACT_DEFAULT_CONFIG,
+	ACT_EXPAND = 100, ACT_CAPTURE, ACT_ABOUT, ACT_CHECK_UPDATE, ACT_DEFAULT_CONFIG,
 	ACT_SPELLING_GUIDE, ACT_UNINSTALL
-};
-
-enum Icon {
-	ICON_SPELLING, ICON_MODERN, ICON_MACRO, ICON_STARTUP
 };
 
 #define CUSTOM_ACCENT (ThemeHelper::ACCENT_PRESETS + 1)
@@ -72,29 +69,19 @@ struct RowInfo {
 	LPCTSTR hintVi, hintEn;
 };
 
-struct TileInfo {
-	int id;
-	int icon;
-	LPCTSTR vi, en;
-	LPCTSTR hintVi, hintEn;
-};
-
-static const TileInfo tiles[] = {
-	{ OPT_SPELLING, ICON_SPELLING, _T("Kiểm tra chính tả"), _T("Spell check"), _T("Chỉ bỏ dấu khi đúng"), _T("Marks on real words") },
-	{ OPT_MODERN, ICON_MODERN, _T("Dấu kiểu mới"), _T("Modern marks"), _T("hoà, thuý"), _T("hoà, thuý") },
-	{ OPT_MACRO, ICON_MACRO, _T("Gõ tắt"), _T("Shortcuts"), _T("ko → không"), _T("ko → không") },
-	{ OPT_RUN_WITH_WINDOWS, ICON_STARTUP, _T("Chạy cùng Windows"), _T("Start with Windows"), _T("Khi đăng nhập"), _T("At sign-in") },
-};
-
 //K_SUBLABEL marks where the appearance rows (language, accent swatches, custom color) go
 static const RowInfo advancedRows[] = {
+	{ K_GROUP, 0, _T("Gõ"), _T("Typing") },
+	{ K_SUBTOGGLE, OPT_SPELLING, _T("Gõ thông minh"), _T("Smart typing"), _T("Chỉ bỏ dấu khi đúng chính tả, gõ sai thì trả lại phím"), _T("Marks only real words, puts the keys back otherwise") },
+	{ K_SUBTOGGLE, OPT_MODERN, _T("Dấu kiểu mới: hoà, thuý"), _T("Modern marks: hoà, thuý") },
+	{ K_SUBTOGGLE, OPT_MACRO, _T("Gõ tắt: ko → không"), _T("Shortcuts: ko → không") },
+	{ K_SUBTOGGLE, OPT_ESCAPE, _T("Esc trả lại phím vừa gõ: việt → vieejt"), _T("Esc puts back the keys typed: việt → vieejt") },
 	{ K_GROUP, 0, _T("Giao diện"), _T("Appearance") },
 	{ K_SUBLABEL, 0, NULL, NULL },
 	{ K_GROUP, 0, _T("Bảng mã"), _T("Code table") },
 	{ K_SUBCOMBO, OPT_CODE_TABLE, _T("Bảng mã cũ"), _T("Legacy code table"), _T("Chỉ dùng cho văn bản và font cũ"), _T("Only for old documents and fonts") },
 	{ K_SUBTOGGLE, OPT_REMEMBER_CODE, _T("Nhớ bảng mã theo từng ứng dụng"), _T("Remember the code table per app") },
 	{ K_GROUP, 0, _T("Chính tả"), _T("Spelling") },
-	{ K_SUBTOGGLE, OPT_RESTORE, _T("Tự khôi phục phím khi gõ sai"), _T("Restore keys on misspelled words") },
 	{ K_SUBTOGGLE, OPT_ZWJF, _T("Cho phép z, w, j, f làm phụ âm đầu"), _T("Allow z, w, j, f as first consonants") },
 	{ K_SUBTOGGLE, OPT_TEMP_OFF_SPELLING, _T("Tạm tắt chính tả bằng phím Ctrl"), _T("Hold Ctrl to skip spell check") },
 	{ K_SUBBUTTON, ACT_SPELLING_GUIDE, _T("Windows gạch đỏ chữ Việt?"), _T("Red underlines under Vietnamese?") },
@@ -114,6 +101,8 @@ static const RowInfo advancedRows[] = {
 	{ K_SUBTOGGLE, OPT_FLYOUT, _T("Hiện thông báo khi chuyển Việt/Anh"), _T("Show a notice when switching") },
 	{ K_SUBTOGGLE, OPT_BEEP, _T("Kêu bíp khi chuyển Việt/Anh"), _T("Beep when switching") },
 	{ K_GROUP, 0, _T("Hệ thống"), _T("System") },
+	{ K_SUBTOGGLE, OPT_RUN_WITH_WINDOWS, _T("Chạy cùng Windows"), _T("Start with Windows") },
+	{ K_SUBTOGGLE, OPT_WARN_CONFLICT, _T("Cảnh báo khi bộ gõ khác đang chạy"), _T("Warn when another Vietnamese keyboard runs") },
 	{ K_SUBTOGGLE, OPT_RUN_AS_ADMIN, _T("Chạy với quyền Admin"), _T("Run as administrator"), _T("Để gõ được trong ứng dụng chạy quyền Admin"), _T("To type in apps that run as administrator") },
 	{ K_SUBTOGGLE, OPT_SHOW_ON_STARTUP, _T("Mở cửa sổ này khi EasyKey khởi động"), _T("Open this window when EasyKey starts") },
 	{ K_SUBTOGGLE, OPT_DESKTOP_SHORTCUT, _T("Tạo lối tắt trên Desktop"), _T("Desktop shortcut") },
@@ -209,43 +198,6 @@ static void drawChevron(Gdiplus::Graphics& g, const DWORD& color, const float& c
 	pen.SetStartCap(Gdiplus::LineCapRound);
 	pen.SetEndCap(Gdiplus::LineCapRound);
 	g.DrawLines(&pen, points, 3);
-}
-
-//20x20 line icons of the quick tiles, the same paths as the design mockup
-static void drawIcon(Gdiplus::Graphics& g, const int& icon, const float& x, const float& y, const float& size, const DWORD& color) {
-	float f = size / 20;
-	Gdiplus::Pen pen((Gdiplus::ARGB)color, 1.6f * f);
-	pen.SetLineJoin(Gdiplus::LineJoinRound);
-	pen.SetStartCap(Gdiplus::LineCapRound);
-	pen.SetEndCap(Gdiplus::LineCapRound);
-	auto P = [&](const float& px, const float& py) { return Gdiplus::PointF(x + px * f, y + py * f); };
-	switch (icon) {
-	case ICON_SPELLING: {
-		Gdiplus::PointF a[] = { P(3, 15), P(6, 5), P(9, 15) };
-		g.DrawLines(&pen, a, 3);
-		g.DrawLine(&pen, P(4.2f, 11.5f), P(7.8f, 11.5f));
-		Gdiplus::PointF check[] = { P(11, 12), P(13.5f, 14.5f), P(18, 8) };
-		g.DrawLines(&pen, check, 3);
-		break;
-	}
-	case ICON_MODERN: {
-		Gdiplus::PointF a[] = { P(5, 16), P(10, 5), P(15, 16) };
-		g.DrawLines(&pen, a, 3);
-		g.DrawLine(&pen, P(7.2f, 11.5f), P(12.8f, 11.5f));
-		g.DrawLine(&pen, P(9, 2.5f), P(11, 1));
-		break;
-	}
-	case ICON_MACRO: {
-		Gdiplus::PointF bolt[] = { P(11, 2), P(4, 11), P(9, 11), P(8, 18), P(15, 9), P(10, 9) };
-		g.DrawPolygon(&pen, bolt, 6);
-		break;
-	}
-	case ICON_STARTUP:
-		g.DrawLine(&pen, P(10, 2), P(10, 9));
-		//power ring, open at the top
-		g.DrawArc(&pen, x + 3.5f * f, y + 3.12f * f, 13 * f, 13 * f, 307.98f, 284.04f);
-		break;
-	}
 }
 
 static RECT makeRect(const int& left, const int& top, const int& width, const int& height) {
@@ -546,20 +498,9 @@ void SettingsWindow::layout() {
 	}
 	y += s(14);
 
-	//the options most people change, as tiles
-	add(K_SECTION, 0, T(_T("Thường dùng"), _T("Common")), NULL, s(18));
-	y += s(6);
-	int tileWidth = (right - left - s(6)) / 2;
-	for (int t = 0; t < 4; t++) {
-		int x = t % 2 == 0 ? left : right - tileWidth;
-		int top = y + (t / 2) * (s(56) + s(6));
-		push(K_TILE, tiles[t].id, T(tiles[t].vi, tiles[t].en), T(tiles[t].hintVi, tiles[t].hintEn), makeRect(x, top, tileWidth, s(56)));
-	}
-	y += s(56) * 2 + s(6) + s(12);
-
 	//everything else is folded into one expander
 	int expander = add(K_EXPANDER, ACT_EXPAND, T(_T("Nâng cao"), _T("Advanced")),
-		T(_T("Giao diện, bảng mã, chính tả, hệ thống"), _T("Appearance, code table, spelling, system")), s(48));
+		T(_T("Gõ, giao diện, bảng mã, hệ thống"), _T("Typing, appearance, code table, system")), s(48));
 	items[expander].ctl = makeRect(items[expander].rc.right - s(14) - s(16), centerY(items[expander].rc) - s(8), s(16), s(16));
 	items[expander].textRight = items[expander].ctl.left - s(12);
 	if (expanded) {
@@ -636,14 +577,9 @@ void SettingsWindow::layout() {
 	}
 	y += s(10);
 
-	//footer
-	int x = left + s(2);
-	LPCTSTR links[] = { T(_T("Bảng gõ tắt"), _T("Shortcut list")), T(_T("Chuyển mã"), _T("Convert text")), T(_T("Giới thiệu"), _T("About")) };
-	int actions[] = { ACT_MACRO_TABLE, ACT_CONVERT_TOOL, ACT_ABOUT };
-	for (int l = 0; l < 3; l++) {
-		i = push(K_LINK, actions[l], links[l], NULL, makeRect(x, y, textWidth(fontSmall, links[l]), s(28)));
-		x = items[i].rc.right + s(16);
-	}
+	//footer; the shortcut list and the converter open from the tray menu
+	LPCTSTR about = T(_T("Giới thiệu"), _T("About"));
+	push(K_LINK, ACT_ABOUT, about, NULL, makeRect(left + s(2), y, textWidth(fontSmall, about), s(28)));
 	add(K_VERSION, 0, NULL, NULL, s(28));
 	y += s(10);
 	contentHeight = y;
@@ -675,7 +611,7 @@ void SettingsWindow::fitWindow(const bool& center) {
 	MONITORINFO mi = { sizeof(mi) };
 	GetMonitorInfo(MonitorFromWindow(hWnd, MONITOR_DEFAULTTONEAREST), &mi);
 	int workWidth = mi.rcWork.right - mi.rcWork.left, workHeight = mi.rcWork.bottom - mi.rcWork.top;
-	height = min(height, workHeight - s(48));
+	height = min(height, min(workHeight - s(48), s(MAX_FIT_HEIGHT)));
 
 	RECT current;
 	GetWindowRect(hWnd, &current);
@@ -683,6 +619,8 @@ void SettingsWindow::fitWindow(const bool& center) {
 	if (center) {
 		x = mi.rcWork.left + (workWidth - width) / 2;
 		y = mi.rcWork.top + (workHeight - height) / 2;
+	} else if (y + height > mi.rcWork.bottom) {
+		y = max(mi.rcWork.top, mi.rcWork.bottom - height);
 	}
 	SetWindowPos(hWnd, NULL, x, y, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
 	layout();
@@ -895,23 +833,6 @@ void SettingsWindow::paintItem(Gdiplus::Graphics& g, const Item& item, const int
 		drawText(g, item.label, rc, on ? fontStrong : fontSmall, on || hot ? pal.text : pal.sub, 1, 1);
 		break;
 	}
-	case K_TILE: {
-		bool on = getOption(item.id);
-		DWORD fill = on ? (hot ? pal.accentHover : pal.accent) : (pressed ? pal.cardPressed : hot ? pal.cardHover : pal.card);
-		fillRound(g, rc, (float)s(10), fill, on ? 0 : pal.stroke);
-		DWORD color = on ? pal.onAccent : pal.text;
-		int icon = 0;
-		for (auto& tile : tiles) {
-			if (tile.id == item.id)
-				icon = tile.icon;
-		}
-		drawIcon(g, icon, (float)(rc.left + s(12)), (float)(cy - s(9)), (float)s(18), color);
-		RECT label = { rc.left + s(12) + s(18) + s(10), rc.top, rc.right - s(8), cy + s(1) };
-		drawText(g, item.label, label, fontStrong, color, 0, 2);
-		RECT hint = { label.left, cy + s(2), label.right, rc.bottom };
-		drawText(g, item.hint, hint, fontCaption, fade(color, 85), 0, 0);
-		break;
-	}
 	case K_EXPANDER:
 		if (expanded) {
 			//the header and its rows share one card, see paint()
@@ -1059,7 +980,7 @@ void SettingsWindow::paintItem(Gdiplus::Graphics& g, const Item& item, const int
 		Gdiplus::GraphicsPath path;
 		RECT inner = ring;
 		InflateRect(&inner, -1, -1); //centre the 2px pen on the ring
-		bool large = item.kind == K_LANG || item.kind == K_TILE || item.kind == K_EXPANDER;
+		bool large = item.kind == K_LANG || item.kind == K_EXPANDER;
 		addRoundRect(path, inner, (float)s(large ? 12 : 8));
 		Gdiplus::Pen pen((Gdiplus::ARGB)pal.text, 2);
 		g.DrawPath(&pen, &path);
@@ -1147,7 +1068,6 @@ bool SettingsWindow::isInteractive(const int& item, const int& part) const {
 		return part == 0 && it.id != vAccentColor;
 	case K_HEXFIELD:
 		return part == 0 && (it.id == 0 || !vAccentAutoDark);
-	case K_TILE:
 	case K_EXPANDER:
 	case K_SUBCOMBO:
 	case K_LINK:
@@ -1245,7 +1165,6 @@ void SettingsWindow::activate(const int& index, const int& part) {
 	case K_HEXFIELD:
 		startHexEdit(item.id);
 		break;
-	case K_TILE:
 	case K_SUBTOGGLE:
 		setOption(item.id, !getOption(item.id));
 		break;
@@ -1265,7 +1184,7 @@ void SettingsWindow::doAction(const int& action) {
 	case ACT_EXPAND:
 		expanded = !expanded;
 		endHexEdit();
-		layout();
+		fitWindow(false);
 		if (expanded) {
 			//bring the new rows into view
 			for (const Item& item : items) {
@@ -1280,12 +1199,6 @@ void SettingsWindow::doAction(const int& action) {
 			endCapture(false, 0);
 		else
 			startCapture();
-		break;
-	case ACT_MACRO_TABLE:
-		AppDelegate::getInstance()->onMacroTable();
-		break;
-	case ACT_CONVERT_TOOL:
-		AppDelegate::getInstance()->onConvertTool();
 		break;
 	case ACT_ABOUT:
 		AppDelegate::getInstance()->onEasyKeyAbout();
@@ -1322,7 +1235,8 @@ bool SettingsWindow::getOption(const int& id) const {
 	case OPT_MODERN: return vUseModernOrthography != 0;
 	case OPT_MACRO: return vUseMacro != 0;
 	case OPT_RUN_WITH_WINDOWS: return vRunWithWindows != 0;
-	case OPT_RESTORE: return vRestoreIfWrongSpelling != 0;
+	case OPT_ESCAPE: return vRestoreOnEscape != 0;
+	case OPT_WARN_CONFLICT: return vWarnOtherKeyboards != 0;
 	case OPT_ZWJF: return vAllowConsonantZFWJ != 0;
 	case OPT_TEMP_OFF_SPELLING: return vTempOffSpelling != 0;
 	case OPT_QUICK_TELEX: return vQuickTelex != 0;
@@ -1350,7 +1264,6 @@ bool SettingsWindow::getOption(const int& id) const {
 
 bool SettingsWindow::isOptionEnabled(const int& id) const {
 	switch (id) {
-	case OPT_RESTORE:
 	case OPT_ZWJF:
 	case OPT_TEMP_OFF_SPELLING:
 		return vCheckSpelling != 0;
@@ -1374,7 +1287,9 @@ void SettingsWindow::setOption(const int& id, const bool& on) {
 		}
 		break;
 	case OPT_SPELLING:
+		//smart typing: spell check and putting the keys back go together
 		APP_SET_DATA(vCheckSpelling, val);
+		APP_SET_DATA(vRestoreIfWrongSpelling, val);
 		vSetCheckSpelling();
 		break;
 	case OPT_MODERN: APP_SET_DATA(vUseModernOrthography, val); break;
@@ -1383,7 +1298,8 @@ void SettingsWindow::setOption(const int& id, const bool& on) {
 		APP_SET_DATA(vRunWithWindows, val);
 		EasyKeyHelper::registerRunOnStartup(vRunWithWindows);
 		break;
-	case OPT_RESTORE: APP_SET_DATA(vRestoreIfWrongSpelling, val); break;
+	case OPT_ESCAPE: APP_SET_DATA(vRestoreOnEscape, val); break;
+	case OPT_WARN_CONFLICT: APP_SET_DATA(vWarnOtherKeyboards, val); break;
 	case OPT_ZWJF: APP_SET_DATA(vAllowConsonantZFWJ, val); break;
 	case OPT_TEMP_OFF_SPELLING: APP_SET_DATA(vTempOffSpelling, val); break;
 	case OPT_QUICK_TELEX: APP_SET_DATA(vQuickTelex, val); break;

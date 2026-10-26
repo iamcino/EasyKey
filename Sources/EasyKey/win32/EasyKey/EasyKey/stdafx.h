@@ -96,4 +96,7 @@ extern int vCheckNewVersion;
 extern int vRememberCode;
 extern int vOtherLanguage;
 extern int vTempOffOpenKey;
+extern int vRestoreOnEscape;
+extern int vWarnOtherKeyboards; //warn at start when UniKey, EVKey... also runs
+extern int vLastVersion;        //version that ran last, to show what is new once after an update
 extern int vFixChromiumBrowser;

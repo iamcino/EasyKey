@@ -33,6 +33,7 @@ redistribute your new version, it MUST be open source.
 #define POPUP_UNICODE_COMPOUND 933
 #define POPUP_VN_LOCALE_1258 934
 
+#define POPUP_MACRO_TABLE 970
 #define POPUP_CONVERT_TOOL 980
 #define POPUP_CONTROL_PANEL 1000
 #define POPUP_EASYKEY_EXIT 2000
@@ -59,7 +60,8 @@ static LPCTSTR menuText(const UINT& command) {
 	case POPUP_VNI_WINDOWS: return _T("VNI Windows");
 	case POPUP_UNICODE_COMPOUND: return TR("Unicode tổ hợp", "Unicode combining");
 	case POPUP_VN_LOCALE_1258: return _T("CP 1258");
-	case POPUP_CONVERT_TOOL: return TR("Công cụ chuyển mã", "Convert text");
+	case POPUP_MACRO_TABLE: return TR("Bảng gõ tắt…", "Shortcut list…");
+	case POPUP_CONVERT_TOOL: return TR("Công cụ chuyển mã…", "Convert text…");
 	case POPUP_CONTROL_PANEL: return TR("Cài đặt…", "Settings…");
 	case POPUP_EASYKEY_EXIT: return TR("Thoát EasyKey", "Quit EasyKey");
 	}
@@ -106,6 +108,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 			switch (commandId) {
 			case POPUP_VIET_ON_OFF:
 				AppDelegate::getInstance()->onToggleVietnamese();
+				break;
+			case POPUP_MACRO_TABLE:
+				AppDelegate::getInstance()->onMacroTable();
 				break;
 			case POPUP_CONVERT_TOOL:
 				AppDelegate::getInstance()->onConvertTool();
@@ -202,10 +207,12 @@ void SystemTrayHelper::createPopupMenu() {
 	AppendMenu(menuCodeTable, MF_UNCHECKED, POPUP_VNI_WINDOWS, menuText(POPUP_VNI_WINDOWS));
 	AppendMenu(popupMenu, MF_POPUP, (UINT_PTR)menuCodeTable, TR("Bảng mã", "Code table"));
 
-	AppendMenu(popupMenu, MF_UNCHECKED, POPUP_CONVERT_TOOL, menuText(POPUP_CONVERT_TOOL));
-	AppendMenu(popupMenu, MF_SEPARATOR, 0, 0);
+	//text only, checkmarks show what is in use
+	AppendMenu(popupMenu, MF_STRING, POPUP_MACRO_TABLE, menuText(POPUP_MACRO_TABLE));
+	AppendMenu(popupMenu, MF_STRING, POPUP_CONVERT_TOOL, menuText(POPUP_CONVERT_TOOL));
 	AppendMenu(popupMenu, MF_STRING, POPUP_CONTROL_PANEL, menuText(POPUP_CONTROL_PANEL));
-	AppendMenu(popupMenu, MF_UNCHECKED, POPUP_EASYKEY_EXIT, menuText(POPUP_EASYKEY_EXIT));
+	AppendMenu(popupMenu, MF_SEPARATOR, 0, 0);
+	AppendMenu(popupMenu, MF_STRING, POPUP_EASYKEY_EXIT, menuText(POPUP_EASYKEY_EXIT));
 
 	SetMenuDefaultItem(popupMenu, POPUP_CONTROL_PANEL, false);
 }

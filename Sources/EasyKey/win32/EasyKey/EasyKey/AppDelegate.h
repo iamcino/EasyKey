@@ -31,6 +31,10 @@ private:
 	BaseDialog* aboutDialog = NULL, *macroDialog = NULL, *convertDialog = NULL;
 private:
 	bool isDialogMsg(MSG &msg) const;
+	//once at start: a welcome notice, what is new after an update, other Vietnamese keyboards
+	void greet();
+	void warnOtherKeyboard(const wstring& name);
+	void showWhatsNew();
 public:
 	AppDelegate();
 	static AppDelegate* getInstance();

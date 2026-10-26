@@ -60,5 +60,9 @@ public:
 	static bool isWindowElevated(const HWND& hWnd);
 	//remove what EasyKey added to Windows: startup entry, admin task, shortcut and settings
 	static void removeFromSystem();
+	//true when this start created the EasyKey settings key
+	static bool isFirstRun();
+	//name of another Vietnamese keyboard that is running, such as UniKey, or empty
+	static wstring findOtherKeyboard();
 };
 

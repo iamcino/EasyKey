@@ -33,6 +33,7 @@ int vQuickEndConsonant = 0;
 int vRememberCode = 0;
 int vOtherLanguage = 0;
 int vTempOffOpenKey = 0;
+int vRestoreOnEscape = 1;
 
 static vKeyHookState* pData;
 static int failures = 0;
@@ -53,6 +54,7 @@ static Uint16 charToKeyCode(char c) {
         case '8': return KEY_8; case '9': return KEY_9;
         case ' ': return KEY_SPACE;
         case '<': return KEY_DELETE; //backspace
+        case '~': return KEY_ESC;
     }
     return 0;
 }
@@ -89,6 +91,8 @@ static wstring typeKeys(const string& keys) {
             //the key is passed through to the application
             if (keyCode == KEY_DELETE) {
                 if (!text.empty()) text.pop_back();
+            } else if (keyCode == KEY_ESC) {
+                text += L'|'; //Esc reached the application
             } else {
                 text += keyCodeToChar(keyCode | (isCaps ? CAPS_MASK : 0));
             }
@@ -172,6 +176,13 @@ static void testTelex() {
     expectTyping("Telex", "aaa", L"aa");
     //backspace
     expectTyping("Telex", "vieet<", L"viê");
+    //Esc puts back the keys as typed, and passes through when nothing changed
+    expectTyping("Telex", "vieejt~", L"vieejt");
+    expectTyping("Telex", "dd~", L"dd");
+    expectTyping("Telex", "Tieengs~", L"Tieengs");
+    expectTyping("Telex", "xin chaof~", L"xin chaof");
+    expectTyping("Telex", "xin~", L"xin|");
+    expectTyping("Telex", "vieejt~ nam", L"vieejt nam");
 }
 
 static void testVNI() {
