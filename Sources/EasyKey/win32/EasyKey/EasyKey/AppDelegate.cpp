@@ -23,16 +23,10 @@ redistribute your new version, it MUST be open source.
 #pragma comment(lib, "comctl32.lib")
 
 //shown once after updating to this version; change it with each release
-#define WHATS_NEW_VI L"• Mục Nâng cao gọn hơn: các nhóm thu lại, bấm vào tên nhóm để mở.\n" \
-	L"• Mở bảng gõ tắt ngay trong cài đặt: Nâng cao › Gõ › Bảng gõ tắt.\n" \
-	L"• Esc trả lại phím vừa gõ chạy được trong khung chat web như Facebook.\n" \
-	L"• Viết hoa đầu câu cả sau dấu ? và !, và khi chuyển sang cửa sổ khác.\n" \
-	L"• Sửa lỗi trên trình duyệt luôn bật."
-#define WHATS_NEW_EN L"• A tidier Advanced section: groups are folded, click a group name to open it.\n" \
-	L"• Open the shortcut list from Settings: Advanced › Typing › Shortcut list.\n" \
-	L"• Esc to put back the typed keys works in web chats such as Facebook.\n" \
-	L"• Sentences are capitalized after ? and ! too, and after switching windows.\n" \
-	L"• The browser fixes are always on."
+#define WHATS_NEW_VI L"• Sửa lỗi gõ thừa chữ trên Chrome, Edge ở các trang tự xử lý phím như trang luyện gõ.\n" \
+	L"• Gõ nhanh (cc → ch, gg → gi…) cũng dùng được khi gõ VNI."
+#define WHATS_NEW_EN L"• Fixed extra letters in Chrome and Edge on pages that handle keys themselves, such as typing tests.\n" \
+	L"• \"Quick Telex\" is now \"Quick typing\": cc → ch, gg → gi… work in VNI too."
 #define RELEASE_NOTES_URL L"https://github.com/iamcino/EasyKey/releases/tag/"
 
 static AppDelegate* _instance;

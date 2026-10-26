@@ -2,8 +2,9 @@
 
 [Tiếng Việt](CHANGELOG.md) · **English**
 
-## Next version
+## 1.0.2 (Windows 11 x64)
 - Fixed extra letters in Chrome and Edge on pages that handle keys themselves, such as typing tests ("số" came out as "sốôô"), in Telex and VNI.
+- "Quick Telex" is now called "Quick typing": cc → ch, gg → gi, nn → ng… work with every input method, VNI included.
 
 ## 1.0.1 (Windows 11 x64)
 - Open the shortcut list from the settings window: "Advanced" › "Typing" › "Shortcut list".
