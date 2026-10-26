@@ -12,6 +12,8 @@
 - Input method shortcut (Advanced › Typing, off by default): each press moves Telex → VNI → Simple Telex and shows the popup. It works only while typing Vietnamese.
 - The Vietnamese/English popup also shows when switching from the tray menu or the Settings window.
 - Color mode: follow Windows, Light or Dark (Advanced › Appearance).
+- Redrew the About, Shortcut list and Convert tool windows in the style of the Settings window; they follow the light/dark mode and the accent color.
+- Questions and notices (updates, resetting settings, removing EasyKey, the other-keyboard warning…) use the EasyKey style too. Short notices such as "up to date" or "converted" show in the popup.
 
 ## 1.0.2 (Windows 11 x64)
 - Fixed extra letters in Chrome and Edge on pages that handle keys themselves, such as typing tests ("số" came out as "sốôô"), in Telex and VNI.

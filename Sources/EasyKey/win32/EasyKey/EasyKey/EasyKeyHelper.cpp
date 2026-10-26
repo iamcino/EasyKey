@@ -352,58 +352,6 @@ bool EasyKeyHelper::isEnglishUi() {
 	return PRIMARYLANGID(GetUserDefaultUILanguage()) != LANG_VIETNAMESE;
 }
 
-//English for the text of the dialogs drawn from EasyKey.rc
-static const map<wstring, LPCTSTR> _english = {
-	{ L"Giới thiệu EasyKey", L"About EasyKey" },
-	{ L"Bộ gõ Tiếng Việt cho Windows 11", L"Vietnamese input for Windows 11" },
-	{ L"Trang chủ:", L"Home page:" },
-	{ L"Phiên bản mới:", L"Releases:" },
-	{ L"Dựa trên:", L"Based on:" },
-	{ L"<a>OpenKey</a> của Mai Vũ Tuyên (GPLv3)", L"<a>OpenKey</a> by Mai Vũ Tuyên (GPLv3)" },
-	{ L"Kiểm tra bản mới...", L"Check for updates..." },
-	{ L"Thiết lập gõ tắt - EasyKey", L"Shortcuts - EasyKey" },
-	{ L"Từ gõ tắt", L"Shortcut" },
-	{ L"Nội dung đầy đủ", L"Full text" },
-	{ L"+ Thêm", L"+ Add" },
-	{ L"- Xóa", L"- Delete" },
-	{ L"Nạp từ file...", L"Import..." },
-	{ L"Xuất ra file...", L"Export..." },
-	{ L"Tự động đổi chữ hoa theo phím tắt", L"Match the capitalization of the shortcut" },
-	{ L"Công cụ chuyển mã - EasyKey", L"Convert text - EasyKey" },
-	{ L"Đóng", L"Close" },
-	{ L"Tùy chọn chung", L"Options" },
-	{ L"Chuyển mã", L"Convert" },
-	{ L"Lựa chọn", L"Encodings" },
-	{ L"Chuyển sang chữ HOA", L"UPPERCASE" },
-	{ L"Loại bỏ dấu câu", L"Remove tone marks" },
-	{ L"Chuyển sang chữ thường", L"lowercase" },
-	{ L"Đặt chữ Hoa đầu câu", L"Sentence case" },
-	{ L"Đặt chữ Hoa Sau Mỗi Từ", L"Capitalize Each Word" },
-	{ L"Thông báo khi chuyển xong", L"Notify when done" },
-	{ L"Chuyển mã trong Clipboard", L"Convert the clipboard" },
-	{ L"Phím chuyển mã nhanh:", L"Quick convert key:" },
-	{ L"Bảng mã nguồn", L"From" },
-	{ L"Bảng mã đích", L"To" },
-	{ L"Đảo", L"Swap" },
-};
-
-static BOOL CALLBACK translateChild(HWND hWnd, LPARAM) {
-	TCHAR text[256];
-	if (GetWindowText(hWnd, text, 256) > 0) {
-		auto found = _english.find(text);
-		if (found != _english.end())
-			SetWindowText(hWnd, found->second);
-	}
-	return TRUE;
-}
-
-void EasyKeyHelper::translateWindow(const HWND& hWnd) {
-	if (!isEnglishUi())
-		return;
-	translateChild(hWnd, 0);
-	EnumChildWindows(hWnd, translateChild, 0);
-}
-
 bool EasyKeyHelper::isWindowElevated(const HWND& hWnd) {
 	static DWORD cachedProcess = 0;
 	static bool cachedResult = false;

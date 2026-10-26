@@ -12,6 +12,7 @@ redistribute your new version, it MUST be open source.
 #include <bcrypt.h>
 #include "Updater.h"
 #include "AppDelegate.h"
+#include "MessageWindow.h"
 
 #pragma comment(lib, "winhttp.lib")
 #pragma comment(lib, "bcrypt.lib")
@@ -127,7 +128,8 @@ static wstring folderOf(const wstring& path) {
 }
 
 static void showError(const HWND& owner, LPCTSTR message) {
-	if (MessageBox(owner, message, _T("EasyKey"), MB_ICONWARNING | MB_YESNO) == IDYES)
+	if (MessageWindow::ask(owner, TR("Chưa cập nhật được", "The update did not finish"), message,
+			TR("Mở trang tải về", "Open download page"), TR("Đóng", "Close")))
 		ShellExecute(NULL, L"open", RELEASES_PAGE, NULL, NULL, SW_SHOWNORMAL);
 }
 
@@ -223,14 +225,21 @@ static void finishJob(Job* job) {
 		if (!job->newer) {
 			busy = false;
 			if (!job->silent)
-				MessageBox(owner, TR("Bạn đang dùng phiên bản mới nhất.", "You have the latest version."), _T("EasyKey"), MB_OK);
+				AppDelegate::getInstance()->showNotice(TR("EasyKey đã là bản mới nhất", "EasyKey is up to date"),
+					TR("Phiên bản ", "Version ") + EasyKeyHelper::getVersionString());
 			delete job;
 			return;
 		}
-		TCHAR message[256];
-		wsprintf(message, TR("Đã có EasyKey %s. Cập nhật ngay? EasyKey sẽ tự khởi động lại.",
-			"EasyKey %s is available. Update now? EasyKey will restart."), utf8ToWideString(job->version).c_str());
-		if (MessageBox(owner, message, _T("EasyKey"), MB_ICONINFORMATION | MB_YESNO) == IDYES) {
+		wstring version = utf8ToWideString(job->version);
+		MessageWindow::Options options;
+		options.heading = TR("Đã có EasyKey ", "EasyKey ") + version + TR("", " is available");
+		options.text = TR("Cập nhật ngay? EasyKey sẽ tự tải về, thay file và khởi động lại.",
+			"Update now? EasyKey downloads it, replaces itself and restarts.");
+		options.link = TR("Xem có gì mới", "See what's new");
+		options.linkUrl = wstring(RELEASE_NOTES_URL) + version;
+		options.buttons.push_back(TR("Cập nhật", "Update"));
+		options.buttons.push_back(TR("Để sau", "Later"));
+		if (MessageWindow::show(owner, options) == 0) {
 			job->kind = JOB_DOWNLOAD;
 			job->owner = owner;
 			startJob(job);

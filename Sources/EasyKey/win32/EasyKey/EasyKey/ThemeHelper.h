@@ -59,6 +59,4 @@ public:
 	static Gdiplus::Font* createFont(const bool& strong, const float& pixels, const int& style);
 	//light or dark popup menus for the whole app, call again when the theme changes
 	static void applyMenuTheme();
-	//replace the dialog template font of every control with Segoe UI Variable
-	static void applyDialogFont(const HWND& hDlg);
 };

@@ -23,6 +23,7 @@ redistribute your new version, it MUST be open source.
 #include <cwctype>
 #include "SettingsWindow.h"
 #include "AppDelegate.h"
+#include "MessageWindow.h"
 #include "ThemeHelper.h"
 
 #ifndef WM_DWMCOLORIZATIONCOLORCHANGED
@@ -125,86 +126,7 @@ static LPCTSTR T(LPCTSTR vi, LPCTSTR en) {
 	return EasyKeyHelper::isEnglishUi() && en ? en : vi;
 }
 
-/*-------------------------------- drawing helpers --------------------------------*/
-
-static DWORD argb(const BYTE& alpha, const COLORREF& c) {
-	return ((DWORD)alpha << 24) | ((DWORD)GetRValue(c) << 16) | ((DWORD)GetGValue(c) << 8) | GetBValue(c);
-}
-
-static DWORD fade(const DWORD& color, const int& percent) {
-	return (((color >> 24) * percent / 100) << 24) | (color & 0xFFFFFF);
-}
-
-static void addRoundRect(Gdiplus::GraphicsPath& path, const RECT& rc, float radius, const bool& roundTop = true, const bool& roundBottom = true) {
-	//inset by half a pixel so 1px strokes stay sharp with PixelOffsetModeHalf
-	float x = rc.left + 0.5f, y = rc.top + 0.5f;
-	float w = (float)(rc.right - rc.left) - 1, h = (float)(rc.bottom - rc.top) - 1;
-	if (radius * 2 > h) radius = h / 2;
-	if (radius * 2 > w) radius = w / 2;
-	if (radius < 0.5f) radius = 0.5f;
-	float d = radius * 2;
-	if (roundTop) {
-		path.AddArc(x, y, d, d, 180, 90);
-		path.AddArc(x + w - d, y, d, d, 270, 90);
-	} else {
-		path.AddLine(x, y, x + w, y);
-	}
-	if (roundBottom) {
-		path.AddArc(x + w - d, y + h - d, d, d, 0, 90);
-		path.AddArc(x, y + h - d, d, d, 90, 90);
-	} else {
-		path.AddLine(x + w, y + h, x, y + h);
-	}
-	path.CloseFigure();
-}
-
-static void fillRound(Gdiplus::Graphics& g, const RECT& rc, const float& radius, const DWORD& fill, const DWORD& stroke = 0,
-					  const bool& roundTop = true, const bool& roundBottom = true) {
-	Gdiplus::GraphicsPath path;
-	addRoundRect(path, rc, radius, roundTop, roundBottom);
-	if (fill >> 24) {
-		Gdiplus::SolidBrush brush((Gdiplus::ARGB)fill);
-		g.FillPath(&brush, &path);
-	}
-	if (stroke >> 24) {
-		Gdiplus::Pen pen((Gdiplus::ARGB)stroke, 1);
-		g.DrawPath(&pen, &path);
-	}
-}
-
-static void fillRect(Gdiplus::Graphics& g, const DWORD& color, const RECT& rc) {
-	Gdiplus::SolidBrush brush((Gdiplus::ARGB)color);
-	g.FillRectangle(&brush, (INT)rc.left, (INT)rc.top, (INT)(rc.right - rc.left), (INT)(rc.bottom - rc.top));
-}
-
-static void drawLine(Gdiplus::Graphics& g, const DWORD& color, const int& left, const int& right, const int& y) {
-	RECT line = { left, y, right, y + 1 };
-	fillRect(g, color, line);
-}
-
-static void drawChevron(Gdiplus::Graphics& g, const DWORD& color, const float& cx, const float& cy, const float& size, const bool& up) {
-	float half = size / 2, quarter = size / 4;
-	float dir = up ? -1.0f : 1.0f;
-	Gdiplus::PointF points[3] = {
-		Gdiplus::PointF(cx - half, cy - quarter * dir),
-		Gdiplus::PointF(cx, cy + quarter * dir),
-		Gdiplus::PointF(cx + half, cy - quarter * dir)
-	};
-	Gdiplus::Pen pen((Gdiplus::ARGB)color, size / 8);
-	pen.SetLineJoin(Gdiplus::LineJoinRound);
-	pen.SetStartCap(Gdiplus::LineCapRound);
-	pen.SetEndCap(Gdiplus::LineCapRound);
-	g.DrawLines(&pen, points, 3);
-}
-
-static RECT makeRect(const int& left, const int& top, const int& width, const int& height) {
-	RECT rc = { left, top, left + width, top + height };
-	return rc;
-}
-
-static int centerY(const RECT& rc) {
-	return (rc.top + rc.bottom) / 2;
-}
+/*-------------------------------- helpers --------------------------------*/
 
 static wstring hexString(const COLORREF& c) {
 	TCHAR text[8];
@@ -214,54 +136,6 @@ static wstring hexString(const COLORREF& c) {
 
 static COLORREF customDark() {
 	return vAccentAutoDark ? ThemeHelper::deriveDarkAccent((COLORREF)vAccentLight) : (COLORREF)vAccentDark;
-}
-
-/*-------------------------------- keys --------------------------------*/
-
-static int modifierMask(const WPARAM& vk) {
-	switch (vk) {
-	case VK_CONTROL: case VK_LCONTROL: case VK_RCONTROL:
-		return 0x100;
-	case VK_MENU: case VK_LMENU: case VK_RMENU:
-		return 0x200;
-	case VK_LWIN: case VK_RWIN:
-		return 0x400;
-	case VK_SHIFT: case VK_LSHIFT: case VK_RSHIFT:
-		return 0x800;
-	}
-	return 0;
-}
-
-static int pressedModifiers() {
-	int mods = 0;
-	if (GetKeyState(VK_CONTROL) < 0) mods |= 0x100;
-	if (GetKeyState(VK_MENU) < 0) mods |= 0x200;
-	if (GetKeyState(VK_LWIN) < 0 || GetKeyState(VK_RWIN) < 0) mods |= 0x400;
-	if (GetKeyState(VK_SHIFT) < 0) mods |= 0x800;
-	return mods;
-}
-
-static int countModifiers(const int& mods) {
-	int count = 0;
-	for (int mask = 0x100; mask <= 0x800; mask <<= 1) {
-		if (mods & mask)
-			count++;
-	}
-	return count;
-}
-
-//"Ctrl + Shift + Z" as { "Ctrl", "Shift", "Z" }, one keycap each
-static vector<wstring> splitHotKey(const wstring& text) {
-	vector<wstring> keys;
-	size_t start = 0;
-	while (start < text.size()) {
-		size_t end = text.find(_T(" + "), start);
-		if (end == wstring::npos)
-			end = text.size();
-		keys.push_back(text.substr(start, end - start));
-		start = end + 3;
-	}
-	return keys;
 }
 
 static LPCTSTR codeTableName(const int& code) {
@@ -360,42 +234,7 @@ void SettingsWindow::applyTheme() {
 	bool dark = ThemeHelper::isAppDarkMode();
 	COLORREF solid = dark ? RGB(0x20, 0x20, 0x20) : RGB(0xF3, 0xF3, 0xF3);
 	translucent = ThemeHelper::applyBackdrop(hWnd, solid);
-	pal.bg = translucent ? 0 : argb(255, solid);
-	pal.accent = argb(255, ThemeHelper::getAccentColor(dark, false));
-	pal.accentHover = argb(255, ThemeHelper::getAccentColor(dark, true));
-	pal.link = pal.accent;
-	pal.linkHover = pal.accentHover;
-	if (dark) {
-		pal.card = 0x0EFFFFFF;
-		pal.cardHover = 0x17FFFFFF;
-		pal.cardPressed = 0x08FFFFFF;
-		pal.stroke = 0x17FFFFFF;
-		pal.divider = 0x12FFFFFF;
-		pal.track = 0x40000000;
-		pal.text = 0xFFFFFFFF;
-		pal.sub = 0xFFC8C8C8;
-		pal.disabled = 0xFF787878;
-		pal.onAccent = 0xFF000000;
-		pal.field = 0x14FFFFFF;
-		pal.fieldHover = 0x1FFFFFFF;
-		pal.good = 0xFF6CCB5F;
-		pal.warning = 0xFFFCE100;
-	} else {
-		pal.card = 0xB8FFFFFF;
-		pal.cardHover = 0x80FFFFFF;
-		pal.cardPressed = 0x4DFFFFFF;
-		pal.stroke = 0x14000000;
-		pal.divider = 0x0F000000;
-		pal.track = 0x0A000000;
-		pal.text = 0xFF1B1B1B;
-		pal.sub = 0xFF595959;
-		pal.disabled = 0xFFA0A0A0;
-		pal.onAccent = 0xFFFFFFFF;
-		pal.field = 0xE6FFFFFF;
-		pal.fieldHover = 0xB3F9F9F9;
-		pal.good = 0xFF0F7B0F;
-		pal.warning = 0xFF9D5D00;
-	}
+	fillPalette(pal, dark, translucent, solid);
 }
 
 void SettingsWindow::createFonts() {
@@ -1287,15 +1126,17 @@ void SettingsWindow::doAction(const int& action) {
 		AppDelegate::getInstance()->onMacroTable();
 		break;
 	case ACT_DEFAULT_CONFIG:
-		if (MessageBox(hWnd, T(_T("Bạn có chắc chắn muốn đưa mọi cài đặt về mặc định?"), _T("Reset every setting to its default?")), _T("EasyKey"),
-			MB_ICONEXCLAMATION | MB_YESNO) == IDYES) {
+		if (MessageWindow::ask(hWnd, T(_T("Đưa mọi cài đặt về mặc định?"), _T("Reset every setting to its default?")),
+			T(_T("Bảng gõ tắt vẫn được giữ nguyên."), _T("Your shortcut list is kept.")),
+			T(_T("Đặt lại"), _T("Reset")), T(_T("Huỷ"), _T("Cancel")))) {
 			AppDelegate::getInstance()->onDefaultConfig();
 		}
 		break;
 	case ACT_UNINSTALL:
-		if (MessageBox(hWnd, T(_T("Gỡ EasyKey khỏi Windows?\nEasyKey sẽ thoát, không còn chạy cùng Windows, lối tắt trên Desktop và mọi cài đặt, bảng gõ tắt sẽ bị xoá."),
-			_T("Remove EasyKey from Windows?\nEasyKey quits and no longer starts with Windows. Its desktop shortcut, settings and shortcut list are deleted.")),
-			_T("EasyKey"), MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON2) == IDYES) {
+		if (MessageWindow::ask(hWnd, T(_T("Gỡ EasyKey khỏi Windows?"), _T("Remove EasyKey from Windows?")),
+			T(_T("EasyKey sẽ thoát, không còn chạy cùng Windows, lối tắt trên Desktop và mọi cài đặt, bảng gõ tắt sẽ bị xoá."),
+				_T("EasyKey quits and no longer starts with Windows. Its desktop shortcut, settings and shortcut list are deleted.")),
+			T(_T("Gỡ EasyKey"), _T("Remove")), T(_T("Huỷ"), _T("Cancel")))) {
 			AppDelegate::getInstance()->onUninstall();
 		}
 		break;
@@ -1454,14 +1295,9 @@ void SettingsWindow::showDropDown(const Item& item) {
 void SettingsWindow::requestRestartAsAdmin() {
 	EasyKeyHelper::registerRunOnStartup(false);
 	if (vRunAsAdmin && !IsUserAnAdmin()) {
-		int msgboxID = MessageBox(
-			hWnd,
-			T(_T("Bạn cần khởi động lại EasyKey để chạy với quyền Admin.\nKhởi động lại ngay?"),
-				_T("EasyKey needs to restart to run as administrator.\nRestart now?")),
-			_T("EasyKey"),
-			MB_ICONEXCLAMATION | MB_YESNO
-		);
-		if (msgboxID == IDYES) {
+		if (MessageWindow::ask(hWnd, T(_T("Khởi động lại EasyKey?"), _T("Restart EasyKey?")),
+			T(_T("EasyKey cần khởi động lại để chạy với quyền Admin."), _T("EasyKey needs to restart to run as administrator.")),
+			T(_T("Khởi động lại"), _T("Restart")), T(_T("Để sau"), _T("Later")))) {
 			PostQuitMessage(0);
 			ShellExecute(0, L"runas", EasyKeyHelper::getFullPath().c_str(), 0, 0, SW_SHOWNORMAL);
 		}
