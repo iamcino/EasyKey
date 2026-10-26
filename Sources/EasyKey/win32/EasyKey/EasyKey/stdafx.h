@@ -79,6 +79,7 @@ extern int vSendKeyStepByStep;
 extern int vUseSmartSwitchKey;
 extern int vUpperCaseFirstChar;
 extern int vShowOnStartUp;
+extern int vShowSwitchFlyout;
 extern int vRunWithWindows;
 extern int vCreateDesktopShortcut;
 extern int vRunAsAdmin;

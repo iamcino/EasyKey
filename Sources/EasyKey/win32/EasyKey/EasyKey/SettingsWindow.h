@@ -17,18 +17,19 @@ redistribute your new version, it MUST be open source.
 #pragma once
 #include "stdafx.h"
 
-namespace Gdiplus { class Graphics; }
+namespace Gdiplus { class Graphics; class Font; class StringFormat; }
 
 /*
- * The settings window. It paints its own Windows 11 style cards, switches and
- * drop-down fields, follows the app light/dark theme and applies every change
+ * The settings window. It paints its own Windows 11 style controls with GDI+
+ * on a Mica backdrop (a solid color when transparency is off), follows the
+ * app light/dark theme and the Windows accent color, and applies every change
  * immediately, so there are no OK or Cancel buttons.
  */
 class SettingsWindow {
 private:
 	struct Item {
 		int kind;
-		int id;          //option or action
+		int id;          //option, action or choice
 		int linkAction;  //action of the link inside the row, 0 if none
 		LPCTSTR label;
 		LPCTSTR hint;
@@ -39,20 +40,22 @@ private:
 		bool afterLabel; //first row of a group, no divider above it
 	};
 	struct Palette {
-		COLORREF bg, card, cardHover, cardPressed, stroke, divider;
-		COLORREF text, sub, disabled, accent, accentHover, onAccent;
-		COLORREF field, fieldHover, fieldStroke;
+		DWORD bg, card, cardHover, cardPressed, stroke, divider, track;
+		DWORD text, sub, disabled, accent, accentHover, onAccent;
+		DWORD field, fieldHover, link, linkHover;
 	};
 
 	HINSTANCE hInstance;
 	HWND hWnd = NULL;
 	UINT dpi = USER_DEFAULT_SCREEN_DPI;
 	Palette pal;
-	HFONT fontBody = NULL, fontCaption = NULL, fontStrong = NULL, fontTitle = NULL, fontBadge = NULL;
+	bool translucent = false;
+	Gdiplus::Font *fontBody = NULL, *fontCaption = NULL, *fontSmall = NULL, *fontStrong = NULL, *fontTitle = NULL, *fontBadge = NULL;
+	Gdiplus::StringFormat* textFormat = NULL;
 
 	vector<Item> items;
-	RECT expandArea;
-	int contentHeight = 0, scrollY = 0, stateWidth = 0;
+	RECT heroArea, expandArea;
+	int contentHeight = 0, scrollY = 0;
 	bool expanded = false;
 
 	int hotItem = -1, hotPart = 0;
@@ -70,10 +73,10 @@ private:
 	LRESULT handleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 	int s(const int& value) const;
-	void loadPalette();
+	void applyTheme();
 	void createFonts();
 	void freeFonts();
-	int textWidth(const HFONT& font, LPCTSTR text) const;
+	int textWidth(Gdiplus::Font* font, LPCTSTR text) const;
 
 	void layout();
 	void fitWindow(const bool& center);
@@ -84,10 +87,9 @@ private:
 	bool getThumb(RECT& track, RECT& thumb) const;
 
 	void paint(HDC hdc);
-	void paintShapes(Gdiplus::Graphics& g, const Item& item, const int& index);
-	void paintTexts(HDC hdc, const Item& item, const int& index);
+	void paintItem(Gdiplus::Graphics& g, const Item& item, const int& index);
 	void paintSwitch(Gdiplus::Graphics& g, const RECT& rc, const bool& on, const bool& hot, const bool& enabled);
-	void drawText(HDC hdc, LPCTSTR text, RECT rc, const HFONT& font, const COLORREF& color, const UINT& format);
+	void drawText(Gdiplus::Graphics& g, LPCTSTR text, const RECT& rc, Gdiplus::Font* font, const DWORD& color, const int& hAlign, const int& vAlign);
 	RECT toView(const RECT& rc) const;
 
 	bool hitTest(const POINT& pt, int& item, int& part) const;

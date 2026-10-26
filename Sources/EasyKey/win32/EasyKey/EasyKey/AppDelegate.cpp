@@ -46,6 +46,7 @@ int vRememberCode = 1;
 int vTempOffOpenKey = 0;
 
 int vShowOnStartUp = 0;
+int vShowSwitchFlyout = 1;
 int vRunWithWindows = 1;
 
 int vCreateDesktopShortcut = 0;
@@ -110,6 +111,9 @@ int AppDelegate::run(HINSTANCE hInstance) {
 
 	//dark or light popup menus, before the tray menu is built
 	ThemeHelper::applyMenuTheme();
+
+	//shown when the switch key is pressed
+	flyout = new FlyoutWindow(hInstance);
 
 	//create system tray
 	SystemTrayHelper::createSystemTrayIcon(hInstance);
@@ -177,6 +181,11 @@ void AppDelegate::onInputMethodChangedFromHotKey() {
 	SystemTrayHelper::updateData();
 }
 
+void AppDelegate::showSwitchFlyout() {
+	if (flyout)
+		flyout->notify();
+}
+
 void AppDelegate::onDefaultConfig() {
 	APP_SET_DATA(vLanguage, 1);
 	APP_SET_DATA(vInputType, 0);
@@ -197,6 +206,7 @@ void AppDelegate::onDefaultConfig() {
 	APP_SET_DATA(vTempOffSpelling, 0);
 
 	APP_SET_DATA(vShowOnStartUp, 1);
+	APP_SET_DATA(vShowSwitchFlyout, 1);
 	APP_SET_DATA(vRunWithWindows, 1);
 
 	APP_SET_DATA(vRememberCode, 1);

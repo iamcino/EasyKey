@@ -57,7 +57,7 @@ map<UINT, LPCTSTR> menuData = {
 	{POPUP_TCVN3, _T("TCVN3 (ABC)")},
 	{POPUP_VNI_WINDOWS, _T("VNI Windows")},
 	{POPUP_UNICODE_COMPOUND, _T("Unicode tổ hợp")},
-	{POPUP_VN_LOCALE_1258, _T("Vietnamese locale CP 1258")},
+	{POPUP_VN_LOCALE_1258, _T("CP 1258")},
 	{POPUP_CONVERT_TOOL, _T("Công cụ chuyển mã")},
 	{POPUP_CONTROL_PANEL, _T("Cài đặt…")},
 	{POPUP_EASYKEY_EXIT, _T("Thoát EasyKey")},
@@ -190,11 +190,11 @@ void SystemTrayHelper::createPopupMenu() {
 	AppendMenu(popupMenu, MF_POPUP, (UINT_PTR)menuInputType, _T("Kiểu gõ"));
 
 	menuCodeTable = CreatePopupMenu();
+	//same order as the settings window, CP 1258 is added by updateData only while it is in use
 	AppendMenu(menuCodeTable, MF_UNCHECKED, POPUP_UNICODE, menuData[POPUP_UNICODE]);
+	AppendMenu(menuCodeTable, MF_UNCHECKED, POPUP_UNICODE_COMPOUND, menuData[POPUP_UNICODE_COMPOUND]);
 	AppendMenu(menuCodeTable, MF_UNCHECKED, POPUP_TCVN3, menuData[POPUP_TCVN3]);
 	AppendMenu(menuCodeTable, MF_UNCHECKED, POPUP_VNI_WINDOWS, menuData[POPUP_VNI_WINDOWS]);
-	AppendMenu(menuCodeTable, MF_UNCHECKED, POPUP_UNICODE_COMPOUND, menuData[POPUP_UNICODE_COMPOUND]);
-	AppendMenu(menuCodeTable, MF_UNCHECKED, POPUP_VN_LOCALE_1258, menuData[POPUP_VN_LOCALE_1258]);
 	AppendMenu(popupMenu, MF_POPUP, (UINT_PTR)menuCodeTable, _T("Bảng mã"));
 
 	AppendMenu(popupMenu, MF_UNCHECKED, POPUP_CONVERT_TOOL, menuData[POPUP_CONVERT_TOOL]);
@@ -241,7 +241,9 @@ void SystemTrayHelper::updateData() {
 	MODIFY_MENU(menuCodeTable, POPUP_TCVN3, vCodeTable == 1);
 	MODIFY_MENU(menuCodeTable, POPUP_VNI_WINDOWS, vCodeTable == 2);
 	MODIFY_MENU(menuCodeTable, POPUP_UNICODE_COMPOUND, vCodeTable == 3);
-	MODIFY_MENU(menuCodeTable, POPUP_VN_LOCALE_1258, vCodeTable == 4);
+	DeleteMenu(menuCodeTable, POPUP_VN_LOCALE_1258, MF_BYCOMMAND);
+	if (vCodeTable == 4)
+		AppendMenu(menuCodeTable, MF_CHECKED, POPUP_VN_LOCALE_1258, menuData[POPUP_VN_LOCALE_1258]);
 }
 
 static HINSTANCE ins;

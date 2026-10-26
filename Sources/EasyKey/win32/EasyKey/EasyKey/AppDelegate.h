@@ -17,6 +17,7 @@ redistribute your new version, it MUST be open source.
 #pragma once
 #include "stdafx.h"
 #include "SettingsWindow.h"
+#include "FlyoutWindow.h"
 #include "AboutDialog.h"
 #include "ConvertToolDialog.h"
 #include "MacroDialog.h"
@@ -26,6 +27,7 @@ class AppDelegate {
 private:
 	HINSTANCE hInstance;
 	SettingsWindow* settingsWindow = NULL;
+	FlyoutWindow* flyout = NULL;
 	BaseDialog* aboutDialog = NULL, *macroDialog = NULL, *convertDialog = NULL;
 private:
 	bool isDialogMsg(MSG &msg) const;
@@ -39,6 +41,7 @@ public:
 	void closeSettingsWindow();
 public: //event
 	void onInputMethodChangedFromHotKey();
+	void showSwitchFlyout();
 	void onDefaultConfig();
 
 	void onToggleVietnamese();

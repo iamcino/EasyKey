@@ -16,7 +16,7 @@ Nếu máy đã có OpenKey, lần chạy đầu EasyKey tự chép cài đặt 
 
 ## Tính năng
 - Kiểu gõ Telex, VNI, Simple Telex.
-- Bảng mã Unicode dựng sẵn, Unicode tổ hợp, TCVN3 (ABC), VNI Windows, CP 1258.
+- Bảng mã Unicode. Bảng mã cũ Unicode tổ hợp, TCVN3 (ABC), VNI Windows nằm trong mục Nâng cao.
 - Đặt dấu kiểu mới (hoà, thuý) hoặc kiểu cũ (hòa, thúy).
 - Kiểm tra chính tả, tự khôi phục phím khi gõ sai.
 - Gõ nhanh, gõ tắt phụ âm đầu và cuối, gõ tắt (macro) không giới hạn độ dài.

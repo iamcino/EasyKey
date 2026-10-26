@@ -42,6 +42,7 @@ static vector<string> _chromiumBrowser = {
 
 extern int vSendKeyStepByStep;
 extern int vShowOnStartUp;
+extern int vShowSwitchFlyout;
 extern int vRunWithWindows;
 
 static HHOOK hKeyboardHook;
@@ -103,6 +104,7 @@ void EasyKeyInit() {
 	APP_GET_DATA(vAutoCapsMacro, 0);
 	APP_GET_DATA(vSendKeyStepByStep, 1);
 	APP_GET_DATA(vShowOnStartUp, 1);
+	APP_GET_DATA(vShowSwitchFlyout, 1);
 	APP_GET_DATA(vRunWithWindows, 1);
 	EasyKeyHelper::registerRunOnStartup(vRunWithWindows);
 	APP_GET_DATA(vUseSmartSwitchKey, 1);
@@ -408,6 +410,7 @@ void switchLanguage() {
 	if (HAS_BEEP(vSwitchKeyStatus))
 		MessageBeep(MB_OK);
 	AppDelegate::getInstance()->onInputMethodChangedFromHotKey();
+	AppDelegate::getInstance()->showSwitchFlyout();
 	if (vUseSmartSwitchKey) {
 		setAppInputMethodStatus(EasyKeyHelper::getFrontMostAppExecuteName(), vLanguage | (vCodeTable << 1));
 		saveSmartSwitchKeyData();

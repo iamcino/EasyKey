@@ -6,7 +6,9 @@ Bản đầu tiên của EasyKey.
 - Chỉ hỗ trợ Windows 11 64-bit.
 - Tự chép cài đặt và bảng gõ tắt từ OpenKey ở lần chạy đầu.
 - Sửa lỗi không gõ được tiếng Việt trên máy có phần mềm gắn dữ liệu vào phím, ví dụ Bitdefender.
-- Cửa sổ cài đặt mới kiểu Windows 11: một trang gọn với thẻ và công tắc, thay đổi có hiệu lực ngay, tuỳ chọn ít dùng gom vào mục "Nâng cao". Chế độ sáng/tối theo Windows và đổi ngay khi Windows đổi.
+- Cửa sổ cài đặt mới kiểu Windows 11 năm 2026: nền Mica, màu nhấn theo Windows, hai nút lớn Tiếng Việt/Tiếng Anh, chọn kiểu gõ bằng một hàng nút, bốn ô bật tắt nhanh, tuỳ chọn ít dùng gom vào mục "Nâng cao". Thay đổi có hiệu lực ngay. Chế độ sáng/tối theo Windows và đổi ngay khi Windows đổi.
+- Thông báo nhỏ ở cuối màn hình khi chuyển Việt/Anh bằng phím tắt, có thể tắt trong "Nâng cao".
+- Mặc định dùng Unicode. Bảng mã cũ (Unicode tổ hợp, TCVN3, VNI Windows) chuyển vào "Nâng cao" › "Bảng mã cũ". Bỏ CP 1258 khỏi danh sách, chỉ còn hiện cho ai đang dùng.
 - Đặt phím chuyển Việt/Anh bằng cách bấm thẳng tổ hợp phím, ví dụ Ctrl + Shift hoặc Alt + Z.
 - Menu khay gọn hơn, có chế độ tối: Gõ tiếng Việt, Kiểu gõ, Bảng mã, Công cụ chuyển mã, Cài đặt, Thoát.
 - DPI theo từng màn hình, font Segoe UI Variable, biểu tượng khay đơn sắc tự đổi màu theo thanh tác vụ.

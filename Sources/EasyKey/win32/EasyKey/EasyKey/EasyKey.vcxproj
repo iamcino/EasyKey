@@ -100,6 +100,7 @@
     <ClInclude Include="ConvertToolDialog.h" />
     <ClInclude Include="MacroDialog.h" />
     <ClInclude Include="EasyKeyHelper.h" />
+    <ClInclude Include="FlyoutWindow.h" />
     <ClInclude Include="EasyKeyManager.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="stdafx.h" />
@@ -123,6 +124,7 @@
     <ClCompile Include="SettingsWindow.cpp" />
     <ClCompile Include="EasyKey.cpp" />
     <ClCompile Include="EasyKeyHelper.cpp" />
+    <ClCompile Include="FlyoutWindow.cpp" />
     <ClCompile Include="EasyKeyManager.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>

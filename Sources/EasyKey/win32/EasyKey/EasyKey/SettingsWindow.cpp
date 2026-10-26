@@ -19,34 +19,42 @@ redistribute your new version, it MUST be open source.
 #include <objidl.h>
 #include <gdiplus.h>
 #include <Shlobj.h>
+#include <cmath>
 #include "SettingsWindow.h"
 #include "AppDelegate.h"
 #include "ThemeHelper.h"
 
-#pragma comment(lib, "gdiplus.lib")
+#ifndef WM_DWMCOLORIZATIONCOLORCHANGED
+#define WM_DWMCOLORIZATIONCOLORCHANGED 0x0320
+#endif
 
 #define SETTINGS_CLASS _T("EasyKeySettingsWindow")
 #define WINDOW_STYLE (WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_THICKFRAME)
-#define WINDOW_WIDTH 560 //client width in DIPs
+#define WINDOW_WIDTH 520 //client width in DIPs
 #define MIN_WINDOW_HEIGHT 320
+#define SIDE 20 //space left and right of the cards
 
 enum ItemKind {
-	K_HERO, K_SECTION, K_COMBO, K_HOTKEY, K_TOGGLE, K_EXPANDER,
-	K_GROUP, K_SUBTOGGLE, K_SUBBUTTON, K_LINK, K_VERSION
+	K_LANG, K_HOTKEY, K_SECTION, K_SEGMENT, K_SEGBUTTON, K_TILE, K_EXPANDER,
+	K_GROUP, K_SUBTOGGLE, K_SUBCOMBO, K_SUBBUTTON, K_LINK, K_VERSION
 };
 
 enum Option {
-	OPT_NONE, OPT_LANGUAGE, OPT_INPUT_TYPE, OPT_CODE_TABLE, OPT_SWITCH_KEY,
+	OPT_NONE, OPT_LANGUAGE, OPT_CODE_TABLE,
 	OPT_SPELLING, OPT_MODERN, OPT_MACRO, OPT_RUN_WITH_WINDOWS,
 	OPT_RESTORE, OPT_ZWJF, OPT_TEMP_OFF_SPELLING,
 	OPT_QUICK_TELEX, OPT_QUICK_START, OPT_QUICK_END, OPT_CAPS_FIRST, OPT_MACRO_ENGLISH, OPT_MACRO_AUTO_CAPS,
 	OPT_SMART_SWITCH, OPT_REMEMBER_CODE, OPT_FIX_BROWSER, OPT_FIX_CHROMIUM, OPT_TEMP_OFF_EASYKEY,
-	OPT_CLIPBOARD, OPT_BEEP,
+	OPT_CLIPBOARD, OPT_FLYOUT, OPT_BEEP,
 	OPT_RUN_AS_ADMIN, OPT_SHOW_ON_STARTUP, OPT_DESKTOP_SHORTCUT, OPT_CHECK_UPDATE
 };
 
 enum Action {
-	ACT_EXPAND = 100, ACT_MACRO_TABLE, ACT_CONVERT_TOOL, ACT_ABOUT, ACT_CHECK_UPDATE, ACT_DEFAULT_CONFIG
+	ACT_EXPAND = 100, ACT_CAPTURE, ACT_MACRO_TABLE, ACT_CONVERT_TOOL, ACT_ABOUT, ACT_CHECK_UPDATE, ACT_DEFAULT_CONFIG
+};
+
+enum Icon {
+	ICON_SPELLING, ICON_MODERN, ICON_MACRO, ICON_STARTUP
 };
 
 struct RowInfo {
@@ -56,14 +64,24 @@ struct RowInfo {
 	LPCTSTR hint;
 };
 
-static const RowInfo mainToggles[] = {
-	{ K_TOGGLE, OPT_SPELLING, _T("Kiểm tra chính tả"), _T("Chỉ bỏ dấu khi từ đúng chính tả tiếng Việt") },
-	{ K_TOGGLE, OPT_MODERN, _T("Đặt dấu kiểu mới"), _T("hoà, thuý thay vì hòa, thúy") },
-	{ K_TOGGLE, OPT_MACRO, _T("Gõ tắt"), _T("Ví dụ: ko → không") },
-	{ K_TOGGLE, OPT_RUN_WITH_WINDOWS, _T("Khởi động cùng Windows"), NULL },
+struct TileInfo {
+	int id;
+	int icon;
+	LPCTSTR label;
+	LPCTSTR hint;
+};
+
+static const TileInfo tiles[] = {
+	{ OPT_SPELLING, ICON_SPELLING, _T("Kiểm tra chính tả"), _T("Chỉ bỏ dấu khi đúng") },
+	{ OPT_MODERN, ICON_MODERN, _T("Dấu kiểu mới"), _T("hoà, thuý") },
+	{ OPT_MACRO, ICON_MACRO, _T("Gõ tắt"), _T("ko → không") },
+	{ OPT_RUN_WITH_WINDOWS, ICON_STARTUP, _T("Chạy cùng Windows"), _T("Khi đăng nhập") },
 };
 
 static const RowInfo advancedRows[] = {
+	{ K_GROUP, 0, _T("Bảng mã"), NULL },
+	{ K_SUBCOMBO, OPT_CODE_TABLE, _T("Bảng mã cũ"), _T("Chỉ dùng cho văn bản và font cũ") },
+	{ K_SUBTOGGLE, OPT_REMEMBER_CODE, _T("Nhớ bảng mã theo từng ứng dụng"), NULL },
 	{ K_GROUP, 0, _T("Chính tả"), NULL },
 	{ K_SUBTOGGLE, OPT_RESTORE, _T("Tự khôi phục phím khi gõ sai"), NULL },
 	{ K_SUBTOGGLE, OPT_ZWJF, _T("Cho phép z, w, j, f làm phụ âm đầu"), NULL },
@@ -77,11 +95,11 @@ static const RowInfo advancedRows[] = {
 	{ K_SUBTOGGLE, OPT_MACRO_AUTO_CAPS, _T("Tự viết hoa theo từ gõ tắt"), NULL },
 	{ K_GROUP, 0, _T("Ứng dụng"), NULL },
 	{ K_SUBTOGGLE, OPT_SMART_SWITCH, _T("Nhớ chế độ Việt/Anh theo từng ứng dụng"), NULL },
-	{ K_SUBTOGGLE, OPT_REMEMBER_CODE, _T("Nhớ bảng mã theo từng ứng dụng"), NULL },
 	{ K_SUBTOGGLE, OPT_FIX_BROWSER, _T("Sửa lỗi ở ô có gợi ý tự động"), NULL },
 	{ K_SUBTOGGLE, OPT_FIX_CHROMIUM, _T("Sửa lỗi trên Chrome, Edge"), NULL },
 	{ K_SUBTOGGLE, OPT_TEMP_OFF_EASYKEY, _T("Tạm tắt EasyKey bằng phím Alt"), NULL },
 	{ K_SUBTOGGLE, OPT_CLIPBOARD, _T("Gửi chữ qua Clipboard"), NULL },
+	{ K_SUBTOGGLE, OPT_FLYOUT, _T("Hiện thông báo khi chuyển Việt/Anh"), NULL },
 	{ K_SUBTOGGLE, OPT_BEEP, _T("Kêu bíp khi chuyển Việt/Anh"), NULL },
 	{ K_GROUP, 0, _T("Hệ thống"), NULL },
 	{ K_SUBTOGGLE, OPT_RUN_AS_ADMIN, _T("Chạy với quyền Admin"), NULL },
@@ -92,24 +110,35 @@ static const RowInfo advancedRows[] = {
 	{ K_SUBBUTTON, ACT_DEFAULT_CONFIG, _T("Đưa mọi cài đặt về mặc định"), NULL },
 };
 
-#define TEXT_ON _T("Bật")
-#define TEXT_OFF _T("Tắt")
-#define TEXT_PRESS_KEYS _T("Nhấn tổ hợp phím…")
-#define TEXT_NO_HOTKEY _T("Chưa đặt")
-#define TEXT_MACRO_TABLE _T("Bảng gõ tắt")
+//code tables in the order they are offered, CP 1258 only for people who already use it
+static const struct { int code; LPCTSTR name; } codeTables[] = {
+	{ 0, _T("Unicode") },
+	{ 3, _T("Unicode tổ hợp") },
+	{ 1, _T("TCVN3 (ABC)") },
+	{ 2, _T("VNI Windows") },
+	{ 4, _T("CP 1258") },
+};
+#define CP1258_CODE 4
+
+#define TEXT_SWITCH _T("Chuyển nhanh")
+#define TEXT_CHANGE_KEY _T("Đổi phím")
+#define TEXT_CANCEL _T("Huỷ")
+#define TEXT_PRESS_KEYS _T("Nhấn tổ hợp phím mới…")
+#define TEXT_NO_HOTKEY _T("Chưa đặt phím")
 #define TEXT_CHECK _T("Kiểm tra")
 #define TEXT_CHECKING _T("Đang kiểm tra…")
 #define TEXT_RESET _T("Khôi phục")
 
 typedef BOOL(WINAPI *AdjustWindowRectExForDpiFunc)(LPRECT, DWORD, BOOL, DWORD, UINT);
 
-static ULONG_PTR gdiplusToken = 0;
-static int gdiplusUsers = 0;
-
 /*-------------------------------- drawing helpers --------------------------------*/
 
-static Gdiplus::Color toColor(const COLORREF& c) {
-	return Gdiplus::Color(255, GetRValue(c), GetGValue(c), GetBValue(c));
+static DWORD argb(const BYTE& alpha, const COLORREF& c) {
+	return ((DWORD)alpha << 24) | ((DWORD)GetRValue(c) << 16) | ((DWORD)GetGValue(c) << 8) | GetBValue(c);
+}
+
+static DWORD fade(const DWORD& color, const int& percent) {
+	return (((color >> 24) * percent / 100) << 24) | (color & 0xFFFFFF);
 }
 
 static void addRoundRect(Gdiplus::GraphicsPath& path, const RECT& rc, float radius, const bool& roundTop = true, const bool& roundBottom = true) {
@@ -117,6 +146,7 @@ static void addRoundRect(Gdiplus::GraphicsPath& path, const RECT& rc, float radi
 	float x = rc.left + 0.5f, y = rc.top + 0.5f;
 	float w = (float)(rc.right - rc.left) - 1, h = (float)(rc.bottom - rc.top) - 1;
 	if (radius * 2 > h) radius = h / 2;
+	if (radius * 2 > w) radius = w / 2;
 	if (radius < 0.5f) radius = 0.5f;
 	float d = radius * 2;
 	if (roundTop) {
@@ -134,29 +164,31 @@ static void addRoundRect(Gdiplus::GraphicsPath& path, const RECT& rc, float radi
 	path.CloseFigure();
 }
 
-static void fillRound(Gdiplus::Graphics& g, const RECT& rc, const float& radius, const COLORREF& fill, const COLORREF* stroke,
+static void fillRound(Gdiplus::Graphics& g, const RECT& rc, const float& radius, const DWORD& fill, const DWORD& stroke = 0,
 					  const bool& roundTop = true, const bool& roundBottom = true) {
 	Gdiplus::GraphicsPath path;
 	addRoundRect(path, rc, radius, roundTop, roundBottom);
-	Gdiplus::SolidBrush brush(toColor(fill));
-	g.FillPath(&brush, &path);
-	if (stroke) {
-		Gdiplus::Pen pen(toColor(*stroke), 1);
+	if (fill >> 24) {
+		Gdiplus::SolidBrush brush((Gdiplus::ARGB)fill);
+		g.FillPath(&brush, &path);
+	}
+	if (stroke >> 24) {
+		Gdiplus::Pen pen((Gdiplus::ARGB)stroke, 1);
 		g.DrawPath(&pen, &path);
 	}
 }
 
-static void fillRect(Gdiplus::Graphics& g, const COLORREF& color, const RECT& rc) {
-	Gdiplus::SolidBrush brush(toColor(color));
+static void fillRect(Gdiplus::Graphics& g, const DWORD& color, const RECT& rc) {
+	Gdiplus::SolidBrush brush((Gdiplus::ARGB)color);
 	g.FillRectangle(&brush, (INT)rc.left, (INT)rc.top, (INT)(rc.right - rc.left), (INT)(rc.bottom - rc.top));
 }
 
-static void drawLine(Gdiplus::Graphics& g, const COLORREF& color, const int& left, const int& right, const int& y) {
+static void drawLine(Gdiplus::Graphics& g, const DWORD& color, const int& left, const int& right, const int& y) {
 	RECT line = { left, y, right, y + 1 };
 	fillRect(g, color, line);
 }
 
-static void drawChevron(Gdiplus::Graphics& g, const COLORREF& color, const float& cx, const float& cy, const float& size, const bool& up) {
+static void drawChevron(Gdiplus::Graphics& g, const DWORD& color, const float& cx, const float& cy, const float& size, const bool& up) {
 	float half = size / 2, quarter = size / 4;
 	float dir = up ? -1.0f : 1.0f;
 	Gdiplus::PointF points[3] = {
@@ -164,11 +196,48 @@ static void drawChevron(Gdiplus::Graphics& g, const COLORREF& color, const float
 		Gdiplus::PointF(cx, cy + quarter * dir),
 		Gdiplus::PointF(cx + half, cy - quarter * dir)
 	};
-	Gdiplus::Pen pen(toColor(color), size / 8);
+	Gdiplus::Pen pen((Gdiplus::ARGB)color, size / 8);
 	pen.SetLineJoin(Gdiplus::LineJoinRound);
 	pen.SetStartCap(Gdiplus::LineCapRound);
 	pen.SetEndCap(Gdiplus::LineCapRound);
 	g.DrawLines(&pen, points, 3);
+}
+
+//20x20 line icons of the quick tiles, the same paths as the design mockup
+static void drawIcon(Gdiplus::Graphics& g, const int& icon, const float& x, const float& y, const float& size, const DWORD& color) {
+	float f = size / 20;
+	Gdiplus::Pen pen((Gdiplus::ARGB)color, 1.5f * f);
+	pen.SetLineJoin(Gdiplus::LineJoinRound);
+	pen.SetStartCap(Gdiplus::LineCapRound);
+	pen.SetEndCap(Gdiplus::LineCapRound);
+	auto P = [&](const float& px, const float& py) { return Gdiplus::PointF(x + px * f, y + py * f); };
+	switch (icon) {
+	case ICON_SPELLING: {
+		Gdiplus::PointF a[] = { P(3, 15), P(6, 5), P(9, 15) };
+		g.DrawLines(&pen, a, 3);
+		g.DrawLine(&pen, P(4.2f, 11.5f), P(7.8f, 11.5f));
+		Gdiplus::PointF check[] = { P(11, 12), P(13.5f, 14.5f), P(18, 8) };
+		g.DrawLines(&pen, check, 3);
+		break;
+	}
+	case ICON_MODERN: {
+		Gdiplus::PointF a[] = { P(5, 16), P(10, 5), P(15, 16) };
+		g.DrawLines(&pen, a, 3);
+		g.DrawLine(&pen, P(7.2f, 11.5f), P(12.8f, 11.5f));
+		g.DrawLine(&pen, P(9, 2.5f), P(11, 1));
+		break;
+	}
+	case ICON_MACRO: {
+		Gdiplus::PointF bolt[] = { P(11, 2), P(4, 11), P(9, 11), P(8, 18), P(15, 9), P(10, 9) };
+		g.DrawPolygon(&pen, bolt, 6);
+		break;
+	}
+	case ICON_STARTUP:
+		g.DrawLine(&pen, P(10, 2), P(10, 9));
+		//power ring, open at the top
+		g.DrawArc(&pen, x + 3.5f * f, y + 3.12f * f, 13 * f, 13 * f, 307.98f, 284.04f);
+		break;
+	}
 }
 
 static RECT makeRect(const int& left, const int& top, const int& width, const int& height) {
@@ -214,23 +283,40 @@ static int countModifiers(const int& mods) {
 	return count;
 }
 
+//"Ctrl + Shift + Z" as { "Ctrl", "Shift", "Z" }, one keycap each
+static vector<wstring> splitHotKey(const wstring& text) {
+	vector<wstring> keys;
+	size_t start = 0;
+	while (start < text.size()) {
+		size_t end = text.find(_T(" + "), start);
+		if (end == wstring::npos)
+			end = text.size();
+		keys.push_back(text.substr(start, end - start));
+		start = end + 3;
+	}
+	return keys;
+}
+
+static LPCTSTR codeTableName(const int& code) {
+	for (auto& table : codeTables) {
+		if (table.code == code)
+			return table.name;
+	}
+	return codeTables[0].name;
+}
+
 /*-------------------------------- window --------------------------------*/
 
 SettingsWindow::SettingsWindow(const HINSTANCE& hInstance) {
 	this->hInstance = hInstance;
+	SetRectEmpty(&heroArea);
 	SetRectEmpty(&expandArea);
-	if (gdiplusUsers++ == 0) {
-		Gdiplus::GdiplusStartupInput input;
-		Gdiplus::GdiplusStartup(&gdiplusToken, &input, NULL);
-	}
+	ThemeHelper::startGdiplus();
 }
 
 SettingsWindow::~SettingsWindow() {
 	destroy();
 	freeFonts();
-	if (--gdiplusUsers == 0) {
-		Gdiplus::GdiplusShutdown(gdiplusToken);
-	}
 }
 
 void SettingsWindow::show() {
@@ -258,9 +344,8 @@ void SettingsWindow::show() {
 		return;
 
 	dpi = ThemeHelper::getDpi(hWnd);
-	loadPalette();
+	applyTheme();
 	createFonts();
-	ThemeHelper::applySolidWindowFrame(hWnd, pal.bg);
 	fitWindow(true);
 	ShowWindow(hWnd, SW_SHOWNORMAL);
 	SetForegroundWindow(hWnd);
@@ -301,188 +386,195 @@ int SettingsWindow::s(const int& value) const {
 	return MulDiv(value, dpi, USER_DEFAULT_SCREEN_DPI);
 }
 
-void SettingsWindow::loadPalette() {
-	//Windows 11 Fluent colors, see the design mockup
-	if (ThemeHelper::isAppDarkMode()) {
-		pal.bg = RGB(0x20, 0x20, 0x20);
-		pal.card = RGB(0x2B, 0x2B, 0x2B);
-		pal.cardHover = RGB(0x32, 0x32, 0x32);
-		pal.cardPressed = RGB(0x27, 0x27, 0x27);
-		pal.stroke = RGB(0x1D, 0x1D, 0x1D);
-		pal.divider = RGB(0x1D, 0x1D, 0x1D);
-		pal.text = RGB(0xFF, 0xFF, 0xFF);
-		pal.sub = RGB(0xC5, 0xC5, 0xC5);
-		pal.disabled = RGB(0x78, 0x78, 0x78);
-		pal.accent = RGB(0x60, 0xCD, 0xFF);
-		pal.accentHover = RGB(0x5A, 0xBD, 0xEA);
-		pal.onAccent = RGB(0x00, 0x00, 0x00);
-		pal.field = RGB(0x37, 0x37, 0x37);
-		pal.fieldHover = RGB(0x3D, 0x3D, 0x3D);
-		pal.fieldStroke = RGB(0x45, 0x45, 0x45);
+void SettingsWindow::applyTheme() {
+	//Windows 11 Fluent colors over Mica, see the 2026 design mockup
+	bool dark = ThemeHelper::isAppDarkMode();
+	COLORREF solid = dark ? RGB(0x20, 0x20, 0x20) : RGB(0xF3, 0xF3, 0xF3);
+	translucent = ThemeHelper::applyBackdrop(hWnd, solid);
+	pal.bg = translucent ? 0 : argb(255, solid);
+	pal.accent = argb(255, ThemeHelper::getAccentColor(dark, false));
+	pal.accentHover = argb(255, ThemeHelper::getAccentColor(dark, true));
+	if (dark) {
+		pal.card = 0x0EFFFFFF;
+		pal.cardHover = 0x17FFFFFF;
+		pal.cardPressed = 0x08FFFFFF;
+		pal.stroke = 0x17FFFFFF;
+		pal.divider = 0x12FFFFFF;
+		pal.track = 0x40000000;
+		pal.text = 0xFFFFFFFF;
+		pal.sub = 0xFFC8C8C8;
+		pal.disabled = 0xFF787878;
+		pal.onAccent = 0xFF000000;
+		pal.field = 0x14FFFFFF;
+		pal.fieldHover = 0x1FFFFFFF;
+		pal.link = 0xFF99EBFF;
+		pal.linkHover = 0xFFC7F4FF;
 	} else {
-		pal.bg = RGB(0xF3, 0xF3, 0xF3);
-		pal.card = RGB(0xFF, 0xFF, 0xFF);
-		pal.cardHover = RGB(0xF6, 0xF6, 0xF6);
-		pal.cardPressed = RGB(0xF0, 0xF0, 0xF0);
-		pal.stroke = RGB(0xE5, 0xE5, 0xE5);
-		pal.divider = RGB(0xEB, 0xEB, 0xEB);
-		pal.text = RGB(0x1B, 0x1B, 0x1B);
-		pal.sub = RGB(0x5D, 0x5D, 0x5D);
-		pal.disabled = RGB(0xA0, 0xA0, 0xA0);
-		pal.accent = RGB(0x00, 0x5F, 0xB8);
-		pal.accentHover = RGB(0x19, 0x6E, 0xBF);
-		pal.onAccent = RGB(0xFF, 0xFF, 0xFF);
-		pal.field = RGB(0xFB, 0xFB, 0xFB);
-		pal.fieldHover = RGB(0xF3, 0xF3, 0xF3);
-		pal.fieldStroke = RGB(0xDC, 0xDC, 0xDC);
+		pal.card = 0xB8FFFFFF;
+		pal.cardHover = 0x80FFFFFF;
+		pal.cardPressed = 0x4DFFFFFF;
+		pal.stroke = 0x14000000;
+		pal.divider = 0x0F000000;
+		pal.track = 0x0A000000;
+		pal.text = 0xFF1B1B1B;
+		pal.sub = 0xFF595959;
+		pal.disabled = 0xFFA0A0A0;
+		pal.onAccent = 0xFFFFFFFF;
+		pal.field = 0xE6FFFFFF;
+		pal.fieldHover = 0xB3F9F9F9;
+		pal.link = 0xFF005FB8;
+		pal.linkHover = 0xFF003E92;
 	}
 }
 
 void SettingsWindow::createFonts() {
 	freeFonts();
-	LPCTSTR face = ThemeHelper::getFontFace();
-	auto make = [&](const int& px, const int& weight) {
-		return CreateFont(-s(px), 0, 0, 0, weight, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS,
-			CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, face);
-	};
-	fontBody = make(14, FW_NORMAL);
-	fontCaption = make(12, FW_NORMAL);
-	fontStrong = make(14, FW_SEMIBOLD);
-	fontTitle = make(20, FW_SEMIBOLD);
-	fontBadge = make(22, FW_SEMIBOLD);
+	fontBody = ThemeHelper::createFont(false, (float)s(14), Gdiplus::FontStyleRegular);
+	fontCaption = ThemeHelper::createFont(false, (float)s(12), Gdiplus::FontStyleRegular);
+	fontSmall = ThemeHelper::createFont(false, (float)s(13), Gdiplus::FontStyleRegular);
+	fontStrong = ThemeHelper::createFont(true, (float)s(14), Gdiplus::FontStyleRegular);
+	fontTitle = ThemeHelper::createFont(true, (float)s(17), Gdiplus::FontStyleRegular);
+	fontBadge = ThemeHelper::createFont(false, (float)s(18), Gdiplus::FontStyleBold);
+	textFormat = Gdiplus::StringFormat::GenericTypographic()->Clone();
+	textFormat->SetFormatFlags(Gdiplus::StringFormatFlagsNoWrap | Gdiplus::StringFormatFlagsLineLimit |
+		Gdiplus::StringFormatFlagsMeasureTrailingSpaces);
+	textFormat->SetTrimming(Gdiplus::StringTrimmingEllipsisCharacter);
 }
 
 void SettingsWindow::freeFonts() {
-	HFONT* fonts[] = { &fontBody, &fontCaption, &fontStrong, &fontTitle, &fontBadge };
-	for (HFONT* font : fonts) {
-		if (*font) {
-			DeleteObject(*font);
-			*font = NULL;
-		}
+	Gdiplus::Font** fonts[] = { &fontBody, &fontCaption, &fontSmall, &fontStrong, &fontTitle, &fontBadge };
+	for (Gdiplus::Font** font : fonts) {
+		delete *font;
+		*font = NULL;
 	}
+	delete textFormat;
+	textFormat = NULL;
 }
 
-int SettingsWindow::textWidth(const HFONT& font, LPCTSTR text) const {
-	HDC hdc = GetDC(hWnd);
-	HGDIOBJ old = SelectObject(hdc, font);
-	SIZE size = { 0 };
-	GetTextExtentPoint32(hdc, text, lstrlen(text), &size);
-	SelectObject(hdc, old);
-	ReleaseDC(hWnd, hdc);
-	return size.cx;
+int SettingsWindow::textWidth(Gdiplus::Font* font, LPCTSTR text) const {
+	HDC hdc = GetDC(NULL);
+	Gdiplus::RectF box;
+	{
+		Gdiplus::Graphics g(hdc);
+		g.SetTextRenderingHint(Gdiplus::TextRenderingHintAntiAliasGridFit);
+		g.MeasureString(text, -1, font, Gdiplus::PointF(0, 0), textFormat, &box);
+	}
+	ReleaseDC(NULL, hdc);
+	return (int)ceil(box.Width);
 }
 
 /*-------------------------------- layout --------------------------------*/
 
 void SettingsWindow::layout() {
 	int width = s(WINDOW_WIDTH);
-	int left = s(24), right = width - s(24);
-	int y = s(8);
+	int left = s(SIDE), right = width - s(SIDE);
+	int y = s(4);
 	items.clear();
 	SetRectEmpty(&expandArea);
-	stateWidth = max(textWidth(fontBody, TEXT_ON), textWidth(fontBody, TEXT_OFF));
 
-	auto add = [&](const int& kind, const int& id, LPCTSTR label, LPCTSTR hint, const int& height) {
+	auto push = [&](const int& kind, const int& id, LPCTSTR label, LPCTSTR hint, const RECT& rc) {
 		Item item = {};
 		item.kind = kind;
 		item.id = id;
 		item.label = label;
 		item.hint = hint;
-		item.rc = makeRect(left, y, right - left, height);
-		item.textRight = right - s(16);
+		item.rc = rc;
+		item.textRight = rc.right - s(16);
 		items.push_back(item);
-		y += height;
 		return (int)items.size() - 1;
+	};
+	auto add = [&](const int& kind, const int& id, LPCTSTR label, LPCTSTR hint, const int& height) {
+		int i = push(kind, id, label, hint, makeRect(left, y, right - left, height));
+		y += height;
+		return i;
 	};
 	auto placeSwitch = [&](Item& item) {
 		item.ctl = makeRect(item.rc.right - s(16) - s(40), centerY(item.rc) - s(10), s(40), s(20));
-		item.textRight = item.ctl.left - s(12) - stateWidth - s(12);
+		item.textRight = item.ctl.left - s(16);
 	};
 	auto placeField = [&](Item& item, const int& fieldWidth) {
 		item.ctl = makeRect(item.rc.right - s(16) - fieldWidth, centerY(item.rc) - s(16), fieldWidth, s(32));
 		item.textRight = item.ctl.left - s(12);
 	};
 
-	//current state and the Vietnamese switch
-	int i = add(K_HERO, OPT_LANGUAGE, NULL, NULL, s(88));
-	items[i].ctl = makeRect(items[i].rc.right - s(20) - s(40), centerY(items[i].rc) - s(10), s(40), s(20));
-	y += s(12);
+	//Vietnamese or English, two big buttons and the hotkey below them
+	int pad = s(6), gap = s(6);
+	int inner = right - left - pad * 2;
+	int half = (inner - gap) / 2;
+	heroArea = makeRect(left, y, right - left, pad + s(72) + gap + s(36) + pad);
+	push(K_LANG, 1, _T("Tiếng Việt"), NULL, makeRect(left + pad, y + pad, half, s(72)));
+	push(K_LANG, 0, _T("Tiếng Anh"), NULL, makeRect(left + pad + half + gap, y + pad, inner - half - gap, s(72)));
+	int i = push(K_HOTKEY, 0, TEXT_SWITCH, NULL, makeRect(left + pad, y + pad + s(72) + gap, inner, s(36)));
+	items[i].linkAction = ACT_CAPTURE;
+	int linkWidth = textWidth(fontSmall, capturing ? TEXT_CANCEL : TEXT_CHANGE_KEY) + s(16);
+	items[i].link = makeRect(items[i].rc.right - s(2) - linkWidth, centerY(items[i].rc) - s(14), linkWidth, s(28));
+	y = heroArea.bottom + s(20);
 
-	add(K_SECTION, 0, _T("Cách gõ"), NULL, s(32));
-	int comboWidth = s(160);
-	for (LPCTSTR name : EasyKeyManager::getInputType())
-		comboWidth = max(comboWidth, textWidth(fontBody, name) + s(11 + 36));
-	for (LPCTSTR name : EasyKeyManager::getTableCode())
-		comboWidth = max(comboWidth, textWidth(fontBody, name) + s(11 + 36));
-	i = add(K_COMBO, OPT_INPUT_TYPE, _T("Kiểu gõ"), NULL, s(60));
-	placeField(items[i], comboWidth);
-	y += s(4);
-	i = add(K_COMBO, OPT_CODE_TABLE, _T("Bảng mã"), NULL, s(60));
-	placeField(items[i], comboWidth);
-	y += s(4);
-	i = add(K_HOTKEY, OPT_SWITCH_KEY, _T("Phím chuyển Việt/Anh"), capturing ? _T("Nhấn Esc để huỷ") : NULL, s(60));
-	int hotKeyWidth = max(textWidth(fontBody, TEXT_PRESS_KEYS),
-		textWidth(fontBody, EasyKeyHelper::getHotKeyString(capturing ? savedSwitchKey : vSwitchKeyStatus).c_str()));
-	placeField(items[i], max(s(120), hotKeyWidth + s(32)));
-	y += s(16);
-
-	add(K_SECTION, 0, _T("Thường dùng"), NULL, s(32));
-	for (const RowInfo& row : mainToggles) {
-		i = add(row.kind, row.id, row.label, row.hint, s(60));
-		placeSwitch(items[i]);
-		if (row.id == OPT_MACRO) {
-			items[i].linkAction = ACT_MACRO_TABLE;
-			int linkWidth = textWidth(fontBody, TEXT_MACRO_TABLE) + s(16);
-			items[i].link = makeRect(items[i].textRight - linkWidth, centerY(items[i].rc) - s(16), linkWidth, s(32));
-			items[i].textRight = items[i].link.left - s(8);
-		}
-		y += s(4);
+	//input type as a segmented control
+	add(K_SECTION, 0, _T("Kiểu gõ"), NULL, s(20));
+	y += s(8);
+	vector<LPCTSTR>& inputTypes = EasyKeyManager::getInputType();
+	int segment = add(K_SEGMENT, 0, NULL, NULL, s(44));
+	int count = (int)inputTypes.size();
+	int segmentWidth = (right - left - s(8) - s(4) * (count - 1)) / max(1, count);
+	for (int t = 0; t < count; t++) {
+		int x = left + s(4) + t * (segmentWidth + s(4));
+		int w = t == count - 1 ? right - s(4) - x : segmentWidth;
+		push(K_SEGBUTTON, t, inputTypes[t], NULL, makeRect(x, items[segment].rc.top + s(4), w, s(36)));
 	}
-	y += s(12);
+	y += s(20);
+
+	//the options most people change, as tiles
+	add(K_SECTION, 0, _T("Thường dùng"), NULL, s(20));
+	y += s(8);
+	int tileWidth = (right - left - s(8)) / 2;
+	for (int t = 0; t < 4; t++) {
+		int x = t % 2 == 0 ? left : right - tileWidth;
+		int top = y + (t / 2) * (s(68) + s(8));
+		push(K_TILE, tiles[t].id, tiles[t].label, tiles[t].hint, makeRect(x, top, tileWidth, s(68)));
+	}
+	y += s(68) * 2 + s(8) + s(16);
 
 	//everything else is folded into one expander
-	int expander = add(K_EXPANDER, ACT_EXPAND, _T("Nâng cao"), _T("Chính tả, gõ nhanh, ứng dụng, hệ thống"), s(60));
+	int expander = add(K_EXPANDER, ACT_EXPAND, _T("Nâng cao"), _T("Bảng mã, chính tả, gõ nhanh, ứng dụng, hệ thống"), s(56));
 	items[expander].ctl = makeRect(items[expander].rc.right - s(16) - s(16), centerY(items[expander].rc) - s(8), s(16), s(16));
 	items[expander].textRight = items[expander].ctl.left - s(12);
 	if (expanded) {
 		bool afterLabel = false;
 		int buttonWidth = max(max(textWidth(fontBody, TEXT_CHECK), textWidth(fontBody, TEXT_CHECKING)),
 			textWidth(fontBody, TEXT_RESET)) + s(32);
+		int comboWidth = s(160);
+		for (auto& table : codeTables)
+			comboWidth = max(comboWidth, textWidth(fontBody, table.name) + s(11 + 36));
 		for (const RowInfo& row : advancedRows) {
 			if (row.kind == K_GROUP) {
-				add(row.kind, row.id, row.label, NULL, s(40));
+				add(row.kind, row.id, row.label, NULL, s(36));
 				afterLabel = true;
 				continue;
 			}
-			i = add(row.kind, row.id, row.label, row.hint, s(48));
+			i = add(row.kind, row.id, row.label, row.hint, s(row.hint ? 56 : 44));
 			items[i].afterLabel = afterLabel;
 			afterLabel = false;
 			if (row.kind == K_SUBTOGGLE)
 				placeSwitch(items[i]);
 			else
-				placeField(items[i], buttonWidth);
+				placeField(items[i], row.kind == K_SUBCOMBO ? comboWidth : buttonWidth);
 		}
-		y += s(4);
+		y += s(6);
 		expandArea = makeRect(left, items[expander].rc.top, right - left, y - items[expander].rc.top);
 	}
-	y += s(16);
+	y += s(12);
 
 	//footer
-	int x = left + s(2);
-	LPCTSTR links[] = { _T("Công cụ chuyển mã"), _T("Giới thiệu") };
-	int actions[] = { ACT_CONVERT_TOOL, ACT_ABOUT };
-	for (int l = 0; l < 2; l++) {
-		Item item = {};
-		item.kind = K_LINK;
-		item.id = actions[l];
-		item.label = links[l];
-		item.rc = makeRect(x, y, textWidth(fontBody, links[l]), s(32));
-		item.textRight = item.rc.right;
-		items.push_back(item);
-		x = item.rc.right + s(24);
+	int x = left + s(4);
+	LPCTSTR links[] = { _T("Bảng gõ tắt"), _T("Chuyển mã"), _T("Giới thiệu") };
+	int actions[] = { ACT_MACRO_TABLE, ACT_CONVERT_TOOL, ACT_ABOUT };
+	for (int l = 0; l < 3; l++) {
+		i = push(K_LINK, actions[l], links[l], NULL, makeRect(x, y, textWidth(fontSmall, links[l]), s(32)));
+		x = items[i].rc.right + s(20);
 	}
 	add(K_VERSION, 0, NULL, NULL, s(32));
-	y += s(16);
+	y += s(12);
 	contentHeight = y;
 
 	if (focusItem >= (int)items.size() || (focusItem >= 0 && !isInteractive(focusItem, focusPart)))
@@ -586,104 +678,219 @@ RECT SettingsWindow::toView(const RECT& rc) const {
 	return r;
 }
 
+void SettingsWindow::drawText(Gdiplus::Graphics& g, LPCTSTR text, const RECT& rc, Gdiplus::Font* font, const DWORD& color,
+							  const int& hAlign, const int& vAlign) {
+	if (!text || !*text || rc.right <= rc.left)
+		return;
+	static const Gdiplus::StringAlignment align[] = {
+		Gdiplus::StringAlignmentNear, Gdiplus::StringAlignmentCenter, Gdiplus::StringAlignmentFar
+	};
+	textFormat->SetAlignment(align[hAlign]);
+	textFormat->SetLineAlignment(align[vAlign]);
+	Gdiplus::RectF box((float)rc.left, (float)rc.top, (float)(rc.right - rc.left), (float)(rc.bottom - rc.top));
+	Gdiplus::SolidBrush brush((Gdiplus::ARGB)color);
+	g.DrawString(text, -1, font, box, textFormat, &brush);
+}
+
 void SettingsWindow::paintSwitch(Gdiplus::Graphics& g, const RECT& rc, const bool& on, const bool& hot, const bool& enabled) {
-	Gdiplus::GraphicsPath track;
-	addRoundRect(track, rc, (rc.bottom - rc.top) / 2.0f);
 	float height = (float)(rc.bottom - rc.top);
 	float knob = (float)s(hot && enabled ? 14 : 12);
 	float cy = rc.top + height / 2;
-	float cx;
 	if (on) {
-		Gdiplus::SolidBrush fill(toColor(!enabled ? pal.disabled : hot ? pal.accentHover : pal.accent));
-		g.FillPath(&fill, &track);
-		cx = rc.right - height / 2;
-		Gdiplus::SolidBrush knobBrush(toColor(enabled ? pal.onAccent : pal.card));
+		fillRound(g, rc, height / 2, !enabled ? pal.disabled : hot ? pal.accentHover : pal.accent);
+		float cx = rc.right - height / 2;
+		Gdiplus::SolidBrush knobBrush((Gdiplus::ARGB)(enabled ? pal.onAccent : pal.field));
 		g.FillEllipse(&knobBrush, cx - knob / 2, cy - knob / 2, knob, knob);
 	} else {
-		COLORREF color = enabled ? pal.sub : pal.disabled;
-		if (hot && enabled) {
-			Gdiplus::SolidBrush fill(toColor(pal.fieldHover));
-			g.FillPath(&fill, &track);
-		}
-		Gdiplus::Pen pen(toColor(color), 1);
-		g.DrawPath(&pen, &track);
-		cx = rc.left + height / 2;
-		Gdiplus::SolidBrush knobBrush(toColor(color));
+		DWORD color = enabled ? pal.sub : pal.disabled;
+		fillRound(g, rc, height / 2, hot && enabled ? pal.fieldHover : 0, color);
+		float cx = rc.left + height / 2;
+		Gdiplus::SolidBrush knobBrush((Gdiplus::ARGB)color);
 		g.FillEllipse(&knobBrush, cx - knob / 2, cy - knob / 2, knob, knob);
 	}
 }
 
-void SettingsWindow::paintShapes(Gdiplus::Graphics& g, const Item& item, const int& index) {
+void SettingsWindow::paintItem(Gdiplus::Graphics& g, const Item& item, const int& index) {
 	RECT rc = toView(item.rc);
 	RECT ctl = toView(item.ctl);
+	int cy = centerY(rc);
 	bool hot = index == hotItem && hotPart == 0;
 	bool pressed = hot && index == pressedItem && pressedPart == 0;
-	COLORREF cardColor = pressed ? pal.cardPressed : hot ? pal.cardHover : pal.card;
+	bool enabled = item.kind != K_SUBTOGGLE || isOptionEnabled(item.id);
+	DWORD textColor = enabled ? pal.text : pal.disabled;
+
+	//label with an optional hint below it
+	auto drawLabel = [&](Gdiplus::Font* font, const int& left, const DWORD& color, const DWORD& hintColor) {
+		RECT label = { left, rc.top, item.textRight, rc.bottom };
+		if (item.hint) {
+			RECT top = label, bottom = label;
+			top.bottom = cy + s(1);
+			bottom.top = cy + s(1);
+			drawText(g, item.label, top, font, color, 0, 2);
+			drawText(g, item.hint, bottom, fontCaption, hintColor, 0, 0);
+		} else {
+			drawText(g, item.label, label, font, color, 0, 1);
+		}
+	};
+	auto rowHover = [&]() {
+		if (hot) {
+			RECT hover = { rc.left + 1, rc.top + 1, rc.right - 1, rc.bottom };
+			fillRect(g, pressed ? pal.cardPressed : pal.cardHover, hover);
+		}
+	};
+	//keycaps with a thicker bottom edge, like the keys they stand for
+	auto drawKeys = [&](const wstring& hotKey, int x) {
+		vector<wstring> keys = splitHotKey(hotKey);
+		for (size_t k = 0; k < keys.size(); k++) {
+			if (k > 0) {
+				int plus = textWidth(fontCaption, _T("+"));
+				drawText(g, _T("+"), makeRect(x, rc.top, plus, rc.bottom - rc.top), fontCaption, pal.sub, 0, 1);
+				x += plus + s(6);
+			}
+			int w = textWidth(fontCaption, keys[k].c_str()) + s(16);
+			RECT cap = makeRect(x, cy - s(11), w, s(22));
+			RECT edge = cap;
+			OffsetRect(&edge, 0, 1);
+			fillRound(g, edge, (float)s(6), pal.stroke);
+			fillRound(g, cap, (float)s(6), pal.field, pal.stroke);
+			drawText(g, keys[k].c_str(), cap, fontCaption, pal.text, 1, 1);
+			x = cap.right + s(6);
+		}
+		return x;
+	};
 
 	switch (item.kind) {
-	case K_HERO: {
-		fillRound(g, rc, (float)s(8), cardColor, &pal.stroke);
-		RECT badge = makeRect(rc.left + s(16), centerY(rc) - s(28), s(56), s(56));
-		if (vLanguage)
-			fillRound(g, badge, (float)s(12), pal.accent, NULL);
+	case K_LANG: {
+		bool on = (vLanguage != 0) == (item.id != 0);
+		if (on)
+			fillRound(g, rc, (float)s(12), pal.accent);
+		else if (hot)
+			fillRound(g, rc, (float)s(12), pressed ? pal.cardPressed : pal.cardHover);
+		RECT badge = makeRect(rc.left + s(14), cy - s(20), s(40), s(40));
+		if (on)
+			fillRound(g, badge, (float)s(10), fade(0xFFFFFFFF, 22));
 		else
-			fillRound(g, badge, (float)s(12), pal.field, &pal.fieldStroke);
-		paintSwitch(g, ctl, vLanguage != 0, hot, true);
+			fillRound(g, badge, (float)s(10), pal.field, pal.stroke);
+		DWORD color = on ? pal.onAccent : pal.text;
+		drawText(g, item.id ? _T("V") : _T("E"), badge, fontBadge, color, 1, 1);
+		RECT title = { badge.right + s(12), rc.top, rc.right - s(8), cy + s(2) };
+		drawText(g, item.label, title, fontTitle, color, 0, 2);
+		RECT state = { title.left, cy + s(2), title.right, rc.bottom };
+		drawText(g, on ? _T("Đang dùng") : _T("Bấm để chuyển"), state, fontCaption, fade(color, 80), 0, 0);
 		break;
 	}
-	case K_COMBO:
-	case K_HOTKEY:
-	case K_TOGGLE:
-		fillRound(g, rc, (float)s(4), cardColor, &pal.stroke);
-		if (item.kind == K_TOGGLE) {
-			paintSwitch(g, ctl, getOption(item.id), hot, true);
-			if (index == hotItem && hotPart == 1) {
-				RECT link = toView(item.link);
-				fillRound(g, link, (float)s(4), pal.fieldHover, NULL);
+	case K_HOTKEY: {
+		int x = rc.left + s(8);
+		int labelWidth = textWidth(fontCaption, item.label);
+		drawText(g, item.label, makeRect(x, rc.top, labelWidth, rc.bottom - rc.top), fontCaption, pal.sub, 0, 1);
+		x += labelWidth + s(8);
+		RECT link = toView(item.link);
+		if (capturing) {
+			if (captureModifiers) {
+				x = drawKeys(EasyKeyHelper::getHotKeyString(captureModifiers | 0xFE), x);
+				drawText(g, _T("+ …"), makeRect(x, rc.top, link.left - x, rc.bottom - rc.top), fontCaption, pal.sub, 0, 1);
+			} else {
+				drawText(g, TEXT_PRESS_KEYS, makeRect(x, rc.top, link.left - x, rc.bottom - rc.top), fontCaption, pal.text, 0, 1);
 			}
 		} else {
-			bool active = item.kind == K_HOTKEY && capturing;
-			fillRound(g, ctl, (float)s(4), active ? pal.card : hot ? pal.fieldHover : pal.field, &pal.fieldStroke);
-			if (active) {
-				RECT underline = { ctl.left + s(2), ctl.bottom - s(2), ctl.right - s(2), ctl.bottom };
-				fillRect(g, pal.accent, underline);
-			}
-			if (item.kind == K_COMBO)
-				drawChevron(g, pal.sub, (float)(ctl.right - s(18)), (float)centerY(ctl), (float)s(10), false);
+			wstring hotKey = EasyKeyHelper::getHotKeyString(vSwitchKeyStatus);
+			if (hotKey.empty())
+				drawText(g, TEXT_NO_HOTKEY, makeRect(x, rc.top, link.left - x, rc.bottom - rc.top), fontCaption, pal.text, 0, 1);
+			else
+				drawKeys(hotKey, x);
 		}
+		bool linkHot = index == hotItem && hotPart == 1;
+		if (linkHot)
+			fillRound(g, link, (float)s(6), pal.cardHover);
+		drawText(g, capturing ? TEXT_CANCEL : TEXT_CHANGE_KEY, link, fontSmall, linkHot ? pal.linkHover : pal.link, 1, 1);
 		break;
+	}
+	case K_SECTION:
+		drawText(g, item.label, makeRect(rc.left + s(4), rc.top, rc.right - rc.left, rc.bottom - rc.top), fontStrong, pal.text, 0, 2);
+		break;
+	case K_SEGMENT:
+		fillRound(g, rc, (float)s(12), pal.track, pal.stroke);
+		break;
+	case K_SEGBUTTON: {
+		bool on = item.id == vInputType;
+		if (on)
+			fillRound(g, rc, (float)s(8), pal.field, pal.stroke);
+		else if (hot)
+			fillRound(g, rc, (float)s(8), pressed ? pal.cardPressed : pal.cardHover);
+		drawText(g, item.label, rc, on ? fontStrong : fontBody, on || hot ? pal.text : pal.sub, 1, 1);
+		break;
+	}
+	case K_TILE: {
+		bool on = getOption(item.id);
+		DWORD fill = on ? (hot ? pal.accentHover : pal.accent) : (pressed ? pal.cardPressed : hot ? pal.cardHover : pal.card);
+		fillRound(g, rc, (float)s(12), fill, on ? 0 : pal.stroke);
+		DWORD color = on ? pal.onAccent : pal.text;
+		int icon = 0;
+		for (auto& tile : tiles) {
+			if (tile.id == item.id)
+				icon = tile.icon;
+		}
+		drawIcon(g, icon, (float)(rc.left + s(14)), (float)(cy - s(10)), (float)s(20), color);
+		RECT label = { rc.left + s(14) + s(20) + s(12), rc.top, rc.right - s(10), cy + s(1) };
+		drawText(g, item.label, label, fontStrong, color, 0, 2);
+		RECT hint = { label.left, cy + s(2), label.right, rc.bottom };
+		drawText(g, item.hint, hint, fontCaption, fade(color, 85), 0, 0);
+		break;
+	}
 	case K_EXPANDER:
 		if (expanded) {
 			//the header and its rows share one card, see paint()
-			if (hot) {
-				RECT header = rc;
-				InflateRect(&header, -1, 0);
-				header.top += 1;
-				fillRound(g, header, (float)s(4) - 1, cardColor, NULL, true, false);
-			}
+			if (hot)
+				fillRect(g, pressed ? pal.cardPressed : pal.cardHover, rc);
 			drawLine(g, pal.divider, rc.left + 1, rc.right - 1, rc.bottom - 1);
 		} else {
-			fillRound(g, rc, (float)s(4), cardColor, &pal.stroke);
+			fillRound(g, rc, (float)s(12), pressed ? pal.cardPressed : hot ? pal.cardHover : pal.card, pal.stroke);
 		}
+		drawLabel(fontBody, rc.left + s(16), pal.text, pal.sub);
 		drawChevron(g, pal.text, (ctl.left + ctl.right) / 2.0f, (float)centerY(ctl), (float)s(10), expanded);
 		break;
 	case K_GROUP:
+		drawText(g, item.label, makeRect(rc.left + s(16), rc.top, rc.right - rc.left - s(32), rc.bottom - rc.top - s(6)),
+			fontStrong, pal.sub, 0, 2);
 		break;
 	case K_SUBTOGGLE:
-	case K_SUBBUTTON:
 		if (!item.afterLabel)
 			drawLine(g, pal.divider, rc.left + 1, rc.right - 1, rc.top);
-		if (item.kind == K_SUBTOGGLE) {
-			if (hot) {
-				RECT hover = { rc.left + 1, rc.top + 1, rc.right - 1, rc.bottom };
-				fillRect(g, cardColor, hover);
-			}
-			paintSwitch(g, ctl, getOption(item.id), hot, isOptionEnabled(item.id));
-		} else {
-			bool enabled = isInteractive(index, 0);
-			fillRound(g, ctl, (float)s(4), (hot && enabled) ? (pressed ? pal.field : pal.fieldHover) : pal.field, &pal.fieldStroke);
-		}
+		if (enabled)
+			rowHover();
+		drawLabel(fontBody, rc.left + s(16), textColor, enabled ? pal.sub : pal.disabled);
+		paintSwitch(g, ctl, getOption(item.id), hot, enabled);
 		break;
+	case K_SUBCOMBO: {
+		if (!item.afterLabel)
+			drawLine(g, pal.divider, rc.left + 1, rc.right - 1, rc.top);
+		rowHover();
+		drawLabel(fontBody, rc.left + s(16), pal.text, pal.sub);
+		fillRound(g, ctl, (float)s(6), hot ? pal.fieldHover : pal.field, pal.stroke);
+		RECT field = { ctl.left + s(11), ctl.top, ctl.right - s(32), ctl.bottom };
+		drawText(g, codeTableName(vCodeTable), field, fontBody, pal.text, 0, 1);
+		drawChevron(g, pal.sub, (float)(ctl.right - s(18)), (float)centerY(ctl), (float)s(10), false);
+		break;
+	}
+	case K_SUBBUTTON: {
+		if (!item.afterLabel)
+			drawLine(g, pal.divider, rc.left + 1, rc.right - 1, rc.top);
+		bool active = isInteractive(index, 0);
+		drawLabel(fontBody, rc.left + s(16), pal.text, pal.sub);
+		fillRound(g, ctl, (float)s(6), (hot && active) ? (pressed ? pal.field : pal.fieldHover) : pal.field, pal.stroke);
+		LPCTSTR text = item.id == ACT_CHECK_UPDATE ? (checkingUpdate ? TEXT_CHECKING : TEXT_CHECK) : TEXT_RESET;
+		drawText(g, text, ctl, fontBody, active ? pal.text : pal.disabled, 1, 1);
+		break;
+	}
+	case K_LINK:
+		drawText(g, item.label, rc, fontSmall, hot ? pal.linkHover : pal.link, 0, 1);
+		break;
+	case K_VERSION: {
+		static wstring version = _T("EasyKey ") + EasyKeyHelper::getVersionString();
+		RECT text = { rc.left, rc.top, rc.right - s(4), rc.bottom };
+		drawText(g, version.c_str(), text, fontCaption, pal.sub, 2, 1);
+		break;
+	}
 	}
 
 	//keyboard focus ring
@@ -693,121 +900,10 @@ void SettingsWindow::paintShapes(Gdiplus::Graphics& g, const Item& item, const i
 		Gdiplus::GraphicsPath path;
 		RECT inner = ring;
 		InflateRect(&inner, -1, -1); //centre the 2px pen on the ring
-		addRoundRect(path, inner, (float)s(6));
-		Gdiplus::Pen pen(toColor(pal.text), 2);
+		bool large = item.kind == K_LANG || item.kind == K_TILE || item.kind == K_EXPANDER;
+		addRoundRect(path, inner, (float)s(large ? 14 : 8));
+		Gdiplus::Pen pen((Gdiplus::ARGB)pal.text, 2);
 		g.DrawPath(&pen, &path);
-	}
-}
-
-void SettingsWindow::drawText(HDC hdc, LPCTSTR text, RECT rc, const HFONT& font, const COLORREF& color, const UINT& format) {
-	if (!text)
-		return;
-	SelectObject(hdc, font);
-	SetTextColor(hdc, color);
-	DrawText(hdc, text, -1, &rc, format | DT_SINGLELINE | DT_NOPREFIX);
-}
-
-void SettingsWindow::paintTexts(HDC hdc, const Item& item, const int& index) {
-	RECT rc = toView(item.rc);
-	RECT ctl = toView(item.ctl);
-	int cy = centerY(rc);
-	bool enabled = item.kind != K_SUBTOGGLE || isOptionEnabled(item.id);
-	COLORREF textColor = enabled ? pal.text : pal.disabled;
-
-	//label with an optional hint below it
-	auto drawLabel = [&](const HFONT& font) {
-		RECT label = { rc.left + s(16), rc.top, item.textRight, rc.bottom };
-		if (item.hint) {
-			RECT top = label, bottom = label;
-			top.bottom = cy + s(1);
-			bottom.top = cy + s(1);
-			drawText(hdc, item.label, top, font, textColor, DT_BOTTOM | DT_END_ELLIPSIS);
-			drawText(hdc, item.hint, bottom, fontCaption, enabled ? pal.sub : pal.disabled, DT_TOP | DT_END_ELLIPSIS);
-		} else {
-			drawText(hdc, item.label, label, font, textColor, DT_VCENTER | DT_END_ELLIPSIS);
-		}
-	};
-	auto drawState = [&]() {
-		RECT state = { ctl.left - s(12) - stateWidth, rc.top, ctl.left - s(12), rc.bottom };
-		drawText(hdc, getOption(item.id) ? TEXT_ON : TEXT_OFF, state, fontBody, textColor, DT_VCENTER | DT_RIGHT);
-	};
-
-	switch (item.kind) {
-	case K_HERO: {
-		RECT badge = makeRect(rc.left + s(16), cy - s(28), s(56), s(56));
-		drawText(hdc, vLanguage ? _T("V") : _T("E"), badge, fontBadge, vLanguage ? pal.onAccent : pal.text, DT_CENTER | DT_VCENTER);
-		RECT title = { badge.right + s(16), rc.top, ctl.left - s(16), cy + s(2) };
-		drawText(hdc, vLanguage ? _T("Đang gõ tiếng Việt") : _T("Đang gõ tiếng Anh"), title, fontTitle, pal.text, DT_BOTTOM | DT_END_ELLIPSIS);
-		wstring hotKey = EasyKeyHelper::getHotKeyString(capturing ? savedSwitchKey : vSwitchKeyStatus);
-		wstring subtitle = hotKey.empty() ? wstring(_T("Chưa đặt phím chuyển Việt/Anh")) : _T("Bấm ") + hotKey + _T(" để chuyển Việt/Anh");
-		RECT sub = { title.left, cy + s(4), title.right, rc.bottom };
-		drawText(hdc, subtitle.c_str(), sub, fontCaption, pal.sub, DT_TOP | DT_END_ELLIPSIS);
-		break;
-	}
-	case K_SECTION: {
-		RECT section = { rc.left + s(2), rc.top, rc.right, rc.bottom - s(8) };
-		drawText(hdc, item.label, section, fontStrong, pal.text, DT_BOTTOM);
-		break;
-	}
-	case K_COMBO: {
-		drawLabel(fontBody);
-		vector<LPCTSTR>& names = item.id == OPT_INPUT_TYPE ? EasyKeyManager::getInputType() : EasyKeyManager::getTableCode();
-		int current = item.id == OPT_INPUT_TYPE ? vInputType : vCodeTable;
-		RECT field = { ctl.left + s(11), ctl.top, ctl.right - s(32), ctl.bottom };
-		if (current >= 0 && current < (int)names.size())
-			drawText(hdc, names[current], field, fontBody, pal.text, DT_VCENTER | DT_END_ELLIPSIS);
-		break;
-	}
-	case K_HOTKEY: {
-		drawLabel(fontBody);
-		wstring text;
-		if (capturing) {
-			text = captureModifiers ? EasyKeyHelper::getHotKeyString(captureModifiers | 0xFE) + _T(" + …") : TEXT_PRESS_KEYS;
-		} else {
-			text = EasyKeyHelper::getHotKeyString(vSwitchKeyStatus);
-			if (text.empty())
-				text = TEXT_NO_HOTKEY;
-		}
-		drawText(hdc, text.c_str(), ctl, fontBody, capturing && !captureModifiers ? pal.sub : pal.text, DT_CENTER | DT_VCENTER);
-		break;
-	}
-	case K_TOGGLE:
-		drawLabel(fontBody);
-		drawState();
-		if (item.linkAction) {
-			bool linkHot = index == hotItem && hotPart == 1;
-			drawText(hdc, TEXT_MACRO_TABLE, toView(item.link), fontBody, linkHot ? pal.accentHover : pal.accent, DT_CENTER | DT_VCENTER);
-		}
-		break;
-	case K_EXPANDER:
-		drawLabel(fontBody);
-		break;
-	case K_GROUP: {
-		RECT group = { rc.left + s(16), rc.top, rc.right - s(16), rc.bottom - s(8) };
-		drawText(hdc, item.label, group, fontStrong, pal.sub, DT_BOTTOM);
-		break;
-	}
-	case K_SUBTOGGLE:
-		drawLabel(fontBody);
-		drawState();
-		break;
-	case K_SUBBUTTON: {
-		drawLabel(fontBody);
-		LPCTSTR text = item.id == ACT_CHECK_UPDATE ? (checkingUpdate ? TEXT_CHECKING : TEXT_CHECK) : TEXT_RESET;
-		drawText(hdc, text, ctl, fontBody, isInteractive(index, 0) ? pal.text : pal.disabled, DT_CENTER | DT_VCENTER);
-		break;
-	}
-	case K_LINK: {
-		bool linkHot = index == hotItem;
-		drawText(hdc, item.label, rc, fontBody, linkHot ? pal.accentHover : pal.accent, DT_VCENTER);
-		break;
-	}
-	case K_VERSION: {
-		static wstring version = _T("EasyKey ") + EasyKeyHelper::getVersionString();
-		RECT text = { rc.left, rc.top, rc.right - s(2), rc.bottom };
-		drawText(hdc, version.c_str(), text, fontCaption, pal.sub, DT_VCENTER | DT_RIGHT);
-		break;
-	}
 	}
 }
 
@@ -817,43 +913,56 @@ void SettingsWindow::paint(HDC hdc) {
 	if (client.right <= 0 || client.bottom <= 0)
 		return;
 
-	//double buffered: shapes with GDI+ for anti-aliasing, then text with GDI for ClearType
+	//double buffered in a premultiplied 32 bit bitmap, its transparent pixels show the Mica backdrop
+	BITMAPINFO bmi = {};
+	bmi.bmiHeader.biSize = sizeof(bmi.bmiHeader);
+	bmi.bmiHeader.biWidth = client.right;
+	bmi.bmiHeader.biHeight = -client.bottom;
+	bmi.bmiHeader.biPlanes = 1;
+	bmi.bmiHeader.biBitCount = 32;
+	bmi.bmiHeader.biCompression = BI_RGB;
+	void* bits = NULL;
+	HBITMAP bitmap = CreateDIBSection(hdc, &bmi, DIB_RGB_COLORS, &bits, NULL, 0);
+	if (!bitmap)
+		return;
 	HDC mem = CreateCompatibleDC(hdc);
-	HBITMAP bitmap = CreateCompatibleBitmap(hdc, client.right, client.bottom);
 	HGDIOBJ oldBitmap = SelectObject(mem, bitmap);
-	HBRUSH background = CreateSolidBrush(pal.bg);
-	FillRect(mem, &client, background);
-	DeleteObject(background);
 
 	RECT view = { 0, scrollY, client.right, scrollY + client.bottom };
 	RECT visible;
 	{
-		Gdiplus::Graphics g(mem);
+		Gdiplus::Bitmap canvas(client.right, client.bottom, client.right * 4, PixelFormat32bppPARGB, (BYTE*)bits);
+		Gdiplus::Graphics g(&canvas);
+		g.Clear(Gdiplus::Color((Gdiplus::ARGB)pal.bg));
 		g.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
 		g.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf);
-		if (expanded && IntersectRect(&visible, &expandArea, &view))
-			fillRound(g, toView(expandArea), (float)s(4), pal.card, &pal.stroke);
+		//ClearType needs an opaque background, grayscale works on Mica too
+		g.SetTextRenderingHint(Gdiplus::TextRenderingHintAntiAliasGridFit);
+
+		if (IntersectRect(&visible, &heroArea, &view))
+			fillRound(g, toView(heroArea), (float)s(16), pal.card, pal.stroke);
+		Gdiplus::GraphicsPath expandPath;
+		if (expanded) {
+			addRoundRect(expandPath, toView(expandArea), (float)s(12));
+			if (IntersectRect(&visible, &expandArea, &view))
+				fillRound(g, toView(expandArea), (float)s(12), pal.card, pal.stroke);
+		}
 		for (int i = 0; i < (int)items.size(); i++) {
-			if (IntersectRect(&visible, &items[i].rc, &view))
-				paintShapes(g, items[i], i);
+			if (!IntersectRect(&visible, &items[i].rc, &view))
+				continue;
+			//rows of the open expander stay inside its rounded card
+			bool clip = expanded && (items[i].kind == K_EXPANDER || items[i].kind == K_GROUP || items[i].kind == K_SUBTOGGLE ||
+				items[i].kind == K_SUBCOMBO || items[i].kind == K_SUBBUTTON);
+			if (clip)
+				g.SetClip(&expandPath);
+			paintItem(g, items[i], i);
+			if (clip)
+				g.ResetClip();
 		}
 		RECT track, thumb;
-		if (getThumb(track, thumb)) {
-			Gdiplus::SolidBrush brush(Gdiplus::Color(hotScrollBar || draggingThumb ? 200 : 130,
-				GetRValue(pal.sub), GetGValue(pal.sub), GetBValue(pal.sub)));
-			Gdiplus::GraphicsPath path;
-			addRoundRect(path, thumb, (thumb.right - thumb.left) / 2.0f);
-			g.FillPath(&brush, &path);
-		}
+		if (getThumb(track, thumb))
+			fillRound(g, thumb, (thumb.right - thumb.left) / 2.0f, fade(pal.sub, hotScrollBar || draggingThumb ? 80 : 50));
 	}
-
-	SetBkMode(mem, TRANSPARENT);
-	HGDIOBJ oldFont = SelectObject(mem, fontBody);
-	for (int i = 0; i < (int)items.size(); i++) {
-		if (IntersectRect(&visible, &items[i].rc, &view))
-			paintTexts(mem, items[i], i);
-	}
-	SelectObject(mem, oldFont);
 
 	BitBlt(hdc, 0, 0, client.right, client.bottom, mem, 0, 0, SRCCOPY);
 	SelectObject(mem, oldBitmap);
@@ -868,14 +977,17 @@ bool SettingsWindow::isInteractive(const int& item, const int& part) const {
 		return false;
 	const Item& it = items[item];
 	switch (it.kind) {
-	case K_HERO:
-	case K_COMBO:
+	case K_LANG:
+		return part == 0 && (vLanguage != 0) != (it.id != 0);
 	case K_HOTKEY:
+		return part == 1;
+	case K_SEGBUTTON:
+		return part == 0 && it.id != vInputType;
+	case K_TILE:
 	case K_EXPANDER:
+	case K_SUBCOMBO:
 	case K_LINK:
 		return part == 0;
-	case K_TOGGLE:
-		return part == 0 || (part == 1 && it.linkAction != 0);
 	case K_SUBTOGGLE:
 		return part == 0 && isOptionEnabled(it.id);
 	case K_SUBBUTTON:
@@ -946,24 +1058,24 @@ void SettingsWindow::activate(const int& index, const int& part) {
 	//copy, the actions below can rebuild the item list
 	Item item = items[index];
 	switch (item.kind) {
-	case K_HERO:
-		setOption(OPT_LANGUAGE, !vLanguage);
-		break;
-	case K_COMBO:
-		showDropDown(item);
+	case K_LANG:
+		setOption(OPT_LANGUAGE, item.id != 0);
 		break;
 	case K_HOTKEY:
-		if (capturing)
-			endCapture(false, 0);
-		else
-			startCapture();
+		doAction(item.linkAction);
 		break;
-	case K_TOGGLE:
+	case K_SEGBUTTON:
+		APP_SET_DATA(vInputType, item.id);
+		SystemTrayHelper::updateData();
+		layout();
+		InvalidateRect(hWnd, NULL, FALSE);
+		break;
+	case K_TILE:
 	case K_SUBTOGGLE:
-		if (part == 1)
-			doAction(item.linkAction);
-		else
-			setOption(item.id, !getOption(item.id));
+		setOption(item.id, !getOption(item.id));
+		break;
+	case K_SUBCOMBO:
+		showDropDown(item);
 		break;
 	case K_EXPANDER:
 	case K_SUBBUTTON:
@@ -986,6 +1098,12 @@ void SettingsWindow::doAction(const int& action) {
 			}
 		}
 		InvalidateRect(hWnd, NULL, FALSE);
+		break;
+	case ACT_CAPTURE:
+		if (capturing)
+			endCapture(false, 0);
+		else
+			startCapture();
 		break;
 	case ACT_MACRO_TABLE:
 		AppDelegate::getInstance()->onMacroTable();
@@ -1033,6 +1151,7 @@ bool SettingsWindow::getOption(const int& id) const {
 	case OPT_FIX_CHROMIUM: return vFixChromiumBrowser != 0;
 	case OPT_TEMP_OFF_EASYKEY: return vTempOffOpenKey != 0;
 	case OPT_CLIPBOARD: return vSendKeyStepByStep == 0;
+	case OPT_FLYOUT: return vShowSwitchFlyout != 0;
 	case OPT_BEEP: return HAS_BEEP(switchKey) != 0;
 	case OPT_RUN_AS_ADMIN: return vRunAsAdmin != 0;
 	case OPT_SHOW_ON_STARTUP: return vShowOnStartUp != 0;
@@ -1092,6 +1211,7 @@ void SettingsWindow::setOption(const int& id, const bool& on) {
 	case OPT_FIX_CHROMIUM: APP_SET_DATA(vFixChromiumBrowser, val); break;
 	case OPT_TEMP_OFF_EASYKEY: APP_SET_DATA(vTempOffOpenKey, val); break;
 	case OPT_CLIPBOARD: APP_SET_DATA(vSendKeyStepByStep, on ? 0 : 1); break;
+	case OPT_FLYOUT: APP_SET_DATA(vShowSwitchFlyout, val); break;
 	case OPT_BEEP:
 		vSwitchKeyStatus = on ? (vSwitchKeyStatus | 0x8000) : (vSwitchKeyStatus & ~0x8000);
 		APP_SET_DATA(vSwitchKeyStatus, vSwitchKeyStatus);
@@ -1116,11 +1236,12 @@ void SettingsWindow::setOption(const int& id, const bool& on) {
 }
 
 void SettingsWindow::showDropDown(const Item& item) {
-	vector<LPCTSTR>& names = item.id == OPT_INPUT_TYPE ? EasyKeyManager::getInputType() : EasyKeyManager::getTableCode();
-	int current = item.id == OPT_INPUT_TYPE ? vInputType : vCodeTable;
 	HMENU menu = CreatePopupMenu();
-	for (int i = 0; i < (int)names.size(); i++)
-		AppendMenu(menu, MF_STRING | (i == current ? MF_CHECKED : MF_UNCHECKED), i + 1, names[i]);
+	for (auto& table : codeTables) {
+		if (table.code == CP1258_CODE && vCodeTable != CP1258_CODE)
+			continue;
+		AppendMenu(menu, MF_STRING | (table.code == vCodeTable ? MF_CHECKED : MF_UNCHECKED), table.code + 1, table.name);
+	}
 
 	RECT field = toView(item.ctl);
 	MapWindowPoints(hWnd, NULL, (LPPOINT)&field, 2);
@@ -1129,17 +1250,13 @@ void SettingsWindow::showDropDown(const Item& item) {
 	int command = (int)TrackPopupMenuEx(menu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN | TPM_VERTICAL,
 		field.left, field.bottom, hWnd, &params);
 	DestroyMenu(menu);
-	if (command <= 0 || command - 1 == current)
+	if (command <= 0 || command - 1 == vCodeTable)
 		return;
 
-	if (item.id == OPT_INPUT_TYPE) {
-		APP_SET_DATA(vInputType, command - 1);
-	} else {
-		APP_SET_DATA(vCodeTable, command - 1);
-		if (vRememberCode) {
-			setAppInputMethodStatus(EasyKeyHelper::getFrontMostAppExecuteName(), vLanguage | (vCodeTable << 1));
-			saveSmartSwitchKeyData();
-		}
+	APP_SET_DATA(vCodeTable, command - 1);
+	if (vRememberCode) {
+		setAppInputMethodStatus(EasyKeyHelper::getFrontMostAppExecuteName(), vLanguage | (vCodeTable << 1));
+		saveSmartSwitchKeyData();
 	}
 	SystemTrayHelper::updateData();
 	InvalidateRect(hWnd, NULL, FALSE);
@@ -1302,10 +1419,13 @@ LRESULT SettingsWindow::handleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	case WM_SETTINGCHANGE:
 	case WM_THEMECHANGED:
 		if (ThemeHelper::isThemeChangedMessage(uMsg, lParam)) {
-			loadPalette();
-			ThemeHelper::applySolidWindowFrame(hWnd, pal.bg);
+			applyTheme();
 			InvalidateRect(hWnd, NULL, FALSE);
 		}
+		break;
+	case WM_DWMCOLORIZATIONCOLORCHANGED:
+		applyTheme(); //the accent color changed
+		InvalidateRect(hWnd, NULL, FALSE);
 		break;
 	case WM_MOUSEMOVE: {
 		if (!trackingMouse) {
@@ -1416,9 +1536,11 @@ LRESULT SettingsWindow::handleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 			moveFocus(GetKeyState(VK_SHIFT) < 0 ? -1 : 1);
 			return 0;
 		case VK_DOWN:
+		case VK_RIGHT:
 			moveFocus(1);
 			return 0;
 		case VK_UP:
+		case VK_LEFT:
 			moveFocus(-1);
 			return 0;
 		case VK_SPACE:
