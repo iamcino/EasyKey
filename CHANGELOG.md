@@ -5,6 +5,7 @@
 ## Bản tiếp theo
 - Mở bảng gõ tắt ngay trong cửa sổ cài đặt: "Nâng cao" › "Gõ" › "Bảng gõ tắt".
 - Esc trả lại phím vừa gõ giờ chạy được trong khung chat web như Facebook (EasyKey giữ luôn lần nhả phím Esc, nên trang web không đóng khung chat).
+- Viết hoa đầu câu giờ chạy cả sau dấu "?" và "!", không chỉ sau dấu "." và Enter.
 
 ## 1.0.0 (Windows 11 x64)
 Bản đầu tiên của EasyKey.
