@@ -23,16 +23,16 @@ redistribute your new version, it MUST be open source.
 #pragma comment(lib, "comctl32.lib")
 
 //shown once after updating to this version; change it with each release
-#define WHATS_NEW_VI L"• Cửa sổ cài đặt gọn hơn, có giao diện tiếng Anh và chọn màu nhấn.\n" \
-	L"• Gõ thông minh: một công tắc cho kiểm tra chính tả và trả lại phím khi gõ sai.\n" \
-	L"• Bấm Esc ngay sau một từ để lấy lại phím vừa gõ, ví dụ việt → vieejt.\n" \
-	L"• Báo khi UniKey, EVKey... đang chạy cùng lúc.\n" \
-	L"• Tự cập nhật ngay trong EasyKey."
-#define WHATS_NEW_EN L"• A more compact settings window, in English too, with your own accent color.\n" \
-	L"• Smart typing: one switch for spell check and putting the keys back on misspelled words.\n" \
-	L"• Press Esc right after a word to get back the keys typed, e.g. việt → vieejt.\n" \
-	L"• A warning when UniKey, EVKey... run at the same time.\n" \
-	L"• Updates install from inside EasyKey."
+#define WHATS_NEW_VI L"• Mục Nâng cao gọn hơn: các nhóm thu lại, bấm vào tên nhóm để mở.\n" \
+	L"• Mở bảng gõ tắt ngay trong cài đặt: Nâng cao › Gõ › Bảng gõ tắt.\n" \
+	L"• Esc trả lại phím vừa gõ chạy được trong khung chat web như Facebook.\n" \
+	L"• Viết hoa đầu câu cả sau dấu ? và !, và khi chuyển sang cửa sổ khác.\n" \
+	L"• Sửa lỗi trên trình duyệt luôn bật."
+#define WHATS_NEW_EN L"• A tidier Advanced section: groups are folded, click a group name to open it.\n" \
+	L"• Open the shortcut list from Settings: Advanced › Typing › Shortcut list.\n" \
+	L"• Esc to put back the typed keys works in web chats such as Facebook.\n" \
+	L"• Sentences are capitalized after ? and ! too, and after switching windows.\n" \
+	L"• The browser fixes are always on."
 #define RELEASE_NOTES_URL L"https://github.com/iamcino/EasyKey/releases/tag/"
 
 static AppDelegate* _instance;
