@@ -84,3 +84,5 @@ File tự build không có chữ ký số nên cũng có thể gặp cảnh báo
 Copyright (C) 2026 Cino. Liên hệ: duongtheson@proton.me
 
 EasyKey là phần mềm tự do, phát hành theo giấy phép [GNU GPL phiên bản 3](LICENSE). EasyKey được phát triển từ [OpenKey](https://github.com/tuyenvm/OpenKey), Copyright (C) 2019 Mai Vũ Tuyên, cũng theo GPLv3. Xem [NOTICE](NOTICE).
+
+Một số file do EasyKey viết mới hoàn toàn, không chứa code OpenKey (khung giao diện, popup, hộp thoại, giao diện sáng/tối, bộ cập nhật), được cấp thêm giấy phép [MIT](LICENSES/MIT.txt) để có thể dùng lại ở dự án khác. Đầu mỗi file này có dòng `SPDX-License-Identifier: GPL-3.0-only OR MIT`; danh sách nằm trong [NOTICE](NOTICE). EasyKey nói chung vẫn theo GPLv3.
