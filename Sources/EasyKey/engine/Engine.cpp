@@ -1401,7 +1401,7 @@ void vKeyHandleEvent(const vKeyEvent& event,
         }
         
         if (vUpperCaseFirstChar) {
-            if (data == KEY_DOT)
+            if (data == KEY_DOT || (capsStatus == 1 && (data == KEY_SLASH || data == KEY_1))) //. ? !
                 _upperCaseStatus = 1;
             else if (data == KEY_ENTER || data == KEY_RETURN)
                 _upperCaseStatus = 2;
