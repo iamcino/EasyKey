@@ -1,5 +1,7 @@
 # Nhật ký thay đổi
 
+**Tiếng Việt** · [English](CHANGELOG.en.md)
+
 ## 1.0.0 (Windows 11 x64)
 Bản đầu tiên của EasyKey.
 

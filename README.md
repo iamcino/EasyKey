@@ -1,5 +1,7 @@
 # EasyKey
 
+**Tiếng Việt** · [English](README.en.md)
+
 Bộ gõ tiếng Việt cho Windows 11 (64-bit).
 
 [Tải bản mới nhất](https://github.com/iamcino/EasyKey/releases/latest) · [Nhật ký thay đổi](CHANGELOG.md) · [Báo lỗi](https://github.com/iamcino/EasyKey/issues)
