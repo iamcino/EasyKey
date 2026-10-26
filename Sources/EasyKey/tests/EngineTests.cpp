@@ -55,6 +55,9 @@ static Uint16 charToKeyCode(char c) {
         case ' ': return KEY_SPACE;
         case '<': return KEY_DELETE; //backspace
         case '~': return KEY_ESC;
+        case '.': return KEY_DOT;
+        case '?': return KEY_SLASH; //with Shift
+        case '!': return KEY_1; //with Shift
     }
     return 0;
 }
@@ -85,7 +88,8 @@ static wstring typeKeys(const string& keys) {
     wstring text;
     for (char c : keys) {
         Uint16 keyCode = charToKeyCode(c);
-        bool isCaps = c >= 'A' && c <= 'Z';
+        bool isPunctuation = c == '.' || c == '?' || c == '!';
+        bool isCaps = (c >= 'A' && c <= 'Z') || c == '?' || c == '!';
         vKeyHandleEvent(vKeyEvent::Keyboard, vKeyEventState::KeyDown, keyCode, isCaps ? 1 : 0, false);
         if (pData->code == vDoNothing) {
             //the key is passed through to the application
@@ -93,6 +97,8 @@ static wstring typeKeys(const string& keys) {
                 if (!text.empty()) text.pop_back();
             } else if (keyCode == KEY_ESC) {
                 text += L'|'; //Esc reached the application
+            } else if (isPunctuation) {
+                text += (wchar_t)c;
             } else {
                 text += keyCodeToChar(keyCode | (isCaps ? CAPS_MASK : 0));
             }
@@ -183,6 +189,20 @@ static void testTelex() {
     expectTyping("Telex", "xin chaof~", L"xin chaof");
     expectTyping("Telex", "xin~", L"xin|");
     expectTyping("Telex", "vieejt~ nam", L"vieejt nam");
+    //capitalize the first letter after . ? !
+    vUpperCaseFirstChar = 1;
+    expectTyping("Telex", "xin. chaof", L"xin. Chào");
+    expectTyping("Telex", "xin? chaof", L"xin? Chào");
+    expectTyping("Telex", "xin! chaof", L"xin! Chào");
+    expectTyping("Telex", "xin chaof", L"xin chào");
+    vStartSentence();
+    expectTyping("Telex", "xin chaof", L"Xin chào");
+    vStartSentence();
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0); //the click that switched windows
+    expectTyping("Telex", "xin chaof", L"Xin chào");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0); //a click in the same window
+    expectTyping("Telex", "xin chaof", L"xin chào");
+    vUpperCaseFirstChar = 0;
 }
 
 static void testVNI() {

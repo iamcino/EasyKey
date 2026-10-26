@@ -71,6 +71,8 @@ static int _languageTemp = 0; //use for smart switch key
 static vector<Byte> savedSmartSwitchKeyData; ////use for smart switch key
 
 static bool _hasJustUsedHotKey = false;
+//Esc that put back the typed keys: its key up is swallowed too, web chats (Facebook...) act on it
+static bool _escapeRestored = false;
 
 static INPUT backspaceEvent[2];
 static INPUT keyEvent[2];
@@ -99,12 +101,11 @@ void EasyKeyInit() {
 	APP_GET_DATA(vQuickTelex, 0);
 	APP_GET_DATA(vSwitchKeyStatus, 0x5A00025A); //Alt + Z, same as the default config (0x7A000206 was a macOS key code)
 	APP_GET_DATA(vRestoreIfWrongSpelling, 1);
-	APP_GET_DATA(vFixRecommendBrowser, 1);
 	APP_GET_DATA(vUseMacro, 1);
 	APP_GET_DATA(vUseMacroInEnglishMode, 0);
 	APP_GET_DATA(vAutoCapsMacro, 0);
 	APP_GET_DATA(vSendKeyStepByStep, 1);
-	APP_GET_DATA(vShowOnStartUp, 0);
+	vShowOnStartUp = 0; //no longer an option, OpenKey's copied settings often had it on; open EasyKey again to show Settings
 	APP_GET_DATA(vShowSwitchFlyout, 1);
 	APP_GET_DATA(vUiLanguage, 0);
 	APP_GET_DATA(vAccentColor, 0);
@@ -128,7 +129,10 @@ void EasyKeyInit() {
 	APP_GET_DATA(vRestoreOnEscape, 1);
 	APP_GET_DATA(vWarnOtherKeyboards, 1);
 	APP_GET_DATA(vLastVersion, 0);
-	APP_GET_DATA(vFixChromiumBrowser, 1);
+	//the browser fixes are always on; vFixBrowserOff = 1 in the registry turns them off for an app they break
+	int vFixBrowserOff;
+	APP_GET_DATA(vFixBrowserOff, 0);
+	vFixRecommendBrowser = vFixChromiumBrowser = vFixBrowserOff ? 0 : 1;
 
 	//init convert tool
 	APP_GET_DATA(convertToolDontAlertWhenCompleted, 0);
@@ -572,9 +576,15 @@ LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 	if (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN) {
 		//LOG(L"Key down: %d\n", keyboardData->vkCode);
 		SetModifierMask((Uint16)keyboardData->vkCode);
+		if (keyboardData->vkCode == VK_ESCAPE)
+			_escapeRestored = false;
 	} else if (wParam == WM_KEYUP || wParam == WM_SYSKEYUP) {
 		//LOG(L"Key up: %d\n", keyboardData->vkCode);
 		UnsetModifierMask((Uint16)keyboardData->vkCode);
+		if (keyboardData->vkCode == VK_ESCAPE && _escapeRestored) {
+			_escapeRestored = false;
+			return -1;
+		}
 	}
 	if (!_isFlagKey && wParam != WM_KEYUP && wParam != WM_SYSKEYUP)
 		_keycode = (Uint16)keyboardData->vkCode;
@@ -667,6 +677,7 @@ LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 			}
 			return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
 		} else if (pData->code == vWillProcess || pData->code == vRestore || pData->code == vRestoreAndStartNewSession) { //handle result signal
+			_escapeRestored = _keycode == VK_ESCAPE;
 			//fix autocomplete
 			if (vFixRecommendBrowser && pData->extCode != 4) {
 				if (vFixChromiumBrowser && 
@@ -743,6 +754,9 @@ LRESULT CALLBACK mouseHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 VOID CALLBACK winEventProcCallback(HWINEVENTHOOK hWinEventHook, DWORD dwEvent, HWND hwnd, LONG idObject, LONG idChild, DWORD dwEventThread, DWORD dwmsEventTime) {
 	if (hwnd && EasyKeyHelper::isWindowElevated(hwnd))
 		AppDelegate::getInstance()->onElevatedWindow(hwnd);
+	//typing in another window usually starts a new sentence
+	startNewSession();
+	vStartSentence();
 	//smart switch key
 	if (vUseSmartSwitchKey || vRememberCode) {
 		string& exe = EasyKeyHelper::getFrontMostAppExecuteName();

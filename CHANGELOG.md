@@ -2,6 +2,14 @@
 
 **Tiếng Việt** · [English](CHANGELOG.en.md)
 
+## Bản tiếp theo
+- Mở bảng gõ tắt ngay trong cửa sổ cài đặt: "Nâng cao" › "Gõ" › "Bảng gõ tắt".
+- Esc trả lại phím vừa gõ giờ chạy được trong khung chat web như Facebook (EasyKey giữ luôn lần nhả phím Esc, nên trang web không đóng khung chat).
+- Viết hoa đầu câu giờ chạy cả sau dấu "?" và "!", không chỉ sau dấu "." và Enter.
+- Viết hoa đầu câu: chữ đầu tiên gõ sau khi chuyển sang cửa sổ khác cũng được viết hoa.
+- Phần "Nâng cao" gọn hơn: các nhóm thu lại, bấm vào tên nhóm mới mở ra, nhóm "Gõ" mở sẵn. Tiêu đề nhóm to và đậm hơn.
+- Sửa lỗi ô có gợi ý tự động và sửa lỗi trên Chrome, Edge luôn bật, không còn công tắc. Bỏ các mục "Mở cửa sổ này khi EasyKey khởi động", "Tạo lối tắt trên Desktop" và "Kiểm tra bản mới ngay" (đã có trong Giới thiệu). Muốn mở cửa sổ cài đặt, chạy lại EasyKey.exe hoặc chọn Cài đặt ở menu khay.
+
 ## 1.0.0 (Windows 11 x64)
 Bản đầu tiên của EasyKey.
 
