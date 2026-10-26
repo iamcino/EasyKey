@@ -47,6 +47,7 @@ extern int vRunWithWindows;
 
 static HHOOK hKeyboardHook;
 static HHOOK hMouseHook;
+static DWORD _lastHookTick = 0; //last time either hook ran, see checkHooks
 static HWINEVENTHOOK hSystemEvent;
 static KBDLLHOOKSTRUCT* keyboardData;
 static MSLLHOOKSTRUCT* mouseData;
@@ -105,6 +106,11 @@ void EasyKeyInit() {
 	APP_GET_DATA(vSendKeyStepByStep, 1);
 	APP_GET_DATA(vShowOnStartUp, 1);
 	APP_GET_DATA(vShowSwitchFlyout, 1);
+	APP_GET_DATA(vUiLanguage, 0);
+	APP_GET_DATA(vAccentColor, 0);
+	APP_GET_DATA(vAccentLight, RGB(0x4F, 0x46, 0xE5));
+	APP_GET_DATA(vAccentDark, RGB(0xA5, 0xB4, 0xFC));
+	APP_GET_DATA(vAccentAutoDark, 1);
 	APP_GET_DATA(vRunWithWindows, 1);
 	EasyKeyHelper::registerRunOnStartup(vRunWithWindows);
 	APP_GET_DATA(vUseSmartSwitchKey, 1);
@@ -516,7 +522,30 @@ static void writeDebugKeyLog(WPARAM wParam, DWORD_PTR isImeON) {
 	}
 }
 
+//Windows silently removes a low-level hook that once answered too slowly (LowLevelHooksTimeout),
+//after which typing does nothing until EasyKey restarts. Input that keeps arriving without
+//reaching the hooks means they are gone, so put them back.
+void checkHooks() {
+	LASTINPUTINFO info = { sizeof(info) };
+	if (!GetLastInputInfo(&info))
+		return;
+	DWORD now = GetTickCount();
+	if (now - info.dwTime > 3000 || (int)(info.dwTime - _lastHookTick) < 1000)
+		return;
+	//an elevated window gets input the hooks are not allowed to see
+	HWND foreground = GetForegroundWindow();
+	if (foreground && EasyKeyHelper::isWindowElevated(foreground))
+		return;
+	HINSTANCE hInstance = GetModuleHandle(NULL);
+	UnhookWindowsHookEx(hKeyboardHook);
+	UnhookWindowsHookEx(hMouseHook);
+	hKeyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, keyboardHookProcess, hInstance, 0);
+	hMouseHook = SetWindowsHookEx(WH_MOUSE_LL, mouseHookProcess, hInstance, 0);
+	_lastHookTick = now;
+}
+
 LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
+	_lastHookTick = GetTickCount();
 	keyboardData = (KBDLLHOOKSTRUCT *)lParam;
 	//ignore my event
 	if (keyboardData->dwExtraInfo == EASYKEY_EXTRA_INFO) {
@@ -684,6 +713,7 @@ LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 }
 
 LRESULT CALLBACK mouseHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
+	_lastHookTick = GetTickCount();
 	mouseData = (MSLLHOOKSTRUCT *)lParam;
 	switch (wParam) {
 	case WM_LBUTTONDOWN:
@@ -708,6 +738,8 @@ LRESULT CALLBACK mouseHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 }
 
 VOID CALLBACK winEventProcCallback(HWINEVENTHOOK hWinEventHook, DWORD dwEvent, HWND hwnd, LONG idObject, LONG idChild, DWORD dwEventThread, DWORD dwmsEventTime) {
+	if (hwnd && EasyKeyHelper::isWindowElevated(hwnd))
+		AppDelegate::getInstance()->onElevatedWindow(hwnd);
 	//smart switch key
 	if (vUseSmartSwitchKey || vRememberCode) {
 		string& exe = EasyKeyHelper::getFrontMostAppExecuteName();

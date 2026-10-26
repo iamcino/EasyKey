@@ -107,6 +107,7 @@
     <ClInclude Include="SystemTrayHelper.h" />
     <ClInclude Include="SettingsWindow.h" />
     <ClInclude Include="ThemeHelper.h" />
+    <ClInclude Include="Updater.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
@@ -125,6 +126,7 @@
     <ClCompile Include="EasyKey.cpp" />
     <ClCompile Include="EasyKeyHelper.cpp" />
     <ClCompile Include="FlyoutWindow.cpp" />
+    <ClCompile Include="Updater.cpp" />
     <ClCompile Include="EasyKeyManager.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>

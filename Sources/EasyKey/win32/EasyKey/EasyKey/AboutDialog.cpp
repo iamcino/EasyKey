@@ -18,6 +18,7 @@ redistribute your new version, it MUST be open source.
 #include "AboutDialog.h"
 #include "AppDelegate.h"
 #include "ThemeHelper.h"
+#include "Updater.h"
 
 AboutDialog::AboutDialog(const HINSTANCE & hInstance, const int & resourceId)
 	: BaseDialog(hInstance, resourceId) {
@@ -78,7 +79,7 @@ void AboutDialog::initDialog() {
 	SendDlgItemMessage(hDlg, IDC_STATIC_APP_TITLE, WM_SETFONT, WPARAM(hFont), TRUE);
 
 	wchar_t buffer[256];
-	wsprintfW(buffer, _T("Phiên bản %s cho Windows - Ngày cập nhật: %s"), EasyKeyHelper::getVersionString().c_str(), _T(__DATE__));
+	wsprintfW(buffer, TR("Phiên bản %s cho Windows - Ngày cập nhật: %s", "Version %s for Windows - Built %s"), EasyKeyHelper::getVersionString().c_str(), _T(__DATE__));
 	SendDlgItemMessage(hDlg, IDC_STATIC_APP_VERSION, WM_SETTEXT, 0, LPARAM(buffer));
 
 	hFont = CreateFont(ThemeHelper::scale(20, hDlg), 0, 0, 0, FW_DONTCARE, FALSE, FALSE, FALSE,
@@ -89,31 +90,6 @@ void AboutDialog::initDialog() {
 
 void AboutDialog::onUpdateButton() {
 	EnableWindow(hUpdateButton, false);
-	string newVersion;
-	if (EasyKeyManager::checkUpdate(newVersion)) {
-		WCHAR msg[256];
-		wsprintf(msg, 
-			TEXT("EasyKey Có phiên bản mới (%s), bạn có muốn cập nhật không?"),
-			utf8ToWideString(newVersion).c_str());
-
-		int msgboxID = MessageBox(
-			hDlg,
-			msg,
-			_T("EasyKey Update"),
-			MB_ICONEXCLAMATION | MB_YESNO
-		);
-		if (msgboxID == IDYES) {
-			//Call EasyKeyUpdate
-			WCHAR path[MAX_PATH];
-			GetCurrentDirectory(MAX_PATH, path);
-			wsprintf(path, TEXT("%s\\EasyKeyUpdate.exe"), path);
-			ShellExecute(0, L"", path, 0, 0, SW_SHOWNORMAL);
-
-			AppDelegate::getInstance()->onEasyKeyExit();
-		}
-		
-	} else {
-		MessageBox(hDlg, _T("Bạn đang dùng phiên bản mới nhất!"), _T("EasyKey Update"), MB_OK);
-	}
+	Updater::checkAndOffer(hDlg, false);
 	EnableWindow(hUpdateButton, true);
 }

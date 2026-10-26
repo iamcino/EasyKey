@@ -42,8 +42,17 @@ public:
 	//content with alpha. Returns false and uses a solid caption in fallbackColor when
 	//Mica is unavailable (transparency effects off, high contrast, before Windows 11 22H2)
 	static bool applyBackdrop(const HWND& hWnd, const COLORREF& fallbackColor);
-	//Windows accent color as Fluent uses it for filled controls in the light or dark theme
+	//accent for filled controls in the light or dark theme: the Windows accent as Fluent uses it,
+	//one of the presets or the custom color, see vAccentColor
 	static COLORREF getAccentColor(const bool& dark, const bool& hover);
+	//preset accents, index 1 to ACCENT_PRESETS; 0 is the Windows accent
+	static const int ACCENT_PRESETS = 7;
+	static COLORREF getPresetAccent(const int& index, const bool& dark);
+	static LPCTSTR getPresetName(const int& index);
+	//the same hue, lighter and a little softer, for the dark theme
+	static COLORREF deriveDarkAccent(const COLORREF& light);
+	//WCAG contrast ratio, 1 to 21
+	static double getContrast(const COLORREF& a, const COLORREF& b);
 	//start GDI+ once for the whole app
 	static void startGdiplus();
 	//Segoe UI Variable for GDI+ text, strong is semibold. The caller deletes the font

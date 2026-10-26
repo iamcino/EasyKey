@@ -19,7 +19,7 @@ EasyKey hiện **chưa có chữ ký số** (code signing). Vì vậy, khi tải
 - Windows SmartScreen có thể hiện "Windows protected your PC". Bấm **More info** › **Run anyway** để chạy.
 - Windows Defender hoặc phần mềm diệt virus khác có thể chặn, cách ly hoặc xoá `EasyKey.exe`.
 
-Đây không phải lỗi và cũng không phải vấn đề bảo mật của EasyKey. Bộ gõ nào cũng phải đọc phím bấm và gửi lại chữ đã bỏ dấu, nên phần mềm diệt virus dễ nghi ngờ các chương trình chưa có chữ ký. Mã nguồn công khai, và mỗi bản phát hành được build trên GitHub Actions kèm chứng thực nguồn gốc (build provenance). Bạn có thể tự kiểm tra file zip tải về bằng [GitHub CLI](https://cli.github.com):
+Đây không phải lỗi và cũng không phải vấn đề bảo mật của EasyKey. Bộ gõ nào cũng phải đọc phím bấm và gửi lại chữ đã bỏ dấu, nên phần mềm diệt virus dễ nghi ngờ các chương trình chưa có chữ ký. Mã nguồn công khai, và mỗi bản phát hành được build trên GitHub Actions kèm chứng thực nguồn gốc (build provenance). Bạn có thể tự kiểm tra file zip hoặc `EasyKey.exe` tải về bằng [GitHub CLI](https://cli.github.com):
 
 ```
 gh attestation verify EasyKey<phiên bản>-Windows.zip --repo iamcino/EasyKey
@@ -36,12 +36,47 @@ Hãy cân nhắc trước khi dùng. Nếu tin tưởng, bạn có thể thêm t
 - Nhớ chế độ Việt/Anh và bảng mã riêng cho từng ứng dụng.
 - Sửa lỗi lặp chữ ở ô có gợi ý tự động, kể cả thanh địa chỉ Chrome và Edge.
 - Công cụ chuyển mã văn bản.
-- Giao diện Windows 11 gọn trong một trang, chế độ sáng/tối theo Windows, hỗ trợ DPI cao, biểu tượng khay theo màu thanh tác vụ.
+- Giao diện Windows 11 gọn trong một trang, tiếng Việt hoặc tiếng Anh, chế độ sáng/tối theo Windows, chọn màu nhấn hoặc mã màu riêng, hỗ trợ DPI cao, biểu tượng khay theo màu thanh tác vụ.
+- Tự kiểm tra và cài bản mới ngay trong EasyKey (luôn hỏi trước, kiểm tra mã SHA-256).
+- Gỡ sạch khỏi Windows bằng một nút trong Cài đặt.
 - Không hiện ô ngôn ngữ trên thanh tác vụ.
 
-## Build từ mã nguồn
-- Ứng dụng: mở `Sources/EasyKey/win32/EasyKey/EasyKey.sln` bằng Visual Studio 2022, build `Release|x64`.
-- Test engine: `cmake -S Sources/EasyKey/tests -B build && cmake --build build && ctest --test-dir build`.
+## Kiểm tra chính tả tiếng Việt
+Chữ tiếng Việt bị gạch đỏ là do trình kiểm tra chính tả của từng ứng dụng đang dò theo tiếng Anh, không phải lỗi của EasyKey. Cách nhanh nhất là thêm tiếng Việt vào phần kiểm tra chính tả của chính ứng dụng đó:
+
+- **Chrome, Edge, Cốc Cốc:** mở Cài đặt › Ngôn ngữ (Languages), thêm Tiếng Việt vào danh sách ngôn ngữ ưu tiên, rồi bật kiểm tra chính tả cho Tiếng Việt. Nếu trình duyệt không có từ điển tiếng Việt, hãy tắt kiểm tra chính tả cho tiếng Anh hoặc tắt hẳn tính năng này.
+- **Word, Outlook, PowerPoint:** chọn đoạn văn, vào Review › Language › Set Proofing Language, chọn Vietnamese. Nếu Office chưa có bộ kiểm tra tiếng Việt, tích "Do not check spelling or grammar" cho đoạn đó.
+- **Notepad:** vào Cài đặt (biểu tượng bánh răng) và tắt Spell check.
+
+Cách thêm tiếng Việt trong Cài đặt Windows › Ngôn ngữ cũng hết gạch đỏ ở nhiều ứng dụng, nhưng sẽ làm hiện lại ô ngôn ngữ (ENG/VIE) trên thanh tác vụ, nên EasyKey không khuyên dùng.
+
+## Tự build từ mã nguồn
+Bạn có thể tự build EasyKey thay vì tải bản có sẵn.
+
+**Cách 1: build trên máy**
+1. Cài [Visual Studio 2022](https://visualstudio.microsoft.com/vs/) (bản Community miễn phí), chọn workload **Desktop development with C++** (có sẵn MSVC v143 và Windows SDK).
+2. Tải mã nguồn: `git clone https://github.com/iamcino/EasyKey.git` hoặc Code › Download ZIP trên GitHub.
+3. Mở `Sources/EasyKey/win32/EasyKey/EasyKey.sln`, chọn cấu hình `Release` và nền `x64`, rồi Build › Build Solution.
+4. File chạy nằm ở `Sources/EasyKey/win32/EasyKey/x64/Release/EasyKey.exe`.
+
+Hoặc build bằng dòng lệnh trong "Developer PowerShell for VS 2022":
+
+```
+msbuild Sources\EasyKey\win32\EasyKey\EasyKey.sln -p:Configuration=Release -p:Platform=x64
+```
+
+**Cách 2: build trên GitHub, không cần cài gì**
+Fork repo này. Mỗi lần push hoặc mở pull request vào nhánh `master`, GitHub Actions tự chạy test engine rồi build `EasyKey.exe`. Vào tab Actions, mở lần chạy mới nhất và tải `EasyKey` trong mục Artifacts. Khi push tag trùng `versionName` trong `version.json` (ví dụ `1.0.0`), Actions tự tạo bản phát hành.
+
+**Chạy test engine** (cần [CMake](https://cmake.org) và một trình biên dịch C++, chạy được trên cả Windows và Linux):
+
+```
+cmake -S Sources/EasyKey/tests -B build
+cmake --build build --config Release
+ctest --test-dir build -C Release
+```
+
+File tự build không có chữ ký số nên cũng có thể gặp cảnh báo như phần [Cảnh báo của Windows khi chạy](#cảnh-báo-của-windows-khi-chạy).
 
 ## Bản quyền
 Copyright (C) 2026 Cino. Liên hệ: duongtheson@proton.me

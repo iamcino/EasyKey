@@ -29,6 +29,7 @@ static INT_PTR CALLBACK DialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM l
 		INT_PTR result = b->eventProc(hDlg, uMsg, wParam, lParam);
 		ThemeHelper::applyWindowFrame(hDlg);
 		ThemeHelper::applyDialogFont(hDlg);
+		EasyKeyHelper::translateWindow(hDlg);
 		return result;
 	}
 #ifdef _WIN64

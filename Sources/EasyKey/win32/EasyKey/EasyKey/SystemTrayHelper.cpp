@@ -40,7 +40,7 @@ redistribute your new version, it MUST be open source.
 #define MODIFY_MENU(MENU, COMMAND, DATA) ModifyMenu(MENU, COMMAND, \
 											MF_BYCOMMAND | (DATA ? MF_CHECKED : MF_UNCHECKED), \
 											COMMAND, \
-											menuData[COMMAND]);
+											menuText(COMMAND));
 
 static HMENU popupMenu;
 static HMENU menuInputType;
@@ -48,20 +48,23 @@ static HMENU menuCodeTable;
 
 static NOTIFYICONDATA nid;
 
-map<UINT, LPCTSTR> menuData = {
-	{POPUP_VIET_ON_OFF, _T("Gõ tiếng Việt")},
-	{POPUP_TELEX, _T("Telex")},
-	{POPUP_VNI, _T("VNI")},
-	{POPUP_SIMPLE_TELEX, _T("Simple Telex")},
-	{POPUP_UNICODE, _T("Unicode")},
-	{POPUP_TCVN3, _T("TCVN3 (ABC)")},
-	{POPUP_VNI_WINDOWS, _T("VNI Windows")},
-	{POPUP_UNICODE_COMPOUND, _T("Unicode tổ hợp")},
-	{POPUP_VN_LOCALE_1258, _T("CP 1258")},
-	{POPUP_CONVERT_TOOL, _T("Công cụ chuyển mã")},
-	{POPUP_CONTROL_PANEL, _T("Cài đặt…")},
-	{POPUP_EASYKEY_EXIT, _T("Thoát EasyKey")},
-};
+static LPCTSTR menuText(const UINT& command) {
+	switch (command) {
+	case POPUP_VIET_ON_OFF: return TR("Gõ tiếng Việt", "Type Vietnamese");
+	case POPUP_TELEX: return _T("Telex");
+	case POPUP_VNI: return _T("VNI");
+	case POPUP_SIMPLE_TELEX: return _T("Simple Telex");
+	case POPUP_UNICODE: return _T("Unicode");
+	case POPUP_TCVN3: return _T("TCVN3 (ABC)");
+	case POPUP_VNI_WINDOWS: return _T("VNI Windows");
+	case POPUP_UNICODE_COMPOUND: return TR("Unicode tổ hợp", "Unicode combining");
+	case POPUP_VN_LOCALE_1258: return _T("CP 1258");
+	case POPUP_CONVERT_TOOL: return TR("Công cụ chuyển mã", "Convert text");
+	case POPUP_CONTROL_PANEL: return TR("Cài đặt…", "Settings…");
+	case POPUP_EASYKEY_EXIT: return TR("Thoát EasyKey", "Quit EasyKey");
+	}
+	return _T("");
+}
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
 	static UINT taskbarCreated;
@@ -179,28 +182,30 @@ HWND SystemTrayHelper::createFakeWindow(const HINSTANCE & hIns) {
 }
 
 void SystemTrayHelper::createPopupMenu() {
+	if (popupMenu)
+		DestroyMenu(popupMenu); //submenus go with it
 	popupMenu = CreatePopupMenu();
-	AppendMenu(popupMenu, MF_CHECKED, POPUP_VIET_ON_OFF, menuData[POPUP_VIET_ON_OFF]);
+	AppendMenu(popupMenu, MF_CHECKED, POPUP_VIET_ON_OFF, menuText(POPUP_VIET_ON_OFF));
 	AppendMenu(popupMenu, MF_SEPARATOR, 0, 0);
 
 	menuInputType = CreatePopupMenu();
-	AppendMenu(menuInputType, MF_UNCHECKED, POPUP_TELEX, menuData[POPUP_TELEX]);
-	AppendMenu(menuInputType, MF_UNCHECKED, POPUP_VNI, menuData[POPUP_VNI]);
-	AppendMenu(menuInputType, MF_UNCHECKED, POPUP_SIMPLE_TELEX, menuData[POPUP_SIMPLE_TELEX]);
-	AppendMenu(popupMenu, MF_POPUP, (UINT_PTR)menuInputType, _T("Kiểu gõ"));
+	AppendMenu(menuInputType, MF_UNCHECKED, POPUP_TELEX, menuText(POPUP_TELEX));
+	AppendMenu(menuInputType, MF_UNCHECKED, POPUP_VNI, menuText(POPUP_VNI));
+	AppendMenu(menuInputType, MF_UNCHECKED, POPUP_SIMPLE_TELEX, menuText(POPUP_SIMPLE_TELEX));
+	AppendMenu(popupMenu, MF_POPUP, (UINT_PTR)menuInputType, TR("Kiểu gõ", "Input method"));
 
 	menuCodeTable = CreatePopupMenu();
 	//same order as the settings window, CP 1258 is added by updateData only while it is in use
-	AppendMenu(menuCodeTable, MF_UNCHECKED, POPUP_UNICODE, menuData[POPUP_UNICODE]);
-	AppendMenu(menuCodeTable, MF_UNCHECKED, POPUP_UNICODE_COMPOUND, menuData[POPUP_UNICODE_COMPOUND]);
-	AppendMenu(menuCodeTable, MF_UNCHECKED, POPUP_TCVN3, menuData[POPUP_TCVN3]);
-	AppendMenu(menuCodeTable, MF_UNCHECKED, POPUP_VNI_WINDOWS, menuData[POPUP_VNI_WINDOWS]);
-	AppendMenu(popupMenu, MF_POPUP, (UINT_PTR)menuCodeTable, _T("Bảng mã"));
+	AppendMenu(menuCodeTable, MF_UNCHECKED, POPUP_UNICODE, menuText(POPUP_UNICODE));
+	AppendMenu(menuCodeTable, MF_UNCHECKED, POPUP_UNICODE_COMPOUND, menuText(POPUP_UNICODE_COMPOUND));
+	AppendMenu(menuCodeTable, MF_UNCHECKED, POPUP_TCVN3, menuText(POPUP_TCVN3));
+	AppendMenu(menuCodeTable, MF_UNCHECKED, POPUP_VNI_WINDOWS, menuText(POPUP_VNI_WINDOWS));
+	AppendMenu(popupMenu, MF_POPUP, (UINT_PTR)menuCodeTable, TR("Bảng mã", "Code table"));
 
-	AppendMenu(popupMenu, MF_UNCHECKED, POPUP_CONVERT_TOOL, menuData[POPUP_CONVERT_TOOL]);
+	AppendMenu(popupMenu, MF_UNCHECKED, POPUP_CONVERT_TOOL, menuText(POPUP_CONVERT_TOOL));
 	AppendMenu(popupMenu, MF_SEPARATOR, 0, 0);
-	AppendMenu(popupMenu, MF_STRING, POPUP_CONTROL_PANEL, menuData[POPUP_CONTROL_PANEL]);
-	AppendMenu(popupMenu, MF_UNCHECKED, POPUP_EASYKEY_EXIT, menuData[POPUP_EASYKEY_EXIT]);
+	AppendMenu(popupMenu, MF_STRING, POPUP_CONTROL_PANEL, menuText(POPUP_CONTROL_PANEL));
+	AppendMenu(popupMenu, MF_UNCHECKED, POPUP_EASYKEY_EXIT, menuText(POPUP_EASYKEY_EXIT));
 
 	SetMenuDefaultItem(popupMenu, POPUP_CONTROL_PANEL, false);
 }
@@ -211,15 +216,20 @@ static void loadTrayIcon() {
 	bool darkTaskbar = ThemeHelper::isTaskbarDarkMode();
 	if (vLanguage) {
 		icon = darkTaskbar ? IDI_ICON_STATUS_VIET_DARK : IDI_ICON_STATUS_VIET_LIGHT;
-		LoadString(GetModuleHandle(0), IDS_TRAY_TITLE_2, nid.szTip, 128);
+		lstrcpyn(nid.szTip, TR("EasyKey: đang gõ tiếng Việt", "EasyKey: typing Vietnamese"), 128);
 	}
 	else {
 		icon = darkTaskbar ? IDI_ICON_STATUS_ENG_DARK : IDI_ICON_STATUS_ENG_LIGHT;
-		LoadString(GetModuleHandle(0), IDS_TRAY_TITLE, nid.szTip, 128);
+		lstrcpyn(nid.szTip, TR("EasyKey: đang gõ tiếng Anh", "EasyKey: typing English"), 128);
 	}
 	//load the small icon size directly so the tray does not downscale the 32px one
 	nid.hIcon = (HICON)LoadImage(GetModuleHandle(0), MAKEINTRESOURCE(icon), IMAGE_ICON,
 		GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), LR_SHARED);
+}
+
+void SystemTrayHelper::rebuildMenu() {
+	createPopupMenu();
+	updateData();
 }
 
 void SystemTrayHelper::updateData() {
@@ -227,7 +237,7 @@ void SystemTrayHelper::updateData() {
 	Shell_NotifyIcon(NIM_MODIFY, &nid);
 
 	//show the switch key next to the Vietnamese item, like a menu accelerator
-	wstring vietnamese = menuData[POPUP_VIET_ON_OFF];
+	wstring vietnamese = menuText(POPUP_VIET_ON_OFF);
 	wstring hotKey = EasyKeyHelper::getHotKeyString(vSwitchKeyStatus);
 	if (!hotKey.empty())
 		vietnamese += _T("\t") + hotKey;
@@ -243,7 +253,7 @@ void SystemTrayHelper::updateData() {
 	MODIFY_MENU(menuCodeTable, POPUP_UNICODE_COMPOUND, vCodeTable == 3);
 	DeleteMenu(menuCodeTable, POPUP_VN_LOCALE_1258, MF_BYCOMMAND);
 	if (vCodeTable == 4)
-		AppendMenu(menuCodeTable, MF_CHECKED, POPUP_VN_LOCALE_1258, menuData[POPUP_VN_LOCALE_1258]);
+		AppendMenu(menuCodeTable, MF_CHECKED, POPUP_VN_LOCALE_1258, menuText(POPUP_VN_LOCALE_1258));
 }
 
 static HINSTANCE ins;

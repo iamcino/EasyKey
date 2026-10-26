@@ -31,7 +31,6 @@ private:
 	BaseDialog* aboutDialog = NULL, *macroDialog = NULL, *convertDialog = NULL;
 private:
 	bool isDialogMsg(MSG &msg) const;
-	void checkUpdate();
 public:
 	AppDelegate();
 	static AppDelegate* getInstance();
@@ -42,6 +41,11 @@ public:
 public: //event
 	void onInputMethodChangedFromHotKey();
 	void showSwitchFlyout();
+	//the foreground window runs with more rights than EasyKey, so typing there is not seen
+	void onElevatedWindow(const HWND& hWnd);
+	//display language or accent color changed
+	void onAppearanceChanged();
+	void onUninstall();
 	void onDefaultConfig();
 
 	void onToggleVietnamese();

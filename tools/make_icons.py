@@ -80,7 +80,6 @@ APP = [16, 20, 24, 32, 40, 48, 64, 128, 256]
 TRAY = [16, 20, 24, 32, 40, 48, 64]
 WHITE, DARK = (255, 255, 255, 255), (0x1B, 0x1B, 0x1B, 255)
 save_ico(f'{OUT}/icon.ico', [app(n) for n in APP])
-save_ico(f'{OUT}/EasyKeyUpdate.ico', [app(n, True) for n in APP])
 save_ico(f'{OUT}/small.ico', [app(n, True) for n in [16, 20, 24, 32, 48]])
 save_ico(f'{OUT}/StatusVietDark.ico', [tray_viet(n, WHITE) for n in TRAY])
 save_ico(f'{OUT}/StatusVietLight.ico', [tray_viet(n, DARK) for n in TRAY])

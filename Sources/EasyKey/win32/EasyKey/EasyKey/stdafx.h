@@ -60,7 +60,11 @@ extern wchar_t _logBuffer[1024];
 
 #define APP_CLASS _T("EasyKeyVietnameseInputMethod")
 
+//text in the display language the user picked, Vietnamese or English
+#define TR(VI, EN) (EasyKeyHelper::isEnglishUi() ? _T(EN) : _T(VI))
+
 extern void saveSmartSwitchKeyData();
+extern void checkHooks();
 
 extern int vLanguage;
 extern int vInputType;
@@ -80,6 +84,11 @@ extern int vUseSmartSwitchKey;
 extern int vUpperCaseFirstChar;
 extern int vShowOnStartUp;
 extern int vShowSwitchFlyout;
+extern int vUiLanguage;       //0 follow Windows, 1 Vietnamese, 2 English
+extern int vAccentColor;      //0 follow Windows, 1-7 presets, 8 custom
+extern int vAccentLight;      //custom accent for the light theme, COLORREF
+extern int vAccentDark;       //custom accent for the dark theme, COLORREF
+extern int vAccentAutoDark;   //derive vAccentDark from vAccentLight
 extern int vRunWithWindows;
 extern int vCreateDesktopShortcut;
 extern int vRunAsAdmin;

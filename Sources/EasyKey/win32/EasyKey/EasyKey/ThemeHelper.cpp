@@ -18,6 +18,7 @@ redistribute your new version, it MUST be open source.
 #include <objidl.h>
 #include <gdiplus.h>
 #include <map>
+#include <cmath>
 #include "ThemeHelper.h"
 
 #pragma comment(lib, "Dwmapi.lib")
@@ -215,19 +216,91 @@ bool ThemeHelper::applyBackdrop(const HWND& hWnd, const COLORREF& fallbackColor)
 	return mica;
 }
 
-COLORREF ThemeHelper::getAccentColor(const bool& dark, const bool& hover) {
+static COLORREF getWindowsAccent(const bool& dark) {
 	//AccentPalette holds 8 RGBA shades from Light3 to Dark3, the accent itself is the 4th.
 	//Fluent fills controls with Dark1 in the light theme and Light2 in the dark theme
 	BYTE palette[32];
 	DWORD size = sizeof(palette);
-	if (RegGetValue(HKEY_CURRENT_USER, ACCENT_KEY, _T("AccentPalette"), RRF_RT_REG_BINARY, NULL, palette, &size) != ERROR_SUCCESS || size < 32) {
-		if (dark)
-			return hover ? RGB(0x5A, 0xBD, 0xEA) : RGB(0x60, 0xCD, 0xFF);
-		return hover ? RGB(0x19, 0x6E, 0xBF) : RGB(0x00, 0x5F, 0xB8);
-	}
-	int index = dark ? (hover ? 2 : 1) : (hover ? 3 : 4);
-	BYTE* c = palette + index * 4;
+	if (RegGetValue(HKEY_CURRENT_USER, ACCENT_KEY, _T("AccentPalette"), RRF_RT_REG_BINARY, NULL, palette, &size) != ERROR_SUCCESS || size < 32)
+		return dark ? RGB(0x60, 0xCD, 0xFF) : RGB(0x00, 0x5F, 0xB8);
+	BYTE* c = palette + (dark ? 1 : 4) * 4;
 	return RGB(c[0], c[1], c[2]);
+}
+
+//deep shades carry white text in the light theme, pastel and neon ones carry black text in the dark theme
+static const struct { LPCTSTR vi, en; COLORREF light, dark; } accentPresets[ThemeHelper::ACCENT_PRESETS] = {
+	{ _T("Chàm"), _T("Indigo"), RGB(0x4F, 0x46, 0xE5), RGB(0xA5, 0xB4, 0xFC) },
+	{ _T("Oải hương"), _T("Lavender"), RGB(0x7C, 0x3A, 0xED), RGB(0xC4, 0xB5, 0xFD) },
+	{ _T("Ngọc"), _T("Teal"), RGB(0x0F, 0x76, 0x6E), RGB(0x5E, 0xEA, 0xD4) },
+	{ _T("Chanh"), _T("Lime"), RGB(0x4D, 0x7C, 0x0F), RGB(0xBE, 0xF2, 0x64) },
+	{ _T("San hô"), _T("Coral"), RGB(0xC2, 0x41, 0x0C), RGB(0xFD, 0xBA, 0x8C) },
+	{ _T("Hồng"), _T("Rose"), RGB(0xBE, 0x18, 0x5D), RGB(0xF9, 0xA8, 0xD4) },
+	{ _T("Mocha"), _T("Mocha"), RGB(0x8B, 0x5E, 0x4A), RGB(0xD9, 0xB8, 0xA6) },
+};
+
+COLORREF ThemeHelper::getPresetAccent(const int& index, const bool& dark) {
+	if (index < 1 || index > ACCENT_PRESETS)
+		return getWindowsAccent(dark);
+	return dark ? accentPresets[index - 1].dark : accentPresets[index - 1].light;
+}
+
+LPCTSTR ThemeHelper::getPresetName(const int& index) {
+	if (index < 1 || index > ACCENT_PRESETS)
+		return _T("Windows");
+	return EasyKeyHelper::isEnglishUi() ? accentPresets[index - 1].en : accentPresets[index - 1].vi;
+}
+
+static COLORREF mix(const COLORREF& a, const COLORREF& b, const int& percentB) {
+	return RGB((GetRValue(a) * (100 - percentB) + GetRValue(b) * percentB) / 100,
+		(GetGValue(a) * (100 - percentB) + GetGValue(b) * percentB) / 100,
+		(GetBValue(a) * (100 - percentB) + GetBValue(b) * percentB) / 100);
+}
+
+COLORREF ThemeHelper::getAccentColor(const bool& dark, const bool& hover) {
+	COLORREF color;
+	if (vAccentColor >= 1 && vAccentColor <= ACCENT_PRESETS)
+		color = getPresetAccent(vAccentColor, dark);
+	else if (vAccentColor == ACCENT_PRESETS + 1)
+		color = dark ? (vAccentAutoDark ? deriveDarkAccent((COLORREF)vAccentLight) : (COLORREF)vAccentDark) : (COLORREF)vAccentLight;
+	else
+		color = getWindowsAccent(dark);
+	//hover moves a tenth of the way to the window color, like Fluent's 90% accent fill
+	return hover ? mix(color, dark ? RGB(0x20, 0x20, 0x20) : RGB(0xFF, 0xFF, 0xFF), 10) : color;
+}
+
+COLORREF ThemeHelper::deriveDarkAccent(const COLORREF& light) {
+	double r = GetRValue(light) / 255.0, g = GetGValue(light) / 255.0, b = GetBValue(light) / 255.0;
+	double high = max(r, max(g, b)), low = min(r, min(g, b));
+	double h = 0, s = 0, l = (high + low) / 2;
+	if (high != low) {
+		double d = high - low;
+		s = l > 0.5 ? d / (2 - high - low) : d / (high + low);
+		h = high == r ? (g - b) / d + (g < b ? 6 : 0) : high == g ? (b - r) / d + 2 : (r - g) / d + 4;
+		h /= 6;
+	}
+	l = 0.78;
+	s = min(s, 0.9);
+	double q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q;
+	auto channel = [&](double t) {
+		if (t < 0) t += 1;
+		if (t > 1) t -= 1;
+		double v = t < 1.0 / 6 ? p + (q - p) * 6 * t : t < 0.5 ? q : t < 2.0 / 3 ? p + (q - p) * (2.0 / 3 - t) * 6 : p;
+		return (BYTE)(v * 255 + 0.5);
+	};
+	return RGB(channel(h + 1.0 / 3), channel(h), channel(h - 1.0 / 3));
+}
+
+static double luminance(const COLORREF& c) {
+	auto linear = [](const BYTE& v) {
+		double x = v / 255.0;
+		return x <= 0.03928 ? x / 12.92 : pow((x + 0.055) / 1.055, 2.4);
+	};
+	return 0.2126 * linear(GetRValue(c)) + 0.7152 * linear(GetGValue(c)) + 0.0722 * linear(GetBValue(c));
+}
+
+double ThemeHelper::getContrast(const COLORREF& a, const COLORREF& b) {
+	double la = luminance(a), lb = luminance(b);
+	return (max(la, lb) + 0.05) / (min(la, lb) + 0.05);
 }
 
 void ThemeHelper::startGdiplus() {

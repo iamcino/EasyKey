@@ -27,6 +27,8 @@ private:
 public:
 	static void createSystemTrayIcon(const HINSTANCE& hIns);
 	static void updateData();
+	//rebuild the menu after the display language changed
+	static void rebuildMenu();
 	static void removeSystemTray();
 };
 

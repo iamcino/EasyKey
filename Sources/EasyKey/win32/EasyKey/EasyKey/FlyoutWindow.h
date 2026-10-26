@@ -24,11 +24,12 @@ private:
 	SIZE size = { 0, 0 };
 	POINT position = { 0, 0 };
 	int alpha = 0;
+	wstring messageTitle, messageDetail; //a notice instead of the language, see showMessage
 private:
 	static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 	LRESULT handleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam);
-	void showNow();
-	void render(const UINT& dpi, const RECT& workArea);
+	void showNow(const bool& message);
+	void render(const UINT& dpi, const RECT& workArea, const bool& message);
 	void present();
 	void freeBitmap();
 public:
@@ -36,4 +37,6 @@ public:
 	~FlyoutWindow();
 	//safe to call from the keyboard hook, the flyout is drawn later by the message loop
 	void notify();
+	//a notice in the same pill, shown a little longer
+	void showMessage(const wstring& title, const wstring& detail);
 };

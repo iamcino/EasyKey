@@ -3,8 +3,8 @@ name: MSBuild
 on:
   push:
     branches: [ "master" ]
-    # a version tag like 1.0.0 publishes a release; the updater downloads
-    # releases/download/<versionName>/EasyKey<versionName>-Windows.zip
+    # a version tag like 1.0.0 publishes a release; EasyKey's updater downloads
+    # releases/download/<versionName>/EasyKey.exe and checks it against EasyKey.exe.sha256
     tags: [ "[0-9]+.[0-9]+.[0-9]+" ]
   pull_request:
     branches: [ "master" ]
@@ -59,9 +59,7 @@ jobs:
       uses: actions/upload-artifact@v7
       with:
         name: EasyKey
-        path: |
-          ${{env.SOLUTION_FILE_PATH}}/x64/Release/EasyKey.exe
-          ${{env.SOLUTION_FILE_PATH}}/x64/Release/EasyKeyUpdate.exe
+        path: ${{env.SOLUTION_FILE_PATH}}/x64/Release/EasyKey.exe
         if-no-files-found: error
 
     outputs:
@@ -115,15 +113,21 @@ jobs:
       shell: pwsh
       run: |
         $out = "${{env.SOLUTION_FILE_PATH}}\x64\Release"
-        Compress-Archive -Path "$out\EasyKey.exe", "$out\EasyKeyUpdate.exe" -DestinationPath "EasyKey${{ github.ref_name }}-Windows.zip"
+        Copy-Item "$out\EasyKey.exe" EasyKey.exe
+        Compress-Archive -Path EasyKey.exe -DestinationPath "EasyKey${{ github.ref_name }}-Windows.zip"
+        # the in-app updater reads "<sha256>  EasyKey.exe"
+        $hash = (Get-FileHash EasyKey.exe -Algorithm SHA256).Hash.ToLower()
+        [IO.File]::WriteAllText("EasyKey.exe.sha256", "$hash  EasyKey.exe`n")
 
     - name: Generate artifact attestation
       uses: actions/attest-build-provenance@v4
       with:
-        subject-path: EasyKey${{ github.ref_name }}-Windows.zip
+        subject-path: |
+          EasyKey${{ github.ref_name }}-Windows.zip
+          EasyKey.exe
 
     - name: Publish the release
       shell: pwsh
       env:
         GH_TOKEN: ${{ github.token }}
-      run: gh release create "${{ github.ref_name }}" "EasyKey${{ github.ref_name }}-Windows.zip" --title "EasyKey ${{ github.ref_name }}" --notes-file CHANGELOG.md --verify-tag
+      run: gh release create "${{ github.ref_name }}" "EasyKey${{ github.ref_name }}-Windows.zip" EasyKey.exe EasyKey.exe.sha256 --title "EasyKey ${{ github.ref_name }}" --notes-file CHANGELOG.md --verify-tag

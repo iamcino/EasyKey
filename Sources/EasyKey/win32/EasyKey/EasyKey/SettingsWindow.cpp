@@ -20,9 +20,11 @@ redistribute your new version, it MUST be open source.
 #include <gdiplus.h>
 #include <Shlobj.h>
 #include <cmath>
+#include <cwctype>
 #include "SettingsWindow.h"
 #include "AppDelegate.h"
 #include "ThemeHelper.h"
+#include "Updater.h"
 
 #ifndef WM_DWMCOLORIZATIONCOLORCHANGED
 #define WM_DWMCOLORIZATIONCOLORCHANGED 0x0320
@@ -30,13 +32,15 @@ redistribute your new version, it MUST be open source.
 
 #define SETTINGS_CLASS _T("EasyKeySettingsWindow")
 #define WINDOW_STYLE (WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_THICKFRAME)
-#define WINDOW_WIDTH 520 //client width in DIPs
+#define WINDOW_WIDTH 440 //client width in DIPs
 #define MIN_WINDOW_HEIGHT 320
-#define SIDE 20 //space left and right of the cards
+#define SIDE 16 //space left and right of the cards
+#define SPELLING_GUIDE_URL _T("https://github.com/iamcino/EasyKey#ki%E1%BB%83m-tra-ch%C3%ADnh-t%E1%BA%A3-ti%E1%BA%BFng-vi%E1%BB%87t")
 
 enum ItemKind {
 	K_LANG, K_HOTKEY, K_SECTION, K_SEGMENT, K_SEGBUTTON, K_TILE, K_EXPANDER,
-	K_GROUP, K_SUBTOGGLE, K_SUBCOMBO, K_SUBBUTTON, K_LINK, K_VERSION
+	K_GROUP, K_SUBTOGGLE, K_SUBCOMBO, K_SUBBUTTON, K_SUBSEG, K_UILANG, K_SUBLABEL, K_SWATCH, K_HEXFIELD, K_NOTE,
+	K_LINK, K_VERSION
 };
 
 enum Option {
@@ -46,90 +50,94 @@ enum Option {
 	OPT_QUICK_TELEX, OPT_QUICK_START, OPT_QUICK_END, OPT_CAPS_FIRST, OPT_MACRO_ENGLISH, OPT_MACRO_AUTO_CAPS,
 	OPT_SMART_SWITCH, OPT_REMEMBER_CODE, OPT_FIX_BROWSER, OPT_FIX_CHROMIUM, OPT_TEMP_OFF_EASYKEY,
 	OPT_CLIPBOARD, OPT_FLYOUT, OPT_BEEP,
-	OPT_RUN_AS_ADMIN, OPT_SHOW_ON_STARTUP, OPT_DESKTOP_SHORTCUT, OPT_CHECK_UPDATE
+	OPT_RUN_AS_ADMIN, OPT_SHOW_ON_STARTUP, OPT_DESKTOP_SHORTCUT, OPT_CHECK_UPDATE,
+	OPT_AUTO_DARK
 };
 
 enum Action {
-	ACT_EXPAND = 100, ACT_CAPTURE, ACT_MACRO_TABLE, ACT_CONVERT_TOOL, ACT_ABOUT, ACT_CHECK_UPDATE, ACT_DEFAULT_CONFIG
+	ACT_EXPAND = 100, ACT_CAPTURE, ACT_MACRO_TABLE, ACT_CONVERT_TOOL, ACT_ABOUT, ACT_CHECK_UPDATE, ACT_DEFAULT_CONFIG,
+	ACT_SPELLING_GUIDE, ACT_UNINSTALL
 };
 
 enum Icon {
 	ICON_SPELLING, ICON_MODERN, ICON_MACRO, ICON_STARTUP
 };
 
+#define CUSTOM_ACCENT (ThemeHelper::ACCENT_PRESETS + 1)
+
 struct RowInfo {
 	int kind;
 	int id;
-	LPCTSTR label;
-	LPCTSTR hint;
+	LPCTSTR vi, en;
+	LPCTSTR hintVi, hintEn;
 };
 
 struct TileInfo {
 	int id;
 	int icon;
-	LPCTSTR label;
-	LPCTSTR hint;
+	LPCTSTR vi, en;
+	LPCTSTR hintVi, hintEn;
 };
 
 static const TileInfo tiles[] = {
-	{ OPT_SPELLING, ICON_SPELLING, _T("Kiểm tra chính tả"), _T("Chỉ bỏ dấu khi đúng") },
-	{ OPT_MODERN, ICON_MODERN, _T("Dấu kiểu mới"), _T("hoà, thuý") },
-	{ OPT_MACRO, ICON_MACRO, _T("Gõ tắt"), _T("ko → không") },
-	{ OPT_RUN_WITH_WINDOWS, ICON_STARTUP, _T("Chạy cùng Windows"), _T("Khi đăng nhập") },
+	{ OPT_SPELLING, ICON_SPELLING, _T("Kiểm tra chính tả"), _T("Spell check"), _T("Chỉ bỏ dấu khi đúng"), _T("Marks on real words") },
+	{ OPT_MODERN, ICON_MODERN, _T("Dấu kiểu mới"), _T("Modern marks"), _T("hoà, thuý"), _T("hoà, thuý") },
+	{ OPT_MACRO, ICON_MACRO, _T("Gõ tắt"), _T("Shortcuts"), _T("ko → không"), _T("ko → không") },
+	{ OPT_RUN_WITH_WINDOWS, ICON_STARTUP, _T("Chạy cùng Windows"), _T("Start with Windows"), _T("Khi đăng nhập"), _T("At sign-in") },
 };
 
+//K_SUBLABEL marks where the appearance rows (language, accent swatches, custom color) go
 static const RowInfo advancedRows[] = {
-	{ K_GROUP, 0, _T("Bảng mã"), NULL },
-	{ K_SUBCOMBO, OPT_CODE_TABLE, _T("Bảng mã cũ"), _T("Chỉ dùng cho văn bản và font cũ") },
-	{ K_SUBTOGGLE, OPT_REMEMBER_CODE, _T("Nhớ bảng mã theo từng ứng dụng"), NULL },
-	{ K_GROUP, 0, _T("Chính tả"), NULL },
-	{ K_SUBTOGGLE, OPT_RESTORE, _T("Tự khôi phục phím khi gõ sai"), NULL },
-	{ K_SUBTOGGLE, OPT_ZWJF, _T("Cho phép z, w, j, f làm phụ âm đầu"), NULL },
-	{ K_SUBTOGGLE, OPT_TEMP_OFF_SPELLING, _T("Tạm tắt chính tả bằng phím Ctrl"), NULL },
-	{ K_GROUP, 0, _T("Gõ nhanh và gõ tắt"), NULL },
-	{ K_SUBTOGGLE, OPT_QUICK_TELEX, _T("Gõ nhanh: cc → ch, gg → gi, nn → ng…"), NULL },
-	{ K_SUBTOGGLE, OPT_QUICK_START, _T("Phụ âm đầu: f → ph, j → gi, w → qu"), NULL },
-	{ K_SUBTOGGLE, OPT_QUICK_END, _T("Phụ âm cuối: g → ng, h → nh, k → ch"), NULL },
-	{ K_SUBTOGGLE, OPT_CAPS_FIRST, _T("Viết hoa chữ cái đầu câu"), NULL },
-	{ K_SUBTOGGLE, OPT_MACRO_ENGLISH, _T("Gõ tắt cả khi đang gõ tiếng Anh"), NULL },
-	{ K_SUBTOGGLE, OPT_MACRO_AUTO_CAPS, _T("Tự viết hoa theo từ gõ tắt"), NULL },
-	{ K_GROUP, 0, _T("Ứng dụng"), NULL },
-	{ K_SUBTOGGLE, OPT_SMART_SWITCH, _T("Nhớ chế độ Việt/Anh theo từng ứng dụng"), NULL },
-	{ K_SUBTOGGLE, OPT_FIX_BROWSER, _T("Sửa lỗi ở ô có gợi ý tự động"), NULL },
-	{ K_SUBTOGGLE, OPT_FIX_CHROMIUM, _T("Sửa lỗi trên Chrome, Edge"), NULL },
-	{ K_SUBTOGGLE, OPT_TEMP_OFF_EASYKEY, _T("Tạm tắt EasyKey bằng phím Alt"), NULL },
-	{ K_SUBTOGGLE, OPT_CLIPBOARD, _T("Gửi chữ qua Clipboard"), NULL },
-	{ K_SUBTOGGLE, OPT_FLYOUT, _T("Hiện thông báo khi chuyển Việt/Anh"), NULL },
-	{ K_SUBTOGGLE, OPT_BEEP, _T("Kêu bíp khi chuyển Việt/Anh"), NULL },
-	{ K_GROUP, 0, _T("Hệ thống"), NULL },
-	{ K_SUBTOGGLE, OPT_RUN_AS_ADMIN, _T("Chạy với quyền Admin"), NULL },
-	{ K_SUBTOGGLE, OPT_SHOW_ON_STARTUP, _T("Mở cửa sổ này khi EasyKey khởi động"), NULL },
-	{ K_SUBTOGGLE, OPT_DESKTOP_SHORTCUT, _T("Tạo lối tắt trên Desktop"), NULL },
-	{ K_SUBTOGGLE, OPT_CHECK_UPDATE, _T("Tự kiểm tra bản mới khi khởi động"), NULL },
-	{ K_SUBBUTTON, ACT_CHECK_UPDATE, _T("Kiểm tra bản mới ngay"), NULL },
-	{ K_SUBBUTTON, ACT_DEFAULT_CONFIG, _T("Đưa mọi cài đặt về mặc định"), NULL },
+	{ K_GROUP, 0, _T("Giao diện"), _T("Appearance") },
+	{ K_SUBLABEL, 0, NULL, NULL },
+	{ K_GROUP, 0, _T("Bảng mã"), _T("Code table") },
+	{ K_SUBCOMBO, OPT_CODE_TABLE, _T("Bảng mã cũ"), _T("Legacy code table"), _T("Chỉ dùng cho văn bản và font cũ"), _T("Only for old documents and fonts") },
+	{ K_SUBTOGGLE, OPT_REMEMBER_CODE, _T("Nhớ bảng mã theo từng ứng dụng"), _T("Remember the code table per app") },
+	{ K_GROUP, 0, _T("Chính tả"), _T("Spelling") },
+	{ K_SUBTOGGLE, OPT_RESTORE, _T("Tự khôi phục phím khi gõ sai"), _T("Restore keys on misspelled words") },
+	{ K_SUBTOGGLE, OPT_ZWJF, _T("Cho phép z, w, j, f làm phụ âm đầu"), _T("Allow z, w, j, f as first consonants") },
+	{ K_SUBTOGGLE, OPT_TEMP_OFF_SPELLING, _T("Tạm tắt chính tả bằng phím Ctrl"), _T("Hold Ctrl to skip spell check") },
+	{ K_SUBBUTTON, ACT_SPELLING_GUIDE, _T("Windows gạch đỏ chữ Việt?"), _T("Red underlines under Vietnamese?") },
+	{ K_GROUP, 0, _T("Gõ nhanh và gõ tắt"), _T("Quick typing and shortcuts") },
+	{ K_SUBTOGGLE, OPT_QUICK_TELEX, _T("Gõ nhanh: cc → ch, gg → gi, nn → ng…"), _T("Quick Telex: cc → ch, gg → gi, nn → ng…") },
+	{ K_SUBTOGGLE, OPT_QUICK_START, _T("Phụ âm đầu: f → ph, j → gi, w → qu"), _T("First consonants: f → ph, j → gi, w → qu") },
+	{ K_SUBTOGGLE, OPT_QUICK_END, _T("Phụ âm cuối: g → ng, h → nh, k → ch"), _T("Last consonants: g → ng, h → nh, k → ch") },
+	{ K_SUBTOGGLE, OPT_CAPS_FIRST, _T("Viết hoa chữ cái đầu câu"), _T("Capitalize the first letter of sentences") },
+	{ K_SUBTOGGLE, OPT_MACRO_ENGLISH, _T("Gõ tắt cả khi đang gõ tiếng Anh"), _T("Shortcuts in English mode too") },
+	{ K_SUBTOGGLE, OPT_MACRO_AUTO_CAPS, _T("Tự viết hoa theo từ gõ tắt"), _T("Match the capitalization of shortcuts") },
+	{ K_GROUP, 0, _T("Ứng dụng"), _T("Apps") },
+	{ K_SUBTOGGLE, OPT_SMART_SWITCH, _T("Nhớ chế độ Việt/Anh theo từng ứng dụng"), _T("Remember Vietnamese/English per app") },
+	{ K_SUBTOGGLE, OPT_FIX_BROWSER, _T("Sửa lỗi ở ô có gợi ý tự động"), _T("Fix fields with autocomplete") },
+	{ K_SUBTOGGLE, OPT_FIX_CHROMIUM, _T("Sửa lỗi trên Chrome, Edge"), _T("Fix Chrome and Edge") },
+	{ K_SUBTOGGLE, OPT_TEMP_OFF_EASYKEY, _T("Tạm tắt EasyKey bằng phím Alt"), _T("Hold Alt to pause EasyKey") },
+	{ K_SUBTOGGLE, OPT_CLIPBOARD, _T("Gửi chữ qua Clipboard"), _T("Send text through the clipboard") },
+	{ K_SUBTOGGLE, OPT_FLYOUT, _T("Hiện thông báo khi chuyển Việt/Anh"), _T("Show a notice when switching") },
+	{ K_SUBTOGGLE, OPT_BEEP, _T("Kêu bíp khi chuyển Việt/Anh"), _T("Beep when switching") },
+	{ K_GROUP, 0, _T("Hệ thống"), _T("System") },
+	{ K_SUBTOGGLE, OPT_RUN_AS_ADMIN, _T("Chạy với quyền Admin"), _T("Run as administrator"), _T("Để gõ được trong ứng dụng chạy quyền Admin"), _T("To type in apps that run as administrator") },
+	{ K_SUBTOGGLE, OPT_SHOW_ON_STARTUP, _T("Mở cửa sổ này khi EasyKey khởi động"), _T("Open this window when EasyKey starts") },
+	{ K_SUBTOGGLE, OPT_DESKTOP_SHORTCUT, _T("Tạo lối tắt trên Desktop"), _T("Desktop shortcut") },
+	{ K_SUBTOGGLE, OPT_CHECK_UPDATE, _T("Tự kiểm tra bản mới khi khởi động"), _T("Check for updates at start") },
+	{ K_SUBBUTTON, ACT_CHECK_UPDATE, _T("Kiểm tra bản mới ngay"), _T("Check for updates now") },
+	{ K_SUBBUTTON, ACT_DEFAULT_CONFIG, _T("Đưa mọi cài đặt về mặc định"), _T("Reset all settings") },
+	{ K_SUBBUTTON, ACT_UNINSTALL, _T("Gỡ EasyKey khỏi Windows"), _T("Remove EasyKey from Windows"), _T("Xoá chạy cùng Windows, lối tắt và cài đặt"), _T("Removes startup, shortcut and settings") },
 };
 
 //code tables in the order they are offered, CP 1258 only for people who already use it
-static const struct { int code; LPCTSTR name; } codeTables[] = {
-	{ 0, _T("Unicode") },
-	{ 3, _T("Unicode tổ hợp") },
-	{ 1, _T("TCVN3 (ABC)") },
-	{ 2, _T("VNI Windows") },
-	{ 4, _T("CP 1258") },
+static const struct { int code; LPCTSTR vi, en; } codeTables[] = {
+	{ 0, _T("Unicode"), _T("Unicode") },
+	{ 3, _T("Unicode tổ hợp"), _T("Unicode combining") },
+	{ 1, _T("TCVN3 (ABC)"), _T("TCVN3 (ABC)") },
+	{ 2, _T("VNI Windows"), _T("VNI Windows") },
+	{ 4, _T("CP 1258"), _T("CP 1258") },
 };
 #define CP1258_CODE 4
 
-#define TEXT_SWITCH _T("Chuyển nhanh")
-#define TEXT_CHANGE_KEY _T("Đổi phím")
-#define TEXT_CANCEL _T("Huỷ")
-#define TEXT_PRESS_KEYS _T("Nhấn tổ hợp phím mới…")
-#define TEXT_NO_HOTKEY _T("Chưa đặt phím")
-#define TEXT_CHECK _T("Kiểm tra")
-#define TEXT_CHECKING _T("Đang kiểm tra…")
-#define TEXT_RESET _T("Khôi phục")
-
 typedef BOOL(WINAPI *AdjustWindowRectExForDpiFunc)(LPRECT, DWORD, BOOL, DWORD, UINT);
+
+static LPCTSTR T(LPCTSTR vi, LPCTSTR en) {
+	return EasyKeyHelper::isEnglishUi() && en ? en : vi;
+}
 
 /*-------------------------------- drawing helpers --------------------------------*/
 
@@ -206,7 +214,7 @@ static void drawChevron(Gdiplus::Graphics& g, const DWORD& color, const float& c
 //20x20 line icons of the quick tiles, the same paths as the design mockup
 static void drawIcon(Gdiplus::Graphics& g, const int& icon, const float& x, const float& y, const float& size, const DWORD& color) {
 	float f = size / 20;
-	Gdiplus::Pen pen((Gdiplus::ARGB)color, 1.5f * f);
+	Gdiplus::Pen pen((Gdiplus::ARGB)color, 1.6f * f);
 	pen.SetLineJoin(Gdiplus::LineJoinRound);
 	pen.SetStartCap(Gdiplus::LineCapRound);
 	pen.SetEndCap(Gdiplus::LineCapRound);
@@ -247,6 +255,16 @@ static RECT makeRect(const int& left, const int& top, const int& width, const in
 
 static int centerY(const RECT& rc) {
 	return (rc.top + rc.bottom) / 2;
+}
+
+static wstring hexString(const COLORREF& c) {
+	TCHAR text[8];
+	wsprintf(text, _T("%02X%02X%02X"), GetRValue(c), GetGValue(c), GetBValue(c));
+	return text;
+}
+
+static COLORREF customDark() {
+	return vAccentAutoDark ? ThemeHelper::deriveDarkAccent((COLORREF)vAccentLight) : (COLORREF)vAccentDark;
 }
 
 /*-------------------------------- keys --------------------------------*/
@@ -300,9 +318,9 @@ static vector<wstring> splitHotKey(const wstring& text) {
 static LPCTSTR codeTableName(const int& code) {
 	for (auto& table : codeTables) {
 		if (table.code == code)
-			return table.name;
+			return T(table.vi, table.en);
 	}
-	return codeTables[0].name;
+	return codeTables[0].vi;
 }
 
 /*-------------------------------- window --------------------------------*/
@@ -362,6 +380,7 @@ void SettingsWindow::bringOnTop() {
 void SettingsWindow::fillData() {
 	if (!hWnd)
 		return;
+	applyTheme();
 	layout();
 	InvalidateRect(hWnd, NULL, FALSE);
 }
@@ -394,6 +413,8 @@ void SettingsWindow::applyTheme() {
 	pal.bg = translucent ? 0 : argb(255, solid);
 	pal.accent = argb(255, ThemeHelper::getAccentColor(dark, false));
 	pal.accentHover = argb(255, ThemeHelper::getAccentColor(dark, true));
+	pal.link = pal.accent;
+	pal.linkHover = pal.accentHover;
 	if (dark) {
 		pal.card = 0x0EFFFFFF;
 		pal.cardHover = 0x17FFFFFF;
@@ -407,8 +428,8 @@ void SettingsWindow::applyTheme() {
 		pal.onAccent = 0xFF000000;
 		pal.field = 0x14FFFFFF;
 		pal.fieldHover = 0x1FFFFFFF;
-		pal.link = 0xFF99EBFF;
-		pal.linkHover = 0xFFC7F4FF;
+		pal.good = 0xFF6CCB5F;
+		pal.warning = 0xFFFCE100;
 	} else {
 		pal.card = 0xB8FFFFFF;
 		pal.cardHover = 0x80FFFFFF;
@@ -422,8 +443,8 @@ void SettingsWindow::applyTheme() {
 		pal.onAccent = 0xFFFFFFFF;
 		pal.field = 0xE6FFFFFF;
 		pal.fieldHover = 0xB3F9F9F9;
-		pal.link = 0xFF005FB8;
-		pal.linkHover = 0xFF003E92;
+		pal.good = 0xFF0F7B0F;
+		pal.warning = 0xFF9D5D00;
 	}
 }
 
@@ -432,9 +453,9 @@ void SettingsWindow::createFonts() {
 	fontBody = ThemeHelper::createFont(false, (float)s(14), Gdiplus::FontStyleRegular);
 	fontCaption = ThemeHelper::createFont(false, (float)s(12), Gdiplus::FontStyleRegular);
 	fontSmall = ThemeHelper::createFont(false, (float)s(13), Gdiplus::FontStyleRegular);
-	fontStrong = ThemeHelper::createFont(true, (float)s(14), Gdiplus::FontStyleRegular);
-	fontTitle = ThemeHelper::createFont(true, (float)s(17), Gdiplus::FontStyleRegular);
-	fontBadge = ThemeHelper::createFont(false, (float)s(18), Gdiplus::FontStyleBold);
+	fontStrong = ThemeHelper::createFont(true, (float)s(13), Gdiplus::FontStyleRegular);
+	fontTitle = ThemeHelper::createFont(true, (float)s(15), Gdiplus::FontStyleRegular);
+	fontBadge = ThemeHelper::createFont(false, (float)s(15), Gdiplus::FontStyleBold);
 	textFormat = Gdiplus::StringFormat::GenericTypographic()->Clone();
 	textFormat->SetFormatFlags(Gdiplus::StringFormatFlagsNoWrap | Gdiplus::StringFormatFlagsLineLimit |
 		Gdiplus::StringFormatFlagsMeasureTrailingSpaces);
@@ -479,7 +500,7 @@ void SettingsWindow::layout() {
 		item.label = label;
 		item.hint = hint;
 		item.rc = rc;
-		item.textRight = rc.right - s(16);
+		item.textRight = rc.right - s(14);
 		items.push_back(item);
 		return (int)items.size() - 1;
 	};
@@ -489,70 +510,120 @@ void SettingsWindow::layout() {
 		return i;
 	};
 	auto placeSwitch = [&](Item& item) {
-		item.ctl = makeRect(item.rc.right - s(16) - s(40), centerY(item.rc) - s(10), s(40), s(20));
-		item.textRight = item.ctl.left - s(16);
+		item.ctl = makeRect(item.rc.right - s(14) - s(40), centerY(item.rc) - s(10), s(40), s(20));
+		item.textRight = item.ctl.left - s(14);
 	};
 	auto placeField = [&](Item& item, const int& fieldWidth) {
-		item.ctl = makeRect(item.rc.right - s(16) - fieldWidth, centerY(item.rc) - s(16), fieldWidth, s(32));
+		item.ctl = makeRect(item.rc.right - s(14) - fieldWidth, centerY(item.rc) - s(15), fieldWidth, s(30));
 		item.textRight = item.ctl.left - s(12);
 	};
 
 	//Vietnamese or English, two big buttons and the hotkey below them
-	int pad = s(6), gap = s(6);
+	int pad = s(4), gap = s(4);
 	int inner = right - left - pad * 2;
 	int half = (inner - gap) / 2;
-	heroArea = makeRect(left, y, right - left, pad + s(72) + gap + s(36) + pad);
-	push(K_LANG, 1, _T("Tiếng Việt"), NULL, makeRect(left + pad, y + pad, half, s(72)));
-	push(K_LANG, 0, _T("Tiếng Anh"), NULL, makeRect(left + pad + half + gap, y + pad, inner - half - gap, s(72)));
-	int i = push(K_HOTKEY, 0, TEXT_SWITCH, NULL, makeRect(left + pad, y + pad + s(72) + gap, inner, s(36)));
+	heroArea = makeRect(left, y, right - left, pad + s(56) + gap + s(32) + pad);
+	push(K_LANG, 1, T(_T("Tiếng Việt"), _T("Vietnamese")), NULL, makeRect(left + pad, y + pad, half, s(56)));
+	push(K_LANG, 0, T(_T("Tiếng Anh"), _T("English")), NULL, makeRect(left + pad + half + gap, y + pad, inner - half - gap, s(56)));
+	int i = push(K_HOTKEY, 0, T(_T("Chuyển nhanh"), _T("Switch with")), NULL, makeRect(left + pad, y + pad + s(56) + gap, inner, s(32)));
 	items[i].linkAction = ACT_CAPTURE;
-	int linkWidth = textWidth(fontSmall, capturing ? TEXT_CANCEL : TEXT_CHANGE_KEY) + s(16);
-	items[i].link = makeRect(items[i].rc.right - s(2) - linkWidth, centerY(items[i].rc) - s(14), linkWidth, s(28));
-	y = heroArea.bottom + s(20);
+	LPCTSTR linkText = capturing ? T(_T("Huỷ"), _T("Cancel")) : T(_T("Đổi phím"), _T("Change"));
+	int linkWidth = textWidth(fontSmall, linkText) + s(16);
+	items[i].link = makeRect(items[i].rc.right - linkWidth, centerY(items[i].rc) - s(13), linkWidth, s(26));
+	y = heroArea.bottom + s(14);
 
 	//input type as a segmented control
-	add(K_SECTION, 0, _T("Kiểu gõ"), NULL, s(20));
-	y += s(8);
+	add(K_SECTION, 0, T(_T("Kiểu gõ"), _T("Input method")), NULL, s(18));
+	y += s(6);
 	vector<LPCTSTR>& inputTypes = EasyKeyManager::getInputType();
-	int segment = add(K_SEGMENT, 0, NULL, NULL, s(44));
+	int segment = add(K_SEGMENT, 0, NULL, NULL, s(36));
 	int count = (int)inputTypes.size();
-	int segmentWidth = (right - left - s(8) - s(4) * (count - 1)) / max(1, count);
+	int segmentWidth = (right - left - s(6) - s(3) * (count - 1)) / max(1, count);
 	for (int t = 0; t < count; t++) {
-		int x = left + s(4) + t * (segmentWidth + s(4));
-		int w = t == count - 1 ? right - s(4) - x : segmentWidth;
-		push(K_SEGBUTTON, t, inputTypes[t], NULL, makeRect(x, items[segment].rc.top + s(4), w, s(36)));
+		int x = left + s(3) + t * (segmentWidth + s(3));
+		int w = t == count - 1 ? right - s(3) - x : segmentWidth;
+		push(K_SEGBUTTON, t, inputTypes[t], NULL, makeRect(x, items[segment].rc.top + s(3), w, s(30)));
 	}
-	y += s(20);
+	y += s(14);
 
 	//the options most people change, as tiles
-	add(K_SECTION, 0, _T("Thường dùng"), NULL, s(20));
-	y += s(8);
-	int tileWidth = (right - left - s(8)) / 2;
+	add(K_SECTION, 0, T(_T("Thường dùng"), _T("Common")), NULL, s(18));
+	y += s(6);
+	int tileWidth = (right - left - s(6)) / 2;
 	for (int t = 0; t < 4; t++) {
 		int x = t % 2 == 0 ? left : right - tileWidth;
-		int top = y + (t / 2) * (s(68) + s(8));
-		push(K_TILE, tiles[t].id, tiles[t].label, tiles[t].hint, makeRect(x, top, tileWidth, s(68)));
+		int top = y + (t / 2) * (s(56) + s(6));
+		push(K_TILE, tiles[t].id, T(tiles[t].vi, tiles[t].en), T(tiles[t].hintVi, tiles[t].hintEn), makeRect(x, top, tileWidth, s(56)));
 	}
-	y += s(68) * 2 + s(8) + s(16);
+	y += s(56) * 2 + s(6) + s(12);
 
 	//everything else is folded into one expander
-	int expander = add(K_EXPANDER, ACT_EXPAND, _T("Nâng cao"), _T("Bảng mã, chính tả, gõ nhanh, ứng dụng, hệ thống"), s(56));
-	items[expander].ctl = makeRect(items[expander].rc.right - s(16) - s(16), centerY(items[expander].rc) - s(8), s(16), s(16));
+	int expander = add(K_EXPANDER, ACT_EXPAND, T(_T("Nâng cao"), _T("Advanced")),
+		T(_T("Giao diện, bảng mã, chính tả, hệ thống"), _T("Appearance, code table, spelling, system")), s(48));
+	items[expander].ctl = makeRect(items[expander].rc.right - s(14) - s(16), centerY(items[expander].rc) - s(8), s(16), s(16));
 	items[expander].textRight = items[expander].ctl.left - s(12);
 	if (expanded) {
 		bool afterLabel = false;
-		int buttonWidth = max(max(textWidth(fontBody, TEXT_CHECK), textWidth(fontBody, TEXT_CHECKING)),
-			textWidth(fontBody, TEXT_RESET)) + s(32);
-		int comboWidth = s(160);
+		int buttonWidth = s(64);
+		LPCTSTR buttonTexts[] = { T(_T("Kiểm tra"), _T("Check")), T(_T("Đang kiểm tra…"), _T("Checking…")),
+			T(_T("Khôi phục"), _T("Reset")), T(_T("Xem cách sửa"), _T("How to fix")), T(_T("Gỡ"), _T("Remove")) };
+		for (LPCTSTR text : buttonTexts)
+			buttonWidth = max(buttonWidth, textWidth(fontSmall, text) + s(28));
+		int comboWidth = s(140);
 		for (auto& table : codeTables)
-			comboWidth = max(comboWidth, textWidth(fontBody, table.name) + s(11 + 36));
+			comboWidth = max(comboWidth, textWidth(fontSmall, T(table.vi, table.en)) + s(10 + 32));
 		for (const RowInfo& row : advancedRows) {
 			if (row.kind == K_GROUP) {
-				add(row.kind, row.id, row.label, NULL, s(36));
+				add(row.kind, row.id, T(row.vi, row.en), NULL, s(32));
 				afterLabel = true;
 				continue;
 			}
-			i = add(row.kind, row.id, row.label, row.hint, s(row.hint ? 56 : 44));
+			if (row.kind == K_SUBLABEL) {
+				//display language: three choices in a small segmented control
+				i = add(K_SUBSEG, 0, T(_T("Ngôn ngữ giao diện"), _T("Display language")), NULL, s(44));
+				items[i].afterLabel = afterLabel;
+				LPCTSTR names[] = { T(_T("Theo Windows"), _T("Windows")), _T("Tiếng Việt"), _T("English") };
+				int widths[3], total = s(4);
+				for (int n = 0; n < 3; n++) {
+					widths[n] = textWidth(fontCaption, names[n]) + s(16);
+					total += widths[n] + s(2);
+				}
+				items[i].ctl = makeRect(items[i].rc.right - s(14) - total, centerY(items[i].rc) - s(15), total, s(30));
+				items[i].textRight = items[i].ctl.left - s(10);
+				int x = items[i].ctl.left + s(2);
+				for (int n = 0; n < 3; n++) {
+					push(K_UILANG, n, names[n], NULL, makeRect(x, items[i].ctl.top + s(2), widths[n], s(26)));
+					x += widths[n] + s(2);
+				}
+
+				//accent: label row, then the swatches, five to a row
+				add(K_SUBLABEL, 0, T(_T("Màu nhấn"), _T("Accent color")), T(_T("Trái: chế độ sáng · Phải: tối"), _T("Left: light mode · Right: dark")), s(36));
+				int cell = (right - left - s(20)) / 5;
+				for (int n = 0; n <= CUSTOM_ACCENT; n++) {
+					LPCTSTR name = n == CUSTOM_ACCENT ? T(_T("Tuỳ chỉnh"), _T("Custom")) : ThemeHelper::getPresetName(n);
+					push(K_SWATCH, n, name, NULL, makeRect(left + s(10) + (n % 5) * cell, y + (n / 5) * s(54), cell, s(52)));
+				}
+				y += s(54) * 2 + s(4);
+
+				if (vAccentColor == CUSTOM_ACCENT) {
+					//two hex fields, each with its label above
+					int fieldWidth = (right - left - s(28) - s(10)) / 2;
+					push(K_HEXFIELD, 0, T(_T("Chế độ sáng"), _T("Light mode")), NULL, makeRect(left + s(14), y, fieldWidth, s(52)));
+					push(K_HEXFIELD, 1, T(_T("Chế độ tối"), _T("Dark mode")), NULL, makeRect(left + s(14) + fieldWidth + s(10), y, fieldWidth, s(52)));
+					for (int n = 0; n < 2; n++) {
+						Item& field = items[items.size() - 2 + n];
+						field.ctl = makeRect(field.rc.left, field.rc.top + s(20), field.rc.right - field.rc.left, s(30));
+					}
+					y += s(56);
+					i = add(K_SUBTOGGLE, OPT_AUTO_DARK, T(_T("Tự tạo màu cho chế độ tối"), _T("Make the dark mode shade for me")), NULL, s(40));
+					items[i].afterLabel = true;
+					placeSwitch(items[i]);
+					add(K_NOTE, 0, NULL, NULL, s(26));
+				}
+				afterLabel = false;
+				continue;
+			}
+			i = add(row.kind, row.id, T(row.vi, row.en), T(row.hintVi, row.hintEn), s(row.hintVi ? 52 : 40));
 			items[i].afterLabel = afterLabel;
 			afterLabel = false;
 			if (row.kind == K_SUBTOGGLE)
@@ -563,18 +634,18 @@ void SettingsWindow::layout() {
 		y += s(6);
 		expandArea = makeRect(left, items[expander].rc.top, right - left, y - items[expander].rc.top);
 	}
-	y += s(12);
+	y += s(10);
 
 	//footer
-	int x = left + s(4);
-	LPCTSTR links[] = { _T("Bảng gõ tắt"), _T("Chuyển mã"), _T("Giới thiệu") };
+	int x = left + s(2);
+	LPCTSTR links[] = { T(_T("Bảng gõ tắt"), _T("Shortcut list")), T(_T("Chuyển mã"), _T("Convert text")), T(_T("Giới thiệu"), _T("About")) };
 	int actions[] = { ACT_MACRO_TABLE, ACT_CONVERT_TOOL, ACT_ABOUT };
 	for (int l = 0; l < 3; l++) {
-		i = push(K_LINK, actions[l], links[l], NULL, makeRect(x, y, textWidth(fontSmall, links[l]), s(32)));
-		x = items[i].rc.right + s(20);
+		i = push(K_LINK, actions[l], links[l], NULL, makeRect(x, y, textWidth(fontSmall, links[l]), s(28)));
+		x = items[i].rc.right + s(16);
 	}
-	add(K_VERSION, 0, NULL, NULL, s(32));
-	y += s(12);
+	add(K_VERSION, 0, NULL, NULL, s(28));
+	y += s(10);
 	contentHeight = y;
 
 	if (focusItem >= (int)items.size() || (focusItem >= 0 && !isInteractive(focusItem, focusPart)))
@@ -661,12 +732,12 @@ bool SettingsWindow::getThumb(RECT& track, RECT& thumb) const {
 		return false;
 	RECT client;
 	GetClientRect(hWnd, &client);
-	track = makeRect(client.right - s(14), s(4), s(12), view - s(8));
+	track = makeRect(client.right - s(12), s(4), s(10), view - s(8));
 	int trackHeight = track.bottom - track.top;
 	int thumbHeight = max(s(32), trackHeight * view / contentHeight);
 	int thumbTop = track.top + (trackHeight - thumbHeight) * scrollY / max(1, maxScroll());
 	int thumbWidth = (hotScrollBar || draggingThumb) ? s(6) : s(3);
-	thumb = makeRect(track.right - s(3) - thumbWidth, thumbTop, thumbWidth, thumbHeight);
+	thumb = makeRect(track.right - s(2) - thumbWidth, thumbTop, thumbWidth, thumbHeight);
 	return true;
 }
 
@@ -738,6 +809,10 @@ void SettingsWindow::paintItem(Gdiplus::Graphics& g, const Item& item, const int
 			fillRect(g, pressed ? pal.cardPressed : pal.cardHover, hover);
 		}
 	};
+	auto divider = [&]() {
+		if (!item.afterLabel)
+			drawLine(g, pal.divider, rc.left + 1, rc.right - 1, rc.top);
+	};
 	//keycaps with a thicker bottom edge, like the keys they stand for
 	auto drawKeys = [&](const wstring& hotKey, int x) {
 		vector<wstring> keys = splitHotKey(hotKey);
@@ -745,16 +820,16 @@ void SettingsWindow::paintItem(Gdiplus::Graphics& g, const Item& item, const int
 			if (k > 0) {
 				int plus = textWidth(fontCaption, _T("+"));
 				drawText(g, _T("+"), makeRect(x, rc.top, plus, rc.bottom - rc.top), fontCaption, pal.sub, 0, 1);
-				x += plus + s(6);
+				x += plus + s(5);
 			}
-			int w = textWidth(fontCaption, keys[k].c_str()) + s(16);
-			RECT cap = makeRect(x, cy - s(11), w, s(22));
+			int w = textWidth(fontCaption, keys[k].c_str()) + s(14);
+			RECT cap = makeRect(x, cy - s(10), w, s(20));
 			RECT edge = cap;
 			OffsetRect(&edge, 0, 1);
-			fillRound(g, edge, (float)s(6), pal.stroke);
-			fillRound(g, cap, (float)s(6), pal.field, pal.stroke);
+			fillRound(g, edge, (float)s(5), pal.stroke);
+			fillRound(g, cap, (float)s(5), pal.field, pal.stroke);
 			drawText(g, keys[k].c_str(), cap, fontCaption, pal.text, 1, 1);
-			x = cap.right + s(6);
+			x = cap.right + s(5);
 		}
 		return x;
 	};
@@ -763,20 +838,20 @@ void SettingsWindow::paintItem(Gdiplus::Graphics& g, const Item& item, const int
 	case K_LANG: {
 		bool on = (vLanguage != 0) == (item.id != 0);
 		if (on)
-			fillRound(g, rc, (float)s(12), pal.accent);
+			fillRound(g, rc, (float)s(9), pal.accent);
 		else if (hot)
-			fillRound(g, rc, (float)s(12), pressed ? pal.cardPressed : pal.cardHover);
-		RECT badge = makeRect(rc.left + s(14), cy - s(20), s(40), s(40));
+			fillRound(g, rc, (float)s(9), pressed ? pal.cardPressed : pal.cardHover);
+		RECT badge = makeRect(rc.left + s(10), cy - s(16), s(32), s(32));
 		if (on)
-			fillRound(g, badge, (float)s(10), fade(0xFFFFFFFF, 22));
+			fillRound(g, badge, (float)s(8), pal.onAccent == 0xFFFFFFFF ? fade(0xFFFFFFFF, 22) : 0x24000000);
 		else
-			fillRound(g, badge, (float)s(10), pal.field, pal.stroke);
+			fillRound(g, badge, (float)s(8), pal.field, pal.stroke);
 		DWORD color = on ? pal.onAccent : pal.text;
 		drawText(g, item.id ? _T("V") : _T("E"), badge, fontBadge, color, 1, 1);
-		RECT title = { badge.right + s(12), rc.top, rc.right - s(8), cy + s(2) };
+		RECT title = { badge.right + s(10), rc.top, rc.right - s(6), cy + s(2) };
 		drawText(g, item.label, title, fontTitle, color, 0, 2);
 		RECT state = { title.left, cy + s(2), title.right, rc.bottom };
-		drawText(g, on ? _T("Đang dùng") : _T("Bấm để chuyển"), state, fontCaption, fade(color, 80), 0, 0);
+		drawText(g, on ? T(_T("Đang dùng"), _T("In use")) : T(_T("Bấm để chuyển"), _T("Click to switch")), state, fontCaption, fade(color, 80), 0, 0);
 		break;
 	}
 	case K_HOTKEY: {
@@ -790,48 +865,48 @@ void SettingsWindow::paintItem(Gdiplus::Graphics& g, const Item& item, const int
 				x = drawKeys(EasyKeyHelper::getHotKeyString(captureModifiers | 0xFE), x);
 				drawText(g, _T("+ …"), makeRect(x, rc.top, link.left - x, rc.bottom - rc.top), fontCaption, pal.sub, 0, 1);
 			} else {
-				drawText(g, TEXT_PRESS_KEYS, makeRect(x, rc.top, link.left - x, rc.bottom - rc.top), fontCaption, pal.text, 0, 1);
+				drawText(g, T(_T("Nhấn tổ hợp phím mới…"), _T("Press the new keys…")), makeRect(x, rc.top, link.left - x, rc.bottom - rc.top), fontCaption, pal.text, 0, 1);
 			}
 		} else {
 			wstring hotKey = EasyKeyHelper::getHotKeyString(vSwitchKeyStatus);
 			if (hotKey.empty())
-				drawText(g, TEXT_NO_HOTKEY, makeRect(x, rc.top, link.left - x, rc.bottom - rc.top), fontCaption, pal.text, 0, 1);
+				drawText(g, T(_T("Chưa đặt phím"), _T("No key set")), makeRect(x, rc.top, link.left - x, rc.bottom - rc.top), fontCaption, pal.text, 0, 1);
 			else
 				drawKeys(hotKey, x);
 		}
 		bool linkHot = index == hotItem && hotPart == 1;
 		if (linkHot)
 			fillRound(g, link, (float)s(6), pal.cardHover);
-		drawText(g, capturing ? TEXT_CANCEL : TEXT_CHANGE_KEY, link, fontSmall, linkHot ? pal.linkHover : pal.link, 1, 1);
+		drawText(g, capturing ? T(_T("Huỷ"), _T("Cancel")) : T(_T("Đổi phím"), _T("Change")), link, fontSmall, linkHot ? pal.linkHover : pal.link, 1, 1);
 		break;
 	}
 	case K_SECTION:
-		drawText(g, item.label, makeRect(rc.left + s(4), rc.top, rc.right - rc.left, rc.bottom - rc.top), fontStrong, pal.text, 0, 2);
+		drawText(g, item.label, makeRect(rc.left + s(2), rc.top, rc.right - rc.left, rc.bottom - rc.top), fontStrong, pal.text, 0, 2);
 		break;
 	case K_SEGMENT:
-		fillRound(g, rc, (float)s(12), pal.track, pal.stroke);
+		fillRound(g, rc, (float)s(10), pal.track, pal.stroke);
 		break;
 	case K_SEGBUTTON: {
 		bool on = item.id == vInputType;
 		if (on)
-			fillRound(g, rc, (float)s(8), pal.field, pal.stroke);
+			fillRound(g, rc, (float)s(7), pal.field, pal.stroke);
 		else if (hot)
-			fillRound(g, rc, (float)s(8), pressed ? pal.cardPressed : pal.cardHover);
-		drawText(g, item.label, rc, on ? fontStrong : fontBody, on || hot ? pal.text : pal.sub, 1, 1);
+			fillRound(g, rc, (float)s(7), pressed ? pal.cardPressed : pal.cardHover);
+		drawText(g, item.label, rc, on ? fontStrong : fontSmall, on || hot ? pal.text : pal.sub, 1, 1);
 		break;
 	}
 	case K_TILE: {
 		bool on = getOption(item.id);
 		DWORD fill = on ? (hot ? pal.accentHover : pal.accent) : (pressed ? pal.cardPressed : hot ? pal.cardHover : pal.card);
-		fillRound(g, rc, (float)s(12), fill, on ? 0 : pal.stroke);
+		fillRound(g, rc, (float)s(10), fill, on ? 0 : pal.stroke);
 		DWORD color = on ? pal.onAccent : pal.text;
 		int icon = 0;
 		for (auto& tile : tiles) {
 			if (tile.id == item.id)
 				icon = tile.icon;
 		}
-		drawIcon(g, icon, (float)(rc.left + s(14)), (float)(cy - s(10)), (float)s(20), color);
-		RECT label = { rc.left + s(14) + s(20) + s(12), rc.top, rc.right - s(10), cy + s(1) };
+		drawIcon(g, icon, (float)(rc.left + s(12)), (float)(cy - s(9)), (float)s(18), color);
+		RECT label = { rc.left + s(12) + s(18) + s(10), rc.top, rc.right - s(8), cy + s(1) };
 		drawText(g, item.label, label, fontStrong, color, 0, 2);
 		RECT hint = { label.left, cy + s(2), label.right, rc.bottom };
 		drawText(g, item.hint, hint, fontCaption, fade(color, 85), 0, 0);
@@ -844,42 +919,126 @@ void SettingsWindow::paintItem(Gdiplus::Graphics& g, const Item& item, const int
 				fillRect(g, pressed ? pal.cardPressed : pal.cardHover, rc);
 			drawLine(g, pal.divider, rc.left + 1, rc.right - 1, rc.bottom - 1);
 		} else {
-			fillRound(g, rc, (float)s(12), pressed ? pal.cardPressed : hot ? pal.cardHover : pal.card, pal.stroke);
+			fillRound(g, rc, (float)s(10), pressed ? pal.cardPressed : hot ? pal.cardHover : pal.card, pal.stroke);
 		}
-		drawLabel(fontBody, rc.left + s(16), pal.text, pal.sub);
+		drawLabel(fontBody, rc.left + s(14), pal.text, pal.sub);
 		drawChevron(g, pal.text, (ctl.left + ctl.right) / 2.0f, (float)centerY(ctl), (float)s(10), expanded);
 		break;
 	case K_GROUP:
-		drawText(g, item.label, makeRect(rc.left + s(16), rc.top, rc.right - rc.left - s(32), rc.bottom - rc.top - s(6)),
+		drawText(g, item.label, makeRect(rc.left + s(14), rc.top, rc.right - rc.left - s(28), rc.bottom - rc.top - s(6)),
 			fontStrong, pal.sub, 0, 2);
 		break;
 	case K_SUBTOGGLE:
-		if (!item.afterLabel)
-			drawLine(g, pal.divider, rc.left + 1, rc.right - 1, rc.top);
+		divider();
 		if (enabled)
 			rowHover();
-		drawLabel(fontBody, rc.left + s(16), textColor, enabled ? pal.sub : pal.disabled);
+		drawLabel(fontBody, rc.left + s(14), textColor, enabled ? pal.sub : pal.disabled);
 		paintSwitch(g, ctl, getOption(item.id), hot, enabled);
 		break;
 	case K_SUBCOMBO: {
-		if (!item.afterLabel)
-			drawLine(g, pal.divider, rc.left + 1, rc.right - 1, rc.top);
+		divider();
 		rowHover();
-		drawLabel(fontBody, rc.left + s(16), pal.text, pal.sub);
+		drawLabel(fontBody, rc.left + s(14), pal.text, pal.sub);
 		fillRound(g, ctl, (float)s(6), hot ? pal.fieldHover : pal.field, pal.stroke);
-		RECT field = { ctl.left + s(11), ctl.top, ctl.right - s(32), ctl.bottom };
-		drawText(g, codeTableName(vCodeTable), field, fontBody, pal.text, 0, 1);
-		drawChevron(g, pal.sub, (float)(ctl.right - s(18)), (float)centerY(ctl), (float)s(10), false);
+		RECT field = { ctl.left + s(10), ctl.top, ctl.right - s(30), ctl.bottom };
+		drawText(g, codeTableName(vCodeTable), field, fontSmall, pal.text, 0, 1);
+		drawChevron(g, pal.sub, (float)(ctl.right - s(16)), (float)centerY(ctl), (float)s(10), false);
 		break;
 	}
 	case K_SUBBUTTON: {
-		if (!item.afterLabel)
-			drawLine(g, pal.divider, rc.left + 1, rc.right - 1, rc.top);
+		divider();
 		bool active = isInteractive(index, 0);
-		drawLabel(fontBody, rc.left + s(16), pal.text, pal.sub);
+		drawLabel(fontBody, rc.left + s(14), pal.text, pal.sub);
 		fillRound(g, ctl, (float)s(6), (hot && active) ? (pressed ? pal.field : pal.fieldHover) : pal.field, pal.stroke);
-		LPCTSTR text = item.id == ACT_CHECK_UPDATE ? (checkingUpdate ? TEXT_CHECKING : TEXT_CHECK) : TEXT_RESET;
-		drawText(g, text, ctl, fontBody, active ? pal.text : pal.disabled, 1, 1);
+		LPCTSTR text = T(_T("Khôi phục"), _T("Reset"));
+		if (item.id == ACT_CHECK_UPDATE)
+			text = checkingUpdate ? T(_T("Đang kiểm tra…"), _T("Checking…")) : T(_T("Kiểm tra"), _T("Check"));
+		else if (item.id == ACT_SPELLING_GUIDE)
+			text = T(_T("Xem cách sửa"), _T("How to fix"));
+		else if (item.id == ACT_UNINSTALL)
+			text = T(_T("Gỡ"), _T("Remove"));
+		drawText(g, text, ctl, fontSmall, active ? pal.text : pal.disabled, 1, 1);
+		break;
+	}
+	case K_SUBSEG:
+		divider();
+		drawLabel(fontBody, rc.left + s(14), pal.text, pal.sub);
+		fillRound(g, ctl, (float)s(8), pal.track, pal.stroke);
+		break;
+	case K_UILANG: {
+		bool on = item.id == vUiLanguage;
+		if (on)
+			fillRound(g, rc, (float)s(6), pal.field, pal.stroke);
+		else if (hot)
+			fillRound(g, rc, (float)s(6), pal.cardHover);
+		drawText(g, item.label, rc, fontCaption, on || hot ? pal.text : pal.sub, 1, 1);
+		break;
+	}
+	case K_SUBLABEL: {
+		drawLine(g, pal.divider, rc.left + 1, rc.right - 1, rc.top);
+		RECT label = { rc.left + s(14), rc.top, rc.right - s(14), rc.bottom };
+		drawText(g, item.label, label, fontBody, pal.text, 0, 1);
+		drawText(g, item.hint, label, fontCaption, pal.sub, 2, 1);
+		break;
+	}
+	case K_SWATCH: {
+		bool on = item.id == vAccentColor;
+		COLORREF light, dark;
+		if (item.id == CUSTOM_ACCENT) {
+			light = (COLORREF)vAccentLight;
+			dark = customDark();
+		} else {
+			light = ThemeHelper::getPresetAccent(item.id, false);
+			dark = ThemeHelper::getPresetAccent(item.id, true);
+		}
+		float size = (float)s(28), cx = (rc.left + rc.right) / 2.0f, top = (float)(rc.top + s(5));
+		//left half the light theme shade, right half the dark one
+		Gdiplus::RectF circle(cx - size / 2, top, size, size);
+		Gdiplus::SolidBrush lightBrush((Gdiplus::ARGB)argb(255, light)), darkBrush((Gdiplus::ARGB)argb(255, dark));
+		g.FillPie(&lightBrush, circle, 90, 180);
+		g.FillPie(&darkBrush, circle, 270, 180);
+		if (on || hot) {
+			Gdiplus::Pen ring((Gdiplus::ARGB)(on ? pal.text : pal.sub), (float)s(2));
+			float r = size / 2 + s(4);
+			g.DrawEllipse(&ring, cx - r, top + size / 2 - r, r * 2, r * 2);
+		}
+		RECT name = { rc.left, rc.top + s(38), rc.right, rc.bottom };
+		drawText(g, item.label, name, fontCaption, on ? pal.text : pal.sub, 1, 1);
+		break;
+	}
+	case K_HEXFIELD: {
+		bool editing = hexEditing == item.id;
+		bool active = isInteractive(index, 0);
+		drawText(g, item.label, makeRect(rc.left, rc.top, rc.right - rc.left, s(18)), fontCaption, pal.sub, 0, 1);
+		fillRound(g, ctl, (float)s(6), editing ? pal.field : hot ? pal.fieldHover : pal.field, pal.stroke);
+		if (editing) {
+			RECT underline = { ctl.left + s(2), ctl.bottom - s(2), ctl.right - s(2), ctl.bottom };
+			fillRect(g, pal.accent, underline);
+		}
+		COLORREF color = item.id == 0 ? (COLORREF)vAccentLight : customDark();
+		RECT chip = makeRect(ctl.left + s(8), centerY(ctl) - s(7), s(14), s(14));
+		fillRound(g, chip, (float)s(3), argb(255, color));
+		wstring text = _T("#") + (editing ? hexBuffer : hexString(color));
+		RECT value = { chip.right + s(8), ctl.top, ctl.right - s(8), ctl.bottom };
+		drawText(g, text.c_str(), value, fontSmall, active || editing ? pal.text : pal.disabled, 0, 1);
+		if (editing) {
+			//caret after the text
+			int caret = value.left + textWidth(fontSmall, text.c_str()) + s(1);
+			RECT bar = { caret, centerY(ctl) - s(8), caret + max(1, s(1)), centerY(ctl) + s(8) };
+			fillRect(g, pal.text, bar);
+		}
+		break;
+	}
+	case K_NOTE: {
+		//white text on the light shade and black text on the dark one must stay readable
+		double light = ThemeHelper::getContrast((COLORREF)vAccentLight, RGB(255, 255, 255));
+		double dark = ThemeHelper::getContrast(customDark(), RGB(0, 0, 0));
+		bool good = light >= 4.5 && dark >= 4.5;
+		TCHAR text[160];
+		swprintf_s(text, good ? T(_T("Tương phản: sáng %.1f:1, tối %.1f:1, dễ đọc"), _T("Contrast: light %.1f:1, dark %.1f:1, easy to read"))
+			: T(_T("Tương phản: sáng %.1f:1, tối %.1f:1, khó đọc"), _T("Contrast: light %.1f:1, dark %.1f:1, hard to read")),
+			light, dark);
+		drawText(g, text, makeRect(rc.left + s(14), rc.top, rc.right - rc.left - s(28), rc.bottom - rc.top), fontCaption, good ? pal.good : pal.warning, 0, 1);
 		break;
 	}
 	case K_LINK:
@@ -887,7 +1046,7 @@ void SettingsWindow::paintItem(Gdiplus::Graphics& g, const Item& item, const int
 		break;
 	case K_VERSION: {
 		static wstring version = _T("EasyKey ") + EasyKeyHelper::getVersionString();
-		RECT text = { rc.left, rc.top, rc.right - s(4), rc.bottom };
+		RECT text = { rc.left, rc.top, rc.right - s(2), rc.bottom };
 		drawText(g, version.c_str(), text, fontCaption, pal.sub, 2, 1);
 		break;
 	}
@@ -895,13 +1054,13 @@ void SettingsWindow::paintItem(Gdiplus::Graphics& g, const Item& item, const int
 
 	//keyboard focus ring
 	if (focusVisible && index == focusItem && GetFocus() == hWnd) {
-		RECT ring = focusPart == 1 ? toView(item.link) : (item.kind == K_SUBBUTTON ? ctl : rc);
+		RECT ring = focusPart == 1 ? toView(item.link) : ((item.kind == K_SUBBUTTON || item.kind == K_HEXFIELD) ? ctl : rc);
 		InflateRect(&ring, s(2), s(2));
 		Gdiplus::GraphicsPath path;
 		RECT inner = ring;
 		InflateRect(&inner, -1, -1); //centre the 2px pen on the ring
 		bool large = item.kind == K_LANG || item.kind == K_TILE || item.kind == K_EXPANDER;
-		addRoundRect(path, inner, (float)s(large ? 14 : 8));
+		addRoundRect(path, inner, (float)s(large ? 12 : 8));
 		Gdiplus::Pen pen((Gdiplus::ARGB)pal.text, 2);
 		g.DrawPath(&pen, &path);
 	}
@@ -940,19 +1099,18 @@ void SettingsWindow::paint(HDC hdc) {
 		g.SetTextRenderingHint(Gdiplus::TextRenderingHintAntiAliasGridFit);
 
 		if (IntersectRect(&visible, &heroArea, &view))
-			fillRound(g, toView(heroArea), (float)s(16), pal.card, pal.stroke);
+			fillRound(g, toView(heroArea), (float)s(12), pal.card, pal.stroke);
 		Gdiplus::GraphicsPath expandPath;
 		if (expanded) {
-			addRoundRect(expandPath, toView(expandArea), (float)s(12));
+			addRoundRect(expandPath, toView(expandArea), (float)s(10));
 			if (IntersectRect(&visible, &expandArea, &view))
-				fillRound(g, toView(expandArea), (float)s(12), pal.card, pal.stroke);
+				fillRound(g, toView(expandArea), (float)s(10), pal.card, pal.stroke);
 		}
 		for (int i = 0; i < (int)items.size(); i++) {
 			if (!IntersectRect(&visible, &items[i].rc, &view))
 				continue;
 			//rows of the open expander stay inside its rounded card
-			bool clip = expanded && (items[i].kind == K_EXPANDER || items[i].kind == K_GROUP || items[i].kind == K_SUBTOGGLE ||
-				items[i].kind == K_SUBCOMBO || items[i].kind == K_SUBBUTTON);
+			bool clip = expanded && items[i].kind >= K_EXPANDER && items[i].kind <= K_NOTE;
 			if (clip)
 				g.SetClip(&expandPath);
 			paintItem(g, items[i], i);
@@ -983,6 +1141,12 @@ bool SettingsWindow::isInteractive(const int& item, const int& part) const {
 		return part == 1;
 	case K_SEGBUTTON:
 		return part == 0 && it.id != vInputType;
+	case K_UILANG:
+		return part == 0 && it.id != vUiLanguage;
+	case K_SWATCH:
+		return part == 0 && it.id != vAccentColor;
+	case K_HEXFIELD:
+		return part == 0 && (it.id == 0 || !vAccentAutoDark);
 	case K_TILE:
 	case K_EXPANDER:
 	case K_SUBCOMBO:
@@ -1011,7 +1175,7 @@ bool SettingsWindow::hitTest(const POINT& pt, int& item, int& part) const {
 			part = 1;
 			return true;
 		}
-		const RECT& area = it.kind == K_SUBBUTTON ? it.ctl : it.rc;
+		const RECT& area = (it.kind == K_SUBBUTTON || it.kind == K_HEXFIELD) ? it.ctl : it.rc;
 		if (PtInRect(&area, content) && isInteractive(i, 0)) {
 			item = i;
 			return true;
@@ -1070,6 +1234,17 @@ void SettingsWindow::activate(const int& index, const int& part) {
 		layout();
 		InvalidateRect(hWnd, NULL, FALSE);
 		break;
+	case K_UILANG:
+		APP_SET_DATA(vUiLanguage, item.id);
+		AppDelegate::getInstance()->onAppearanceChanged();
+		break;
+	case K_SWATCH:
+		APP_SET_DATA(vAccentColor, item.id);
+		AppDelegate::getInstance()->onAppearanceChanged();
+		break;
+	case K_HEXFIELD:
+		startHexEdit(item.id);
+		break;
 	case K_TILE:
 	case K_SUBTOGGLE:
 		setOption(item.id, !getOption(item.id));
@@ -1089,6 +1264,7 @@ void SettingsWindow::doAction(const int& action) {
 	switch (action) {
 	case ACT_EXPAND:
 		expanded = !expanded;
+		endHexEdit();
 		layout();
 		if (expanded) {
 			//bring the new rows into view
@@ -1117,10 +1293,20 @@ void SettingsWindow::doAction(const int& action) {
 	case ACT_CHECK_UPDATE:
 		checkUpdate();
 		break;
+	case ACT_SPELLING_GUIDE:
+		ShellExecute(NULL, _T("open"), SPELLING_GUIDE_URL, NULL, NULL, SW_SHOWNORMAL);
+		break;
 	case ACT_DEFAULT_CONFIG:
-		if (MessageBox(hWnd, _T("Bạn có chắc chắn muốn đưa mọi cài đặt về mặc định?"), _T("EasyKey"),
+		if (MessageBox(hWnd, T(_T("Bạn có chắc chắn muốn đưa mọi cài đặt về mặc định?"), _T("Reset every setting to its default?")), _T("EasyKey"),
 			MB_ICONEXCLAMATION | MB_YESNO) == IDYES) {
 			AppDelegate::getInstance()->onDefaultConfig();
+		}
+		break;
+	case ACT_UNINSTALL:
+		if (MessageBox(hWnd, T(_T("Gỡ EasyKey khỏi Windows?\nEasyKey sẽ thoát, không còn chạy cùng Windows, lối tắt trên Desktop và mọi cài đặt, bảng gõ tắt sẽ bị xoá."),
+			_T("Remove EasyKey from Windows?\nEasyKey quits and no longer starts with Windows. Its desktop shortcut, settings and shortcut list are deleted.")),
+			_T("EasyKey"), MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON2) == IDYES) {
+			AppDelegate::getInstance()->onUninstall();
 		}
 		break;
 	}
@@ -1157,6 +1343,7 @@ bool SettingsWindow::getOption(const int& id) const {
 	case OPT_SHOW_ON_STARTUP: return vShowOnStartUp != 0;
 	case OPT_DESKTOP_SHORTCUT: return vCreateDesktopShortcut != 0;
 	case OPT_CHECK_UPDATE: return vCheckNewVersion != 0;
+	case OPT_AUTO_DARK: return vAccentAutoDark != 0;
 	}
 	return false;
 }
@@ -1227,6 +1414,12 @@ void SettingsWindow::setOption(const int& id, const bool& on) {
 			EasyKeyManager::createDesktopShortcut();
 		break;
 	case OPT_CHECK_UPDATE: APP_SET_DATA(vCheckNewVersion, val); break;
+	case OPT_AUTO_DARK:
+		if (!on)
+			APP_SET_DATA(vAccentDark, (int)customDark()); //start from the shade in use
+		APP_SET_DATA(vAccentAutoDark, val);
+		applyTheme();
+		break;
 	}
 	SystemTrayHelper::updateData();
 	if (hWnd) {
@@ -1240,7 +1433,7 @@ void SettingsWindow::showDropDown(const Item& item) {
 	for (auto& table : codeTables) {
 		if (table.code == CP1258_CODE && vCodeTable != CP1258_CODE)
 			continue;
-		AppendMenu(menu, MF_STRING | (table.code == vCodeTable ? MF_CHECKED : MF_UNCHECKED), table.code + 1, table.name);
+		AppendMenu(menu, MF_STRING | (table.code == vCodeTable ? MF_CHECKED : MF_UNCHECKED), table.code + 1, T(table.vi, table.en));
 	}
 
 	RECT field = toView(item.ctl);
@@ -1267,7 +1460,8 @@ void SettingsWindow::requestRestartAsAdmin() {
 	if (vRunAsAdmin && !IsUserAnAdmin()) {
 		int msgboxID = MessageBox(
 			hWnd,
-			_T("Bạn cần khởi động lại EasyKey để chạy với quyền Admin.\nKhởi động lại ngay?"),
+			T(_T("Bạn cần khởi động lại EasyKey để chạy với quyền Admin.\nKhởi động lại ngay?"),
+				_T("EasyKey needs to restart to run as administrator.\nRestart now?")),
 			_T("EasyKey"),
 			MB_ICONEXCLAMATION | MB_YESNO
 		);
@@ -1284,24 +1478,72 @@ void SettingsWindow::checkUpdate() {
 	checkingUpdate = true;
 	InvalidateRect(hWnd, NULL, FALSE);
 	UpdateWindow(hWnd);
-
-	string newVersion;
-	bool hasUpdate = EasyKeyManager::checkUpdate(newVersion);
-	checkingUpdate = false;
-	InvalidateRect(hWnd, NULL, FALSE);
-	if (hasUpdate) {
-		WCHAR msg[256];
-		wsprintf(msg, TEXT("Đã có EasyKey %s, bạn có muốn cập nhật không?"), utf8ToWideString(newVersion).c_str());
-		if (MessageBox(hWnd, msg, _T("EasyKey"), MB_ICONEXCLAMATION | MB_YESNO) == IDYES) {
-			WCHAR path[MAX_PATH];
-			GetCurrentDirectory(MAX_PATH, path);
-			wsprintf(path, TEXT("%s\\EasyKeyUpdate.exe"), path);
-			ShellExecute(0, L"", path, 0, 0, SW_SHOWNORMAL);
-			AppDelegate::getInstance()->onEasyKeyExit();
-		}
-	} else {
-		MessageBox(hWnd, _T("Bạn đang dùng phiên bản mới nhất."), _T("EasyKey"), MB_OK);
+	HWND owner = hWnd;
+	Updater::checkAndOffer(owner, false);
+	//the update may have closed this window
+	if (IsWindow(owner) && hWnd == owner) {
+		checkingUpdate = false;
+		InvalidateRect(hWnd, NULL, FALSE);
 	}
+}
+
+/*-------------------------------- custom accent --------------------------------*/
+
+void SettingsWindow::startHexEdit(const int& field) {
+	hexEditing = field;
+	hexBuffer = hexString(field == 0 ? (COLORREF)vAccentLight : customDark());
+	SetFocus(hWnd);
+	InvalidateRect(hWnd, NULL, FALSE);
+}
+
+void SettingsWindow::endHexEdit() {
+	if (hexEditing < 0)
+		return;
+	hexEditing = -1;
+	hexBuffer.clear();
+	if (hWnd)
+		InvalidateRect(hWnd, NULL, FALSE);
+}
+
+//save the field once it holds a full color
+void SettingsWindow::applyHex() {
+	if (hexBuffer.size() != 6)
+		return;
+	int value = (int)wcstol(hexBuffer.c_str(), NULL, 16);
+	COLORREF color = RGB((value >> 16) & 0xFF, (value >> 8) & 0xFF, value & 0xFF);
+	if (hexEditing == 0) {
+		APP_SET_DATA(vAccentLight, (int)color);
+	} else {
+		APP_SET_DATA(vAccentDark, (int)color);
+	}
+	applyTheme();
+}
+
+bool SettingsWindow::onHexKey(const UINT& uMsg, const WPARAM& key) {
+	if (uMsg == WM_CHAR) {
+		if (key == 0x16) { //Ctrl+V: keep the hex digits of the clipboard
+			wstring pasted = EasyKeyHelper::getClipboardText(CF_UNICODETEXT);
+			hexBuffer.clear();
+			for (wchar_t c : pasted) {
+				if (iswxdigit(c) && hexBuffer.size() < 6)
+					hexBuffer += (wchar_t)towupper(c);
+			}
+		} else if (iswxdigit((wint_t)key) && hexBuffer.size() < 6) {
+			hexBuffer += (wchar_t)towupper((wint_t)key);
+		} else if (key == VK_BACK && !hexBuffer.empty()) {
+			hexBuffer.pop_back();
+		} else {
+			return true;
+		}
+		applyHex();
+		InvalidateRect(hWnd, NULL, FALSE);
+		return true;
+	}
+	if (uMsg == WM_KEYDOWN && (key == VK_RETURN || key == VK_ESCAPE || key == VK_TAB)) {
+		endHexEdit();
+		return key != VK_TAB;
+	}
+	return uMsg == WM_KEYDOWN && key != VK_TAB;
 }
 
 /*-------------------------------- switch key capture --------------------------------*/
@@ -1309,6 +1551,7 @@ void SettingsWindow::checkUpdate() {
 void SettingsWindow::startCapture() {
 	if (capturing)
 		return;
+	endHexEdit();
 	capturing = true;
 	savedSwitchKey = vSwitchKeyStatus;
 	captureModifiers = 0;
@@ -1462,7 +1705,8 @@ LRESULT SettingsWindow::handleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	case WM_SETCURSOR:
 		if (LOWORD(lParam) == HTCLIENT) {
 			bool onLink = hotItem >= 0 && hotItem < (int)items.size() && (hotPart == 1 || items[hotItem].kind == K_LINK);
-			SetCursor(LoadCursor(NULL, onLink ? IDC_HAND : IDC_ARROW));
+			bool onField = hotItem >= 0 && hotItem < (int)items.size() && items[hotItem].kind == K_HEXFIELD;
+			SetCursor(LoadCursor(NULL, onLink ? IDC_HAND : onField ? IDC_IBEAM : IDC_ARROW));
 			return TRUE;
 		}
 		break;
@@ -1490,6 +1734,8 @@ LRESULT SettingsWindow::handleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 		hitTest(pt, item, part);
 		if (capturing && (item < 0 || items[item].kind != K_HOTKEY))
 			endCapture(false, 0);
+		if (hexEditing >= 0 && (item < 0 || items[item].kind != K_HEXFIELD || items[item].id != hexEditing))
+			endHexEdit();
 		if (item >= 0) {
 			pressedItem = item;
 			pressedPart = part;
@@ -1528,6 +1774,8 @@ LRESULT SettingsWindow::handleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	case WM_KEYUP:
 	case WM_SYSKEYUP:
 		if (capturing && onCaptureKey(uMsg, wParam))
+			return 0;
+		if (hexEditing >= 0 && onHexKey(uMsg, wParam))
 			return 0;
 		if (uMsg != WM_KEYDOWN)
 			break;
@@ -1571,12 +1819,17 @@ LRESULT SettingsWindow::handleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	case WM_SYSCHAR:
 		if (capturing)
 			return 0;
+		if (hexEditing >= 0 && uMsg == WM_CHAR) {
+			onHexKey(uMsg, wParam);
+			return 0;
+		}
 		break;
 	case WM_SETFOCUS:
 		InvalidateRect(hWnd, NULL, FALSE);
 		return 0;
 	case WM_KILLFOCUS:
 		endCapture(false, 0);
+		endHexEdit();
 		InvalidateRect(hWnd, NULL, FALSE);
 		return 0;
 	case WM_CLOSE:

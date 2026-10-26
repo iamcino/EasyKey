@@ -14,8 +14,10 @@ which is released under GPL license.
 You can fork, modify, improve this program. If you
 redistribute your new version, it MUST be open source.
 -----------------------------------------------------------*/
+#include <algorithm>
 #include "AppDelegate.h"
 #include "ThemeHelper.h"
+#include "Updater.h"
 
 static AppDelegate* _instance;
 
@@ -47,6 +49,11 @@ int vTempOffOpenKey = 0;
 
 int vShowOnStartUp = 0;
 int vShowSwitchFlyout = 1;
+int vUiLanguage = 0;
+int vAccentColor = 0;
+int vAccentLight = RGB(0x4F, 0x46, 0xE5);
+int vAccentDark = RGB(0xA5, 0xB4, 0xFC);
+int vAccentAutoDark = 1;
 int vRunWithWindows = 1;
 
 int vCreateDesktopShortcut = 0;
@@ -60,32 +67,6 @@ bool AppDelegate::isDialogMsg(MSG & msg) const {
 		(aboutDialog != NULL && IsDialogMessage(aboutDialog->getHwnd(), &msg));
 }
 
-void AppDelegate::checkUpdate() {
-	string newVersion;
-	if (EasyKeyManager::checkUpdate(newVersion)) {
-		WCHAR msg[256];
-		wsprintf(msg,
-			TEXT("EasyKey Có phiên bản mới (%s), bạn có muốn cập nhật không?"),
-			utf8ToWideString(newVersion).c_str());
-
-		int msgboxID = MessageBox(
-			0,
-			msg,
-			_T("EasyKey Update"),
-			MB_ICONEXCLAMATION | MB_YESNO
-		);
-		if (msgboxID == IDYES) {
-			//Call EasyKeyUpdate
-			WCHAR path[MAX_PATH];
-			GetCurrentDirectory(MAX_PATH, path);
-			wsprintf(path, TEXT("%s\\EasyKeyUpdate.exe"), path);
-			ShellExecute(0, L"", path, 0, 0, SW_SHOWNORMAL);
-			AppDelegate::getInstance()->onEasyKeyExit();
-		}
-
-	}
-}
-
 AppDelegate::AppDelegate() {
 	_instance = this;
 }
@@ -96,6 +77,9 @@ AppDelegate * AppDelegate::getInstance() {
 
 int AppDelegate::run(HINSTANCE hInstance) {
 	this->hInstance = hInstance;
+
+	//after an update the previous EasyKey is still closing
+	Updater::finishPreviousUpdate();
 
 	//check app has already run or not
 	HWND previousInstance = FindWindow(APP_CLASS, NULL);
@@ -115,6 +99,9 @@ int AppDelegate::run(HINSTANCE hInstance) {
 	//shown when the switch key is pressed
 	flyout = new FlyoutWindow(hInstance);
 
+	//put the keyboard hooks back if Windows drops them
+	SetTimer(NULL, 0, 2000, [](HWND, UINT, UINT_PTR, DWORD) { checkHooks(); });
+
 	//create system tray
 	SystemTrayHelper::createSystemTrayIcon(hInstance);
 	SystemTrayHelper::updateData();
@@ -126,7 +113,7 @@ int AppDelegate::run(HINSTANCE hInstance) {
 
 	//check update
 	if (vCheckNewVersion)
-		checkUpdate();
+		Updater::checkAndOffer(NULL, true);
 
 	MSG msg;
 	// Main message loop:
@@ -186,6 +173,38 @@ void AppDelegate::showSwitchFlyout() {
 		flyout->notify();
 }
 
+void AppDelegate::onElevatedWindow(const HWND& hWnd) {
+	//once per app, only while typing Vietnamese
+	static vector<DWORD> warned;
+	DWORD processId = 0;
+	GetWindowThreadProcessId(hWnd, &processId);
+	if (!vLanguage || !flyout || find(warned.begin(), warned.end(), processId) != warned.end())
+		return;
+	warned.push_back(processId);
+	flyout->showMessage(TR("Ứng dụng này chạy với quyền Admin", "This app runs as administrator"),
+		TR("EasyKey không gõ được ở đây. Bật \"Chạy với quyền Admin\" trong Nâng cao.",
+			"EasyKey can't type here. Turn on \"Run as administrator\" in Advanced."));
+}
+
+void AppDelegate::onAppearanceChanged() {
+	SystemTrayHelper::rebuildMenu();
+	if (settingsWindow)
+		settingsWindow->fillData();
+}
+
+void AppDelegate::onUninstall() {
+	EasyKeyManager::freeEngine();
+	EasyKeyHelper::removeFromSystem();
+	MessageBox(NULL, TR("Đã gỡ EasyKey khỏi Windows: không còn chạy cùng Windows, lối tắt và cài đặt đã xoá.\n"
+		"Thư mục chứa EasyKey.exe sẽ mở ra để bạn xoá file nếu muốn.",
+		"EasyKey was removed from Windows: it no longer starts with Windows, and its shortcut and settings are gone.\n"
+		"The folder with EasyKey.exe opens next, so you can delete the file if you like."), _T("EasyKey"), MB_ICONINFORMATION | MB_OK);
+	wstring select = L"/select,\"" + EasyKeyHelper::getFullPath() + L"\"";
+	ShellExecute(NULL, L"open", L"explorer.exe", select.c_str(), NULL, SW_SHOWNORMAL);
+	SystemTrayHelper::removeSystemTray();
+	PostQuitMessage(0);
+}
+
 void AppDelegate::onDefaultConfig() {
 	APP_SET_DATA(vLanguage, 1);
 	APP_SET_DATA(vInputType, 0);
@@ -207,6 +226,9 @@ void AppDelegate::onDefaultConfig() {
 
 	APP_SET_DATA(vShowOnStartUp, 1);
 	APP_SET_DATA(vShowSwitchFlyout, 1);
+	APP_SET_DATA(vUiLanguage, 0);
+	APP_SET_DATA(vAccentColor, 0);
+	APP_SET_DATA(vAccentAutoDark, 1);
 	APP_SET_DATA(vRunWithWindows, 1);
 
 	APP_SET_DATA(vRememberCode, 1);
@@ -214,10 +236,10 @@ void AppDelegate::onDefaultConfig() {
 	APP_SET_DATA(vTempOffOpenKey, 0);
 	APP_SET_DATA(vFixChromiumBrowser, 1);
 
+	SystemTrayHelper::rebuildMenu();
 	if (settingsWindow) {
 		settingsWindow->fillData();
 	}
-	SystemTrayHelper::updateData();
 }
 
 void AppDelegate::onToggleVietnamese() {
@@ -255,8 +277,8 @@ void AppDelegate::onQuickConvert() {
 	if (EasyKeyHelper::quickConvert()) {
 		//alert when complete
 		if (!convertToolDontAlertWhenCompleted) {
-			TCHAR msg[256];
-			LoadString(hInstance, IDS_STRING_CONVERT_COMPLETED, msg, 256);
+			LPCTSTR msg = TR("Chuyển mã thành công!\nKết quả đã được lưu trong Clipboard!",
+				"Converted.\nThe result is in the clipboard.");
 			MessageBox(NULL, msg, _T("EasyKey"), MB_OK);
 		}
 	}

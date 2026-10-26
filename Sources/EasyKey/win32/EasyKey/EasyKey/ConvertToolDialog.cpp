@@ -242,8 +242,8 @@ void ConvertToolDialog::onConvertButton() {
 	if (EasyKeyHelper::quickConvert()) {
 		//alert when complete
 		if (!convertToolDontAlertWhenCompleted) {
-			TCHAR msg[256];
-			LoadString(hInstance, IDS_STRING_CONVERT_COMPLETED, msg, 256);
+			LPCTSTR msg = TR("Chuyển mã thành công!\nKết quả đã được lưu trong Clipboard!",
+				"Converted.\nThe result is in the clipboard.");
 			MessageBox(this->hDlg, msg, _T("EasyKey"), MB_OK);
 		}
 	}

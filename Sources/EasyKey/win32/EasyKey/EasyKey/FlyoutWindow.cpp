@@ -12,11 +12,14 @@ redistribute your new version, it MUST be open source.
 #include <objidl.h>
 #include <gdiplus.h>
 #include <cmath>
+#include <shellapi.h>
 #include "FlyoutWindow.h"
 #include "ThemeHelper.h"
 
 #define FLYOUT_CLASS _T("EasyKeySwitchFlyout")
 #define WM_FLYOUT_SHOW (WM_APP + 1)
+#define WM_FLYOUT_MESSAGE (WM_APP + 2)
+#define MESSAGE_HOLD_TIME 4000
 #define TIMER_HOLD 1
 #define TIMER_FADE 2
 #define HOLD_TIME 1200
@@ -28,8 +31,18 @@ redistribute your new version, it MUST be open source.
 typedef HRESULT(WINAPI *GetDpiForMonitorFunc)(HMONITOR, int, UINT*, UINT*);
 
 static LPCTSTR codeTableName(const int& code) {
-	static LPCTSTR names[] = { _T("Unicode"), _T("TCVN3"), _T("VNI Windows"), _T("Unicode tổ hợp"), _T("CP 1258") };
+	static LPCTSTR names[] = { _T("Unicode"), _T("TCVN3"), _T("VNI Windows"), NULL, _T("CP 1258") };
+	if (code == 3)
+		return TR("Unicode tổ hợp", "Unicode combining");
 	return code >= 0 && code < 5 ? names[code] : names[0];
+}
+
+//a game, video or presentation fills the screen: stay out of the way
+static bool isFullScreenBusy() {
+	QUERY_USER_NOTIFICATION_STATE state;
+	if (FAILED(SHQueryUserNotificationState(&state)))
+		return false;
+	return state == QUNS_BUSY || state == QUNS_RUNNING_D3D_FULL_SCREEN || state == QUNS_PRESENTATION_MODE;
 }
 
 static UINT monitorDpi(const HMONITOR& monitor) {
@@ -80,6 +93,14 @@ void FlyoutWindow::notify() {
 		PostMessage(hWnd, WM_FLYOUT_SHOW, 0, 0);
 }
 
+void FlyoutWindow::showMessage(const wstring& title, const wstring& detail) {
+	if (!hWnd)
+		return;
+	messageTitle = title;
+	messageDetail = detail;
+	PostMessage(hWnd, WM_FLYOUT_MESSAGE, 0, 0);
+}
+
 void FlyoutWindow::freeBitmap() {
 	if (memDC) {
 		DeleteDC(memDC);
@@ -91,21 +112,23 @@ void FlyoutWindow::freeBitmap() {
 	}
 }
 
-void FlyoutWindow::showNow() {
+void FlyoutWindow::showNow(const bool& message) {
+	if (isFullScreenBusy())
+		return;
 	//on the screen being typed on
 	HWND foreground = GetForegroundWindow();
 	HMONITOR monitor = foreground ? MonitorFromWindow(foreground, MONITOR_DEFAULTTOPRIMARY) : MonitorFromPoint(POINT{ 0, 0 }, MONITOR_DEFAULTTOPRIMARY);
 	MONITORINFO mi = { sizeof(mi) };
 	GetMonitorInfo(monitor, &mi);
-	render(monitorDpi(monitor), mi.rcWork);
+	render(monitorDpi(monitor), mi.rcWork, message);
 	alpha = 255;
 	present();
 	SetWindowPos(hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
 	KillTimer(hWnd, TIMER_FADE);
-	SetTimer(hWnd, TIMER_HOLD, HOLD_TIME, NULL);
+	SetTimer(hWnd, TIMER_HOLD, message ? MESSAGE_HOLD_TIME : HOLD_TIME, NULL);
 }
 
-void FlyoutWindow::render(const UINT& dpi, const RECT& workArea) {
+void FlyoutWindow::render(const UINT& dpi, const RECT& workArea, const bool& message) {
 	auto s = [&](const float& value) { return value * dpi / USER_DEFAULT_SCREEN_DPI; };
 	bool dark = ThemeHelper::isAppDarkMode();
 	bool vietnamese = vLanguage != 0;
@@ -116,13 +139,16 @@ void FlyoutWindow::render(const UINT& dpi, const RECT& workArea) {
 	COLORREF accent = ThemeHelper::getAccentColor(dark, false);
 	DWORD accentColor = 0xFF000000 | ((DWORD)GetRValue(accent) << 16) | ((DWORD)GetGValue(accent) << 8) | GetBValue(accent);
 
-	wstring title = vietnamese ? _T("Tiếng Việt") : _T("Tiếng Anh");
+	wstring title = vietnamese ? TR("Tiếng Việt", "Vietnamese") : TR("Tiếng Anh", "English");
 	wstring detail;
-	if (vietnamese) {
+	if (message) {
+		title = messageTitle;
+		detail = messageDetail;
+	} else if (vietnamese) {
 		vector<LPCTSTR>& inputTypes = EasyKeyManager::getInputType();
 		detail = (vInputType >= 0 && vInputType < (int)inputTypes.size() ? inputTypes[vInputType] : _T("")) + wstring(_T(" · ")) + codeTableName(vCodeTable);
 	} else {
-		detail = _T("Bấm ") + EasyKeyHelper::getHotKeyString(vSwitchKeyStatus) + _T(" để gõ tiếng Việt");
+		detail = TR("Bấm ", "Press ") + EasyKeyHelper::getHotKeyString(vSwitchKeyStatus) + TR(" để gõ tiếng Việt", " to type Vietnamese");
 	}
 
 	Gdiplus::Font* titleFont = ThemeHelper::createFont(true, s(16), Gdiplus::FontStyleRegular);
@@ -192,13 +218,14 @@ void FlyoutWindow::render(const UINT& dpi, const RECT& workArea) {
 		g.DrawPath(&framePen, &pill);
 
 		float badgeX = margin + s(12), badgeY = margin + (pillHeight - s(40)) / 2;
-		Gdiplus::SolidBrush badgeBrush((Gdiplus::ARGB)(vietnamese ? accentColor : (dark ? 0x14FFFFFF : 0x0D000000)));
+		bool filled = vietnamese || message;
+		Gdiplus::SolidBrush badgeBrush((Gdiplus::ARGB)(filled ? accentColor : (dark ? 0x14FFFFFF : 0x0D000000)));
 		g.FillEllipse(&badgeBrush, badgeX, badgeY, s(40), s(40));
-		Gdiplus::SolidBrush letterBrush((Gdiplus::ARGB)(vietnamese ? (dark ? 0xFF000000 : 0xFFFFFFFF) : text));
+		Gdiplus::SolidBrush letterBrush((Gdiplus::ARGB)(filled ? (dark ? 0xFF000000 : 0xFFFFFFFF) : text));
 		Gdiplus::StringFormat centered(format);
 		centered.SetAlignment(Gdiplus::StringAlignmentCenter);
 		centered.SetLineAlignment(Gdiplus::StringAlignmentCenter);
-		g.DrawString(vietnamese ? _T("V") : _T("E"), -1, badgeFont, Gdiplus::RectF(badgeX, badgeY, s(40), s(40)), &centered, &letterBrush);
+		g.DrawString(message ? _T("!") : vietnamese ? _T("V") : _T("E"), -1, badgeFont, Gdiplus::RectF(badgeX, badgeY, s(40), s(40)), &centered, &letterBrush);
 
 		float textX = badgeX + s(40) + s(14);
 		float middle = margin + pillHeight / 2;
@@ -239,7 +266,10 @@ LRESULT CALLBACK FlyoutWindow::windowProc(HWND hWnd, UINT uMsg, WPARAM wParam, L
 LRESULT FlyoutWindow::handleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	switch (uMsg) {
 	case WM_FLYOUT_SHOW:
-		showNow();
+		showNow(false);
+		return 0;
+	case WM_FLYOUT_MESSAGE:
+		showNow(true);
 		return 0;
 	case WM_TIMER:
 		if (wParam == TIMER_HOLD) {

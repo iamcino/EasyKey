@@ -42,7 +42,7 @@ private:
 	struct Palette {
 		DWORD bg, card, cardHover, cardPressed, stroke, divider, track;
 		DWORD text, sub, disabled, accent, accentHover, onAccent;
-		DWORD field, fieldHover, link, linkHover;
+		DWORD field, fieldHover, link, linkHover, good, warning;
 	};
 
 	HINSTANCE hInstance;
@@ -68,6 +68,8 @@ private:
 	bool capturing = false;
 	int savedSwitchKey = 0, captureModifiers = 0;
 	bool checkingUpdate = false;
+	int hexEditing = -1; //custom accent field being typed in: 0 light, 1 dark
+	wstring hexBuffer;
 private:
 	static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 	LRESULT handleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam);
@@ -105,6 +107,11 @@ private:
 	void showDropDown(const Item& item);
 	void requestRestartAsAdmin();
 	void checkUpdate();
+
+	void startHexEdit(const int& field);
+	void endHexEdit();
+	bool onHexKey(const UINT& uMsg, const WPARAM& key);
+	void applyHex();
 
 	void startCapture();
 	void endCapture(const bool& save, const int& hotKey);
