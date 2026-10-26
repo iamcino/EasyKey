@@ -17,7 +17,6 @@ redistribute your new version, it MUST be open source.
 #include <dwmapi.h> //before stdafx.h, its "using namespace std" clashes with rpcndr byte in C++17
 #include <objidl.h>
 #include <gdiplus.h>
-#include <map>
 #include <cmath>
 #include "ThemeHelper.h"
 
@@ -43,14 +42,12 @@ typedef void(WINAPI *FlushMenuThemesFunc)();
 
 #define UI_FONT_FACE _T("Segoe UI Variable Text")
 #define UI_FONT_FALLBACK _T("Segoe UI")
-#define UI_FONT_POINT_SIZE 9
 
 #define PERSONALIZE_KEY _T("Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize")
 #define ACCENT_KEY _T("Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Accent")
 
 typedef UINT(WINAPI *GetDpiForWindowFunc)(HWND);
 
-static map<UINT, HFONT> uiFonts;
 
 static DWORD getPersonalizeValue(LPCTSTR name, const DWORD& defaultValue) {
 	DWORD value = 0;
@@ -122,45 +119,6 @@ LPCTSTR ThemeHelper::getFontFace() {
 		hasVariableFont = found ? 1 : 0;
 	}
 	return hasVariableFont ? UI_FONT_FACE : UI_FONT_FALLBACK;
-}
-
-static HFONT getUIFont(const UINT& dpi) {
-	auto it = uiFonts.find(dpi);
-	if (it != uiFonts.end())
-		return it->second;
-	HFONT font = CreateFont(-MulDiv(UI_FONT_POINT_SIZE, dpi, 72), 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
-		DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
-		DEFAULT_PITCH | FF_DONTCARE, ThemeHelper::getFontFace());
-	uiFonts[dpi] = font;
-	return font;
-}
-
-static bool isUIFont(const HFONT& font) {
-	for (auto it = uiFonts.begin(); it != uiFonts.end(); ++it) {
-		if (it->second == font)
-			return true;
-	}
-	return false;
-}
-
-static BOOL CALLBACK applyFontToChild(HWND hWnd, LPARAM lParam) {
-	TCHAR className[16];
-	GetClassName(hWnd, className, 16);
-	if (lstrcmp(className, _T("#32770")) == 0) //tab pages keep their template font so their children can be compared to it
-		return TRUE;
-
-	HFONT font = (HFONT)SendMessage(hWnd, WM_GETFONT, 0, 0);
-	HFONT templateFont = (HFONT)SendMessage(GetParent(hWnd), WM_GETFONT, 0, 0);
-	//leave custom fonts (like the About title) alone
-	if (font != NULL && (font == templateFont || isUIFont(font)))
-		SendMessage(hWnd, WM_SETFONT, (WPARAM)lParam, TRUE);
-	return TRUE;
-}
-
-void ThemeHelper::applyDialogFont(const HWND& hDlg) {
-	if (lstrcmp(getFontFace(), UI_FONT_FACE) != 0)
-		return; //the template font is already Segoe UI
-	EnumChildWindows(hDlg, applyFontToChild, (LPARAM)getUIFont(getDpi(hDlg)));
 }
 
 static void applyDarkTitleBar(const HWND& hWnd) {

@@ -51,7 +51,22 @@
     <ClInclude Include="AppDelegate.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="BaseDialog.h">
+    <ClInclude Include="FluentUi.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="FluentWindow.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="MessageWindow.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="AboutWindow.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ConvertToolWindow.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="MacroWindow.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="SettingsWindow.h">
@@ -84,15 +99,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     </ClInclude>
-    <ClInclude Include="AboutDialog.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ConvertToolDialog.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="MacroDialog.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -119,7 +125,22 @@
     <ClCompile Include="AppDelegate.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="BaseDialog.cpp">
+    <ClCompile Include="FluentUi.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="FluentWindow.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="MessageWindow.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="AboutWindow.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ConvertToolWindow.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="MacroWindow.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="SettingsWindow.cpp">
@@ -146,15 +167,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     </ClCompile>
-    <ClCompile Include="AboutDialog.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ConvertToolDialog.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="MacroDialog.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="EasyKey.rc">
@@ -176,12 +188,6 @@
     <Image Include="StatusEngLight.ico">
       <Filter>Resource Files</Filter>
     </Image>
-    </Image>
-    <Image Include="OKButton.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="StartConvert.ico">
-      <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>
   <ItemGroup>

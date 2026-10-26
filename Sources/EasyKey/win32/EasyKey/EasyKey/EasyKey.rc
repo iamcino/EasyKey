@@ -42,12 +42,6 @@ IDI_ICON_STATUS_ENG_DARK ICON                   "StatusEngDark.ico"
 
 IDI_ICON_STATUS_ENG_LIGHT ICON                  "StatusEngLight.ico"
 
-IDI_ICON_OK_BUTTON      ICON                    "OKButton.ico"
-
-
-IDI_ICON_START_CONVERT  ICON                    "StartConvert.ico"
-
-
 /////////////////////////////////////////////////////////////////////////////
 //
 // Menu
@@ -76,122 +70,6 @@ BEGIN
     "?",            IDM_ABOUT,              ASCII,  ALT
     "/",            IDM_ABOUT,              ASCII,  ALT
 END
-
-
-/////////////////////////////////////////////////////////////////////////////
-//
-// Dialog
-//
-
-IDD_ABOUTBOX DIALOGEX 0, 0, 287, 157
-STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
-CAPTION "Giới thiệu EasyKey"
-FONT 9, "Segoe UI", 400, 0, 0x1
-BEGIN
-    ICON            IDI_APP_ICON,IDC_STATIC,14,17,20,20
-    LTEXT           "EasyKey",IDC_STATIC_APP_TITLE,45,14,206,33,SS_NOPREFIX
-    LTEXT           "Bộ gõ Tiếng Việt cho Windows 11",IDC_STATIC_APP_SUB_TITLE,45,40,215,12
-    LTEXT           "Phien ban",IDC_STATIC_APP_VERSION,45,52,227,8
-    CONTROL         "<a>https://github.com/iamcino/EasyKey</a>",IDC_SYSLINK_HOME_PAGE,
-                    "SysLink",WS_TABSTOP,105,79,152,10
-    LTEXT           "Trang chủ:",IDC_STATIC_APP_SUB_TITLE2,45,79,47,8
-    LTEXT           "Phiên bản mới:",IDC_STATIC_APP_SUB_TITLE3,45,91,58,8
-    LTEXT           "Dựa trên:",IDC_STATIC_APP_SUB_TITLE4,45,103,47,8
-    CONTROL         "<a>https://github.com/iamcino/EasyKey/releases</a>",IDC_SYSLINK_NEW_VERSION,
-                    "SysLink",WS_TABSTOP,105,91,175,10
-    CONTROL         "<a>OpenKey</a> của Mai Vũ Tuyên (GPLv3)",IDC_SYSLINK_FANPAGE,
-                    "SysLink",WS_TABSTOP,105,104,175,10
-    CTEXT           "© 2026 Cino",IDC_STATIC_APP_SUB_TITLE5,60,142,170,8
-    PUSHBUTTON      "Kiểm tra bản mới...",IDC_BUTTON_CHECK_VERSION,44,117,75,14
-END
-
-
-IDD_DIALOG_MACRO DIALOGEX 0, 0, 415, 253
-STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
-CAPTION "Thiết lập gõ tắt - EasyKey"
-FONT 9, "Segoe UI", 400, 0, 0x1
-BEGIN
-    CONTROL         "",IDC_LIST_MACRO_DATA,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_ALIGNLEFT | LVS_NOCOLUMNHEADER | WS_BORDER | WS_TABSTOP,7,41,401,186
-    LTEXT           "Từ gõ tắt",IDC_STATIC,7,6,30,8
-    LTEXT           "Nội dung đầy đủ",IDC_STATIC,90,6,53,8
-    EDITTEXT        IDC_EDIT_MACRO_NAME,7,18,72,14,ES_AUTOHSCROLL
-    EDITTEXT        IDC_EDIT_MACRO_CONTENT,82,18,234,14,ES_MULTILINE | ES_AUTOVSCROLL | ES_AUTOHSCROLL
-    PUSHBUTTON      "+ Thêm",IDC_BUTTON_ADD,320,18,43,14
-    PUSHBUTTON      "- Xóa",IDC_BUTTON_DELETE,365,18,43,14
-    PUSHBUTTON      "Nạp từ file...",IDC_BUTTON_IMPORT_MACRO,7,232,66,14
-    PUSHBUTTON      "Xuất ra file...",IDC_BUTTON_EXPORT_MACRO,82,232,66,14
-    CONTROL         "Tự động đổi chữ hoa theo phím tắt",IDC_CHECK_AUTO_CAPS,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,167,234,221,10
-END
-
-IDD_DIALOG_CONVERT_TOOL DIALOGEX 0, 0, 283, 194
-STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
-CAPTION "Công cụ chuyển mã - EasyKey"
-FONT 9, "Segoe UI", 400, 0, 0x1
-BEGIN
-    DEFPUSHBUTTON   "Đóng",IDOK,156,169,71,18
-    GROUPBOX        "Tùy chọn chung",IDC_STATIC,7,7,269,59
-    PUSHBUTTON      "Chuyển mã",IDC_BUTTON_CONVERT_BUTTON,57,169,71,18
-    GROUPBOX        "Lựa chọn",IDC_STATIC,7,79,269,82
-    CONTROL         "Chuyển sang chữ HOA",IDC_CHECK_All_CAPS,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,17,19,96,10
-    CONTROL         "Loại bỏ dấu câu",IDC_CHECK_REMOVE_MARK,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,17,49,96,10
-    CONTROL         "Chuyển sang chữ thường",IDC_CHECK_NON_ALL_CAPS,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,17,34,96,10
-    CONTROL         "Đặt chữ Hoa đầu câu",IDC_CHECK_CAPS_FIRST_LETTER,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,161,19,96,10
-    CONTROL         "Đặt chữ Hoa Sau Mỗi Từ",IDC_CHECK_EACH_WORD,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,161,34,96,10
-    CONTROL         "Thông báo khi chuyển xong",IDC_CHECK_ALERT_WHEN_COMPLETED,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,161,49,113,10
-    CONTROL         "Chuyển mã trong Clipboard",IDC_CHECK_CONVERT_CLIPBOARD,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,17,93,165,10
-    LTEXT           "Phím chuyển mã nhanh:",IDC_STATIC,17,110,80,8
-    CONTROL         "Ctrl",IDC_CHECK_SWITCH_KEY_CTRL,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,112,108,27,10
-    CONTROL         "Alt",IDC_CHECK_SWITCH_KEY_ALT,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,145,108,25,10
-    CONTROL         "Win",IDC_CHECK_SWITCH_KEY_WIN,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,174,108,28,10
-    CONTROL         "Shift",IDC_CHECK_SWITCH_KEY_SHIFT,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,206,108,31,10
-    EDITTEXT        IDC_SWITCH_KEY_KEY,241,106,26,12,ES_CENTER | ES_AUTOHSCROLL
-    COMBOBOX        IDC_COMBO_TABLE_CODE_SRC,17,135,95,30,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
-    COMBOBOX        IDC_COMBO_TABLE_CODE_DST,171,135,95,30,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
-    LTEXT           "Bảng mã nguồn",IDC_STATIC,17,125,52,8
-    LTEXT           "Bảng mã đích",IDC_STATIC,222,125,45,8
-    PUSHBUTTON      "Đảo",IDC_BUTTON_CONVERT_SWITCH,124,134,36,14
-END
-
-
-/////////////////////////////////////////////////////////////////////////////
-//
-// DESIGNINFO
-//
-
-#ifdef APSTUDIO_INVOKED
-GUIDELINES DESIGNINFO
-BEGIN
-    IDD_ABOUTBOX, DIALOG
-    BEGIN
-        LEFTMARGIN, 7
-        RIGHTMARGIN, 280
-        TOPMARGIN, 7
-        BOTTOMMARGIN, 150
-    END
-
-
-    IDD_DIALOG_MACRO, DIALOG
-    BEGIN
-        LEFTMARGIN, 7
-        RIGHTMARGIN, 408
-        TOPMARGIN, 6
-        BOTTOMMARGIN, 246
-    END
-
-    IDD_DIALOG_CONVERT_TOOL, DIALOG
-    BEGIN
-        LEFTMARGIN, 7
-        RIGHTMARGIN, 276
-        TOPMARGIN, 7
-        BOTTOMMARGIN, 187
-    END
-
-
-END
-#endif    // APSTUDIO_INVOKED
 
 
 #ifdef APSTUDIO_INVOKED

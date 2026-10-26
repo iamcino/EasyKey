@@ -53,8 +53,6 @@ public:
 
 	//vUiLanguage resolved, following the Windows display language when it is 0
 	static bool isEnglishUi();
-	//replace the Vietnamese text of a dialog and its controls with English when the UI is English
-	static void translateWindow(const HWND& hWnd);
 	//true when the window belongs to a process with a higher integrity level than EasyKey,
 	//whose keystrokes the keyboard hook never sees
 	static bool isWindowElevated(const HWND& hWnd);

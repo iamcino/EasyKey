@@ -16,6 +16,7 @@ redistribute your new version, it MUST be open source.
 -----------------------------------------------------------*/
 #pragma once
 #include "stdafx.h"
+#include "FluentUi.h"
 
 namespace Gdiplus { class Graphics; class Font; class StringFormat; }
 
@@ -39,16 +40,11 @@ private:
 		int textRight;   //label and hint end here
 		bool afterLabel; //first row of a group, no divider above it
 	};
-	struct Palette {
-		DWORD bg, card, cardHover, cardPressed, stroke, divider, track;
-		DWORD text, sub, disabled, accent, accentHover, onAccent;
-		DWORD field, fieldHover, link, linkHover, good, warning;
-	};
 
 	HINSTANCE hInstance;
 	HWND hWnd = NULL;
 	UINT dpi = USER_DEFAULT_SCREEN_DPI;
-	Palette pal;
+	FluentPalette pal;
 	bool translucent = false;
 	Gdiplus::Font *fontBody = NULL, *fontCaption = NULL, *fontSmall = NULL, *fontStrong = NULL, *fontTitle = NULL, *fontBadge = NULL;
 	Gdiplus::StringFormat* textFormat = NULL;
@@ -57,7 +53,7 @@ private:
 	RECT heroArea, expandArea;
 	int contentHeight = 0, scrollY = 0;
 	bool expanded = false;
-	int openGroups = 1 << 1; //bit per group of Nâng cao, Gõ starts open
+	int openGroups = 0; //bit per group of Nâng cao, all start closed
 
 	int hotItem = -1, hotPart = 0;
 	int pressedItem = -1, pressedPart = 0;

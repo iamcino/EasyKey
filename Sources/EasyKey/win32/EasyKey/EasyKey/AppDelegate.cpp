@@ -18,6 +18,10 @@ redistribute your new version, it MUST be open source.
 #include "AppDelegate.h"
 #include "ThemeHelper.h"
 #include "Updater.h"
+#include "MessageWindow.h"
+#include "AboutWindow.h"
+#include "ConvertToolWindow.h"
+#include "MacroWindow.h"
 #include <commctrl.h>
 
 #pragma comment(lib, "comctl32.lib")
@@ -27,7 +31,6 @@ redistribute your new version, it MUST be open source.
 	L"• Gõ nhanh (cc → ch, gg → gi…) cũng dùng được khi gõ VNI."
 #define WHATS_NEW_EN L"• Fixed extra letters in Chrome and Edge on pages that handle keys themselves, such as typing tests.\n" \
 	L"• \"Quick Telex\" is now \"Quick typing\": cc → ch, gg → gi… work in VNI too."
-#define RELEASE_NOTES_URL L"https://github.com/iamcino/EasyKey/releases/tag/"
 
 static AppDelegate* _instance;
 
@@ -76,12 +79,6 @@ int vCreateDesktopShortcut = 0;
 int vRunAsAdmin = 0;
 int vCheckNewVersion = 0;
 int vFixChromiumBrowser = 1;
-
-bool AppDelegate::isDialogMsg(MSG & msg) const {
-	return (macroDialog != NULL && IsDialogMessage(macroDialog->getHwnd(), &msg)) || 
-		(convertDialog != NULL && IsDialogMessage(convertDialog->getHwnd(), &msg)) || 
-		(aboutDialog != NULL && IsDialogMessage(aboutDialog->getHwnd(), &msg));
-}
 
 AppDelegate::AppDelegate() {
 	_instance = this;
@@ -138,10 +135,8 @@ int AppDelegate::run(HINSTANCE hInstance) {
 		if (msg.message == WM_KEYDOWN) {
 			EasyKeyManager::_lastKeyCode = (UINT16)msg.wParam;
 		}
-		if (!isDialogMsg(msg)) {
-			TranslateMessage(&msg);
-			DispatchMessage(&msg);
-		}
+		TranslateMessage(&msg);
+		DispatchMessage(&msg);
 	}
 	return 0;
 }
@@ -155,18 +150,15 @@ void AppDelegate::createMainDialog() {
 	}
 }
 
-void AppDelegate::closeDialog(BaseDialog * dialog) {
-	dialog->closeDialog();
-	if (aboutDialog == dialog) {
-		delete aboutDialog;
-		aboutDialog = NULL;
-	} else if (macroDialog == dialog) {
-		delete macroDialog;
-		macroDialog = NULL;
-	} else if (convertDialog == dialog) {
-		delete convertDialog;
-		convertDialog = NULL;
-	}
+void AppDelegate::closeWindow(FluentWindow* window) {
+	window->destroy();
+	if (aboutWindow == window)
+		aboutWindow = NULL;
+	else if (macroWindow == window)
+		macroWindow = NULL;
+	else if (convertWindow == window)
+		convertWindow = NULL;
+	delete window;
 }
 
 void AppDelegate::closeSettingsWindow() {
@@ -232,61 +224,60 @@ void AppDelegate::greet() {
 
 void AppDelegate::warnOtherKeyboard(const wstring& name) {
 	//never closes the other keyboard, that is the user's call
-	wstring title = name + TR(" đang chạy", " is running");
-	TASKDIALOGCONFIG config = { sizeof(config) };
-	config.dwFlags = TDF_ALLOW_DIALOG_CANCELLATION;
-	config.dwCommonButtons = TDCBF_OK_BUTTON;
-	config.pszWindowTitle = _T("EasyKey");
-	config.pszMainIcon = TD_WARNING_ICON;
-	config.pszMainInstruction = title.c_str();
 	bool windowsKeyboard = name == TR("Bàn phím tiếng Việt của Windows", "The Windows Vietnamese keyboard");
-	config.pszContent = windowsKeyboard
+	MessageWindow::Options options;
+	options.heading = name + TR(" đang chạy", " is running");
+	options.text = windowsKeyboard
 		? TR("Hai bộ gõ cùng lúc dễ làm chữ bị bỏ dấu hai lần, ví dụ \"vieejt\". Bấm Windows + Space để chuyển về bàn phím tiếng Anh.",
 			"Two Vietnamese keyboards at once can add marks twice, as in \"vieejt\". Press Windows + Space to go back to the English keyboard.")
 		: TR("Hai bộ gõ chạy cùng lúc dễ làm chữ bị bỏ dấu hai lần, ví dụ \"vieejt\". Hãy tắt một trong hai.",
 			"Two Vietnamese keyboards at once can add marks twice, as in \"vieejt\". Please quit one of them.");
-	config.pszVerificationText = TR("Không nhắc lại", "Don't remind me again");
-	BOOL dontRemind = FALSE;
-	if (SUCCEEDED(TaskDialogIndirect(&config, NULL, NULL, &dontRemind)) && dontRemind) {
+	options.buttons.push_back(TR("OK", "OK"));
+	options.check = TR("Không nhắc lại", "Don't remind me again");
+	MessageWindow::show(NULL, options);
+	if (options.checked) {
 		APP_SET_DATA(vWarnOtherKeyboards, 0);
-		if (settingsWindow)
-			settingsWindow->fillData();
+		onSettingsChanged();
 	}
 }
 
 void AppDelegate::showWhatsNew() {
 	wstring version = EasyKeyHelper::getVersionString();
-	wstring title = TR("Có gì mới trong EasyKey ", "What's new in EasyKey ") + version;
-	wstring link = wstring(L"<a href=\"") + RELEASE_NOTES_URL + version + L"\">" + TR("Xem đầy đủ các thay đổi", "See all changes") + L"</a>";
-	TASKDIALOGCONFIG config = { sizeof(config) };
-	config.dwFlags = TDF_ALLOW_DIALOG_CANCELLATION | TDF_ENABLE_HYPERLINKS;
-	config.dwCommonButtons = TDCBF_OK_BUTTON;
-	config.pszWindowTitle = _T("EasyKey");
-	config.pszMainIcon = TD_INFORMATION_ICON;
-	config.pszMainInstruction = title.c_str();
-	config.pszContent = EasyKeyHelper::isEnglishUi() ? WHATS_NEW_EN : WHATS_NEW_VI;
-	config.pszFooter = link.c_str();
-	config.pfCallback = [](HWND, UINT msg, WPARAM, LPARAM lParam, LONG_PTR) -> HRESULT {
-		if (msg == TDN_HYPERLINK_CLICKED)
-			ShellExecute(NULL, _T("open"), (LPCWSTR)lParam, NULL, NULL, SW_SHOWNORMAL);
-		return S_OK;
-	};
-	TaskDialogIndirect(&config, NULL, NULL, NULL);
+	MessageWindow::Options options;
+	options.heading = TR("Có gì mới trong EasyKey ", "What's new in EasyKey ") + version;
+	options.text = EasyKeyHelper::isEnglishUi() ? WHATS_NEW_EN : WHATS_NEW_VI;
+	options.link = TR("Xem đầy đủ các thay đổi", "See all changes");
+	options.linkUrl = wstring(RELEASE_NOTES_URL) + version;
+	options.buttons.push_back(TR("OK", "OK"));
+	MessageWindow::show(NULL, options);
 }
 
 void AppDelegate::onAppearanceChanged() {
 	SystemTrayHelper::rebuildMenu();
+	onSettingsChanged();
+}
+
+void AppDelegate::onSettingsChanged() {
 	if (settingsWindow)
 		settingsWindow->fillData();
+	FluentWindow* windows[] = { aboutWindow, macroWindow, convertWindow };
+	for (FluentWindow* window : windows)
+		if (window)
+			window->fillData();
+}
+
+void AppDelegate::showNotice(const wstring& title, const wstring& detail) {
+	if (flyout)
+		flyout->showMessage(title, detail, false);
 }
 
 void AppDelegate::onUninstall() {
 	EasyKeyManager::freeEngine();
 	EasyKeyHelper::removeFromSystem();
 	//one literal per language: _T() only widens the first piece of a concatenated string
-	MessageBox(NULL, TR("Đã gỡ EasyKey khỏi Windows: không còn chạy cùng Windows, lối tắt và cài đặt đã xoá.\nThư mục chứa EasyKey.exe sẽ mở ra để bạn xoá file nếu muốn.",
-		"EasyKey was removed from Windows: it no longer starts with Windows, and its shortcut and settings are gone.\n"
-		"The folder with EasyKey.exe opens next, so you can delete the file if you like."), _T("EasyKey"), MB_ICONINFORMATION | MB_OK);
+	MessageWindow::notice(NULL, TR("Đã gỡ EasyKey khỏi Windows", "EasyKey was removed from Windows"),
+		TR("EasyKey không còn chạy cùng Windows, lối tắt và cài đặt đã xoá. Thư mục chứa EasyKey.exe sẽ mở ra để bạn xoá file nếu muốn.",
+			"It no longer starts with Windows, and its shortcut and settings are gone. The folder with EasyKey.exe opens next, so you can delete the file if you like."));
 	wstring select = L"/select,\"" + EasyKeyHelper::getFullPath() + L"\"";
 	ShellExecute(NULL, L"open", L"explorer.exe", select.c_str(), NULL, SW_SHOWNORMAL);
 	SystemTrayHelper::removeSystemTray();
@@ -351,20 +342,22 @@ void AppDelegate::onToggleVietnamese() {
 }
 
 void AppDelegate::onMacroTable() {
-	if (macroDialog == NULL) {
-		macroDialog = new MacroDialog(hInstance, IDD_DIALOG_MACRO);
-		macroDialog->show();
+	if (macroWindow == NULL) {
+		MacroWindow* window = new MacroWindow(hInstance);
+		macroWindow = window;
+		window->show();
 	} else {
-		macroDialog->bringOnTop();
+		macroWindow->bringOnTop();
 	}
 }
 
 void AppDelegate::onConvertTool() {
-	if (convertDialog == NULL) {
-		convertDialog = new ConvertToolDialog(hInstance, IDD_DIALOG_CONVERT_TOOL);
-		convertDialog->show();
+	if (convertWindow == NULL) {
+		ConvertToolWindow* window = new ConvertToolWindow(hInstance);
+		convertWindow = window;
+		window->show();
 	} else {
-		convertDialog->bringOnTop();
+		convertWindow->bringOnTop();
 	}
 }
 
@@ -372,9 +365,8 @@ void AppDelegate::onQuickConvert() {
 	if (EasyKeyHelper::quickConvert()) {
 		//alert when complete
 		if (!convertToolDontAlertWhenCompleted) {
-			LPCTSTR msg = TR("Chuyển mã thành công!\nKết quả đã được lưu trong Clipboard!",
-				"Converted.\nThe result is in the clipboard.");
-			MessageBox(NULL, msg, _T("EasyKey"), MB_OK);
+			showNotice(TR("Đã chuyển mã", "Converted"),
+				TR("Kết quả đã nằm trong Clipboard", "The result is in the clipboard"));
 		}
 	}
 }
@@ -402,11 +394,12 @@ void AppDelegate::onControlPanel() {
 }
 
 void AppDelegate::onEasyKeyAbout() {
-	if (aboutDialog == NULL) {
-		aboutDialog = new AboutDialog(hInstance, IDD_ABOUTBOX);
-		aboutDialog->show();
+	if (aboutWindow == NULL) {
+		AboutWindow* window = new AboutWindow(hInstance);
+		aboutWindow = window;
+		window->show();
 	} else {
-		aboutDialog->bringOnTop();
+		aboutWindow->bringOnTop();
 	}
 }
 

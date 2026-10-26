@@ -15,17 +15,15 @@ You can fork, modify, improve this program. If you
 redistribute your new version, it MUST be open source.
 -----------------------------------------------------------*/
 #pragma once
-#include "BaseDialog.h"
+#include "FluentWindow.h"
 
-class AboutDialog :	public BaseDialog {
-protected:
-	INT_PTR eventProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
-	void initDialog();
+//version, links and the update check
+class AboutWindow : public FluentWindow {
 public:
-	AboutDialog(const HINSTANCE & hInstance, const int & resourceId);
-	~AboutDialog();
-	virtual void fillData() override;
-private:
-	HWND hUpdateButton;
-	void onUpdateButton();
+	AboutWindow(const HINSTANCE& hInstance);
+	void show();
+protected:
+	void layout() override;
+	wstring title() const override;
+	void onActivate(const int& id) override;
 };

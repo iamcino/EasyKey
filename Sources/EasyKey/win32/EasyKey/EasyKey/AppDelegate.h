@@ -18,19 +18,15 @@ redistribute your new version, it MUST be open source.
 #include "stdafx.h"
 #include "SettingsWindow.h"
 #include "FlyoutWindow.h"
-#include "AboutDialog.h"
-#include "ConvertToolDialog.h"
-#include "MacroDialog.h"
+#include "FluentWindow.h"
 
-class BaseDialog;
 class AppDelegate {
 private:
 	HINSTANCE hInstance;
 	SettingsWindow* settingsWindow = NULL;
 	FlyoutWindow* flyout = NULL;
-	BaseDialog* aboutDialog = NULL, *macroDialog = NULL, *convertDialog = NULL;
+	FluentWindow* aboutWindow = NULL, *macroWindow = NULL, *convertWindow = NULL;
 private:
-	bool isDialogMsg(MSG &msg) const;
 	//once at start: a welcome notice, what is new after an update, other Vietnamese keyboards
 	void greet();
 	void warnOtherKeyboard(const wstring& name);
@@ -40,7 +36,7 @@ public:
 	static AppDelegate* getInstance();
 	int run(HINSTANCE hInstance);
 	void createMainDialog();
-	void closeDialog(BaseDialog* dialog);
+	void closeWindow(FluentWindow* window);
 	void closeSettingsWindow();
 public: //event
 	void onInputMethodChangedFromHotKey();
@@ -50,6 +46,10 @@ public: //event
 	void onElevatedWindow(const HWND& hWnd);
 	//display language or accent color changed
 	void onAppearanceChanged();
+	//a setting changed outside the settings window
+	void onSettingsChanged();
+	//a short notice in the flyout
+	void showNotice(const wstring& title, const wstring& detail);
 	void onUninstall();
 	void onDefaultConfig();
 

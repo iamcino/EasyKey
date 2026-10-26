@@ -10,6 +10,9 @@ redistribute your new version, it MUST be open source.
 #pragma once
 #include "stdafx.h"
 
+//notes of one release, followed by its version
+#define RELEASE_NOTES_URL L"https://github.com/iamcino/EasyKey/releases/tag/"
+
 /*
  * Updates EasyKey.exe in place from GitHub Releases. The new exe is downloaded
  * over HTTPS and checked against the SHA-256 published next to it. The running

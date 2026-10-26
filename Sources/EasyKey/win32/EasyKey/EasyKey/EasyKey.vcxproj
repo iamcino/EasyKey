@@ -99,17 +99,19 @@
     <ClInclude Include="..\..\..\engine\platforms\win32.h" />
     <ClInclude Include="..\..\..\engine\SmartSwitchKey.h" />
     <ClInclude Include="..\..\..\engine\Vietnamese.h" />
-    <ClInclude Include="AboutDialog.h" />
     <ClInclude Include="AppDelegate.h" />
-    <ClInclude Include="BaseDialog.h" />
-    <ClInclude Include="ConvertToolDialog.h" />
-    <ClInclude Include="MacroDialog.h" />
     <ClInclude Include="EasyKeyHelper.h" />
     <ClInclude Include="FlyoutWindow.h" />
     <ClInclude Include="EasyKeyManager.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="SystemTrayHelper.h" />
+    <ClInclude Include="FluentUi.h" />
+    <ClInclude Include="FluentWindow.h" />
+    <ClInclude Include="MessageWindow.h" />
+    <ClInclude Include="AboutWindow.h" />
+    <ClInclude Include="ConvertToolWindow.h" />
+    <ClInclude Include="MacroWindow.h" />
     <ClInclude Include="SettingsWindow.h" />
     <ClInclude Include="ThemeHelper.h" />
     <ClInclude Include="Updater.h" />
@@ -121,12 +123,14 @@
     <ClCompile Include="..\..\..\engine\Macro.cpp" />
     <ClCompile Include="..\..\..\engine\SmartSwitchKey.cpp" />
     <ClCompile Include="..\..\..\engine\Vietnamese.cpp" />
-    <ClCompile Include="AboutDialog.cpp" />
     <ClCompile Include="AppDelegate.cpp" />
-    <ClCompile Include="BaseDialog.cpp" />
-    <ClCompile Include="ConvertToolDialog.cpp" />
-    <ClCompile Include="MacroDialog.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="FluentUi.cpp" />
+    <ClCompile Include="FluentWindow.cpp" />
+    <ClCompile Include="MessageWindow.cpp" />
+    <ClCompile Include="AboutWindow.cpp" />
+    <ClCompile Include="ConvertToolWindow.cpp" />
+    <ClCompile Include="MacroWindow.cpp" />
     <ClCompile Include="SettingsWindow.cpp" />
     <ClCompile Include="EasyKey.cpp" />
     <ClCompile Include="EasyKeyHelper.cpp" />
@@ -145,8 +149,6 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="icon.ico" />
-    <Image Include="OKButton.ico" />
-    <Image Include="StartConvert.ico" />
     <Image Include="StatusEngDark.ico" />
     <Image Include="StatusEngLight.ico" />
     <Image Include="StatusVietDark.ico" />
