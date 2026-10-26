@@ -8,6 +8,7 @@ Bản đầu tiên của EasyKey, phát triển tiếp từ OpenKey 2.0.5 cho Wi
 - Giao diện Windows 11: DPI theo từng màn hình, font Segoe UI, thanh tiêu đề tối, Mica, biểu tượng khay đơn sắc tự đổi màu.
 - Bỏ "Hỗ trợ ứng dụng Metro" (không cần trên Windows 11) và tuỳ chọn "Biểu tượng hiện đại" (luôn dùng biểu tượng Windows 11).
 - Tooltip ngắn gọn hơn.
+- "Sửa lỗi trên Chrome, Edge" hết thử nghiệm và bật mặc định; sửa lỗi xoá nhầm ký tự trước con trỏ khi viết hoa đầu câu.
 - Thêm test engine gõ Telex/VNI chạy trên CI.
 
 ---

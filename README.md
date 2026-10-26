@@ -41,9 +41,9 @@ Tải file `EasyKey<phiên bản>-Windows.zip` ở trang [Releases](https://gith
 Lần chạy đầu, nếu máy đã có OpenKey, EasyKey tự chép cài đặt và bảng gõ tắt của OpenKey sang. Cài đặt của EasyKey lưu ở `HKEY_CURRENT_USER\Software\EasyKey`.
 
 ## Mã nguồn
-- Engine gõ dùng chung: `Sources/OpenKey/engine`
-- Ứng dụng Windows: `Sources/OpenKey/win32/OpenKey` (Visual Studio 2022, x64)
-- Test engine: `Sources/OpenKey/tests` (CMake)
+- Engine gõ dùng chung: `Sources/EasyKey/engine`
+- Ứng dụng Windows: `Sources/EasyKey/win32/EasyKey` (Visual Studio 2022, x64)
+- Test engine: `Sources/EasyKey/tests` (CMake)
 
 ## Tác giả
 - EasyKey: duongtheson@proton.me
