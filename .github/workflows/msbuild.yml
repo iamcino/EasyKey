@@ -145,9 +145,33 @@ jobs:
           EasyKey${{ steps.version.outputs.name }}-Windows.zip
           EasyKey.exe
 
+    - name: Write the release notes
+      shell: pwsh
+      # only this version's section of each changelog, Vietnamese first
+      run: |
+        $version = "${{ steps.version.outputs.name }}"
+        function Get-Section($file) {
+          $section = @()
+          $found = $false
+          foreach ($line in Get-Content $file -Encoding utf8) {
+            if ($line.StartsWith("## ")) {
+              if ($found) { break }
+              $found = $line -eq "## $version" -or $line.StartsWith("## $version ")
+            } elseif ($found) {
+              $section += $line
+            }
+          }
+          if (-not $found) { throw "$file has no section for $version" }
+          ($section -join "`n").Trim()
+        }
+        $repo = "https://github.com/${{ github.repository }}/blob/master"
+        $notes = (Get-Section CHANGELOG.md) + "`n`n**English**`n`n" + (Get-Section CHANGELOG.en.md) +
+          "`n`n[Nhật ký thay đổi]($repo/CHANGELOG.md) · [Changelog]($repo/CHANGELOG.en.md)`n"
+        [IO.File]::WriteAllText("release-notes.md", $notes)
+
     - name: Publish the release
       shell: pwsh
       env:
         GH_TOKEN: ${{ github.token }}
       # on a tag push the tag exists; when run by hand, gh creates it on this commit
-      run: gh release create "${{ steps.version.outputs.name }}" "EasyKey${{ steps.version.outputs.name }}-Windows.zip" EasyKey.exe EasyKey.exe.sha256 --title "EasyKey ${{ steps.version.outputs.name }}" --notes-file CHANGELOG.md --target "${{ github.sha }}"
+      run: gh release create "${{ steps.version.outputs.name }}" "EasyKey${{ steps.version.outputs.name }}-Windows.zip" EasyKey.exe EasyKey.exe.sha256 --title "EasyKey ${{ steps.version.outputs.name }}" --notes-file release-notes.md --target "${{ github.sha }}"
