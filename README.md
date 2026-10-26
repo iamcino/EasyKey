@@ -19,10 +19,10 @@ EasyKey hiện **chưa có chữ ký số** (code signing). Vì vậy, khi tải
 - Windows SmartScreen có thể hiện "Windows protected your PC". Bấm **More info** › **Run anyway** để chạy.
 - Windows Defender hoặc phần mềm diệt virus khác có thể chặn, cách ly hoặc xoá `EasyKey.exe`.
 
-Đây không phải lỗi và cũng không phải vấn đề bảo mật của EasyKey. Bộ gõ nào cũng phải đọc phím bấm và gửi lại chữ đã bỏ dấu, nên phần mềm diệt virus dễ nghi ngờ các chương trình chưa có chữ ký. Mã nguồn công khai, và mỗi bản phát hành được build trên GitHub Actions kèm chứng thực nguồn gốc (build provenance). Bạn có thể tự kiểm tra bằng lệnh:
+Đây không phải lỗi và cũng không phải vấn đề bảo mật của EasyKey. Bộ gõ nào cũng phải đọc phím bấm và gửi lại chữ đã bỏ dấu, nên phần mềm diệt virus dễ nghi ngờ các chương trình chưa có chữ ký. Mã nguồn công khai, và mỗi bản phát hành được build trên GitHub Actions kèm chứng thực nguồn gốc (build provenance). Bạn có thể tự kiểm tra file zip tải về bằng [GitHub CLI](https://cli.github.com):
 
 ```
-gh attestation verify EasyKey.exe --repo iamcino/EasyKey
+gh attestation verify EasyKey<phiên bản>-Windows.zip --repo iamcino/EasyKey
 ```
 
 Hãy cân nhắc trước khi dùng. Nếu tin tưởng, bạn có thể thêm thư mục EasyKey vào danh sách loại trừ của phần mềm diệt virus. Các bản sau sẽ được ký số khi có chứng chỉ.
