@@ -86,6 +86,7 @@ private:
 	int maxScroll() const;
 	void scrollTo(int y);
 	void ensureVisible(const int& item);
+	void revealGroup(const int& group);
 	bool getThumb(RECT& track, RECT& thumb) const;
 
 	void paint(HDC hdc);

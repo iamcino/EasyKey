@@ -2,6 +2,11 @@
 
 **Tiếng Việt** · [English](CHANGELOG.en.md)
 
+## Bản tiếp theo
+- Kiểm tra cập nhật chạy ngầm, chuột và phím không còn bị khựng trong lúc kiểm tra hay tải bản mới.
+- Thêm "Kiểm tra cập nhật…" vào menu ở khay hệ thống.
+- Phần Nâng cao: mỗi lần chỉ mở một nhóm, và mở nhóm nào thì cuộn để thấy trọn nhóm đó.
+
 ## 1.0.2 (Windows 11 x64)
 - Sửa lỗi gõ thừa chữ trên Chrome, Edge ở các trang tự xử lý phím như trang luyện gõ (ví dụ "số" thành "sốôô"), cả Telex và VNI.
 - Gõ nhanh (cc → ch, gg → gi, nn → ng…) dùng được với mọi kiểu gõ, kể cả VNI; tên tiếng Anh đổi từ "Quick Telex" thành "Quick typing".

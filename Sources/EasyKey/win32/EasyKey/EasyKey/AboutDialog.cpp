@@ -89,7 +89,5 @@ void AboutDialog::initDialog() {
 }
 
 void AboutDialog::onUpdateButton() {
-	EnableWindow(hUpdateButton, false);
 	Updater::checkAndOffer(hDlg, false);
-	EnableWindow(hUpdateButton, true);
 }

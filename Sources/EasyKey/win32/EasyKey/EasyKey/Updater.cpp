@@ -131,25 +131,65 @@ static void showError(const HWND& owner, LPCTSTR message) {
 		ShellExecute(NULL, L"open", RELEASES_PAGE, NULL, NULL, SW_SHOWNORMAL);
 }
 
-static bool install(const HWND& owner, const string& version) {
-	wstring wideVersion = utf8ToWideString(version);
-	string exe, checksum;
-	if (!httpGet(RELEASE_URL + wideVersion + L"/EasyKey.exe", exe) ||
+//downloading and checking run on a worker thread: the keyboard and mouse hooks live
+//on the main thread, and Windows holds every key press and mouse move while it is busy
+#define WM_UPDATER_DONE (WM_APP + 1)
+
+enum { JOB_CHECK, JOB_DOWNLOAD };
+enum { DOWNLOAD_OK, DOWNLOAD_FAILED, DOWNLOAD_MISMATCH };
+
+struct Job {
+	int kind;
+	HWND owner;
+	bool silent;
+	bool newer = false;
+	string version, exe;
+	int result = DOWNLOAD_OK;
+};
+
+static HWND messageWindow = NULL;
+static bool busy = false;
+
+static void download(Job* job) {
+	wstring wideVersion = utf8ToWideString(job->version);
+	string checksum;
+	if (!httpGet(RELEASE_URL + wideVersion + L"/EasyKey.exe", job->exe) ||
 		!httpGet(RELEASE_URL + wideVersion + L"/EasyKey.exe.sha256", checksum)) {
-		showError(owner, TR("Không tải được bản mới. Mở trang tải về để tải thủ công?",
-			"Could not download the update. Open the download page to get it yourself?"));
-		return false;
+		job->result = DOWNLOAD_FAILED;
+		return;
 	}
 	//the checksum file is "<64 hex digits>  EasyKey.exe"
 	string expected = checksum.substr(0, min(checksum.size(), (size_t)64));
 	for (char& c : expected)
 		c = (char)tolower(c);
-	if (expected.size() != 64 || sha256Hex(exe) != expected || exe.size() < 2 || exe[0] != 'M' || exe[1] != 'Z') {
-		showError(owner, TR("File tải về không khớp mã kiểm tra nên chưa được cài. Mở trang tải về?",
-			"The download did not match its checksum, so it was not installed. Open the download page?"));
-		return false;
-	}
+	const string& exe = job->exe;
+	if (expected.size() != 64 || sha256Hex(exe) != expected || exe.size() < 2 || exe[0] != 'M' || exe[1] != 'Z')
+		job->result = DOWNLOAD_MISMATCH;
+}
 
+static DWORD WINAPI runJob(LPVOID param) {
+	Job* job = (Job*)param;
+	if (job->kind == JOB_CHECK)
+		job->newer = Updater::check(job->version);
+	else
+		download(job);
+	PostMessage(messageWindow, WM_UPDATER_DONE, 0, (LPARAM)job);
+	return 0;
+}
+
+static void startJob(Job* job) {
+	busy = true;
+	HANDLE thread = CreateThread(NULL, 0, runJob, job, 0, NULL);
+	if (thread) {
+		CloseHandle(thread);
+	} else {
+		busy = false;
+		delete job;
+	}
+}
+
+//the downloaded exe takes the place of the running one, then starts
+static void install(const HWND& owner, const string& exe) {
 	wstring path = EasyKeyHelper::getFullPath();
 	wstring folder = folderOf(path);
 	wstring newPath = folder + L"EasyKey.new.exe", oldPath = folder + L"EasyKey.old.exe";
@@ -169,26 +209,76 @@ static bool install(const HWND& owner, const string& version) {
 		DeleteFile(newPath.c_str());
 		showError(owner, TR("Không ghi được vào thư mục của EasyKey, có thể cần quyền Admin. Mở trang tải về để tải thủ công?",
 			"Could not write to the EasyKey folder, it may need admin rights. Open the download page to get it yourself?"));
-		return false;
+		return;
 	}
 
 	ShellExecute(NULL, NULL, path.c_str(), UPDATED_ARGUMENT, folder.c_str(), SW_SHOWNORMAL);
 	AppDelegate::getInstance()->onEasyKeyExit();
-	return true;
+}
+
+static void finishJob(Job* job) {
+	//the window that asked may have closed meanwhile
+	HWND owner = job->owner && IsWindow(job->owner) ? job->owner : NULL;
+	if (job->kind == JOB_CHECK) {
+		if (!job->newer) {
+			busy = false;
+			if (!job->silent)
+				MessageBox(owner, TR("Bạn đang dùng phiên bản mới nhất.", "You have the latest version."), _T("EasyKey"), MB_OK);
+			delete job;
+			return;
+		}
+		TCHAR message[256];
+		wsprintf(message, TR("Đã có EasyKey %s. Cập nhật ngay? EasyKey sẽ tự khởi động lại.",
+			"EasyKey %s is available. Update now? EasyKey will restart."), utf8ToWideString(job->version).c_str());
+		if (MessageBox(owner, message, _T("EasyKey"), MB_ICONINFORMATION | MB_YESNO) == IDYES) {
+			job->kind = JOB_DOWNLOAD;
+			job->owner = owner;
+			startJob(job);
+		} else {
+			busy = false;
+			delete job;
+		}
+		return;
+	}
+
+	busy = false;
+	if (job->result == DOWNLOAD_FAILED)
+		showError(owner, TR("Không tải được bản mới. Mở trang tải về để tải thủ công?",
+			"Could not download the update. Open the download page to get it yourself?"));
+	else if (job->result == DOWNLOAD_MISMATCH)
+		showError(owner, TR("File tải về không khớp mã kiểm tra nên chưa được cài. Mở trang tải về?",
+			"The download did not match its checksum, so it was not installed. Open the download page?"));
+	else
+		install(owner, job->exe);
+	delete job;
+}
+
+static LRESULT CALLBACK messageProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
+	if (message == WM_UPDATER_DONE) {
+		finishJob((Job*)lParam);
+		return 0;
+	}
+	return DefWindowProc(hWnd, message, wParam, lParam);
 }
 
 void Updater::checkAndOffer(const HWND& owner, const bool& silent) {
-	string version;
-	if (!check(version)) {
-		if (!silent)
-			MessageBox(owner, TR("Bạn đang dùng phiên bản mới nhất.", "You have the latest version."), _T("EasyKey"), MB_OK);
+	if (busy)
 		return;
+	if (!messageWindow) {
+		WNDCLASS wc = {};
+		wc.lpfnWndProc = messageProc;
+		wc.hInstance = GetModuleHandle(NULL);
+		wc.lpszClassName = _T("EasyKeyUpdater");
+		RegisterClass(&wc);
+		messageWindow = CreateWindow(wc.lpszClassName, NULL, 0, 0, 0, 0, 0, HWND_MESSAGE, NULL, wc.hInstance, NULL);
+		if (!messageWindow)
+			return;
 	}
-	TCHAR message[256];
-	wsprintf(message, TR("Đã có EasyKey %s. Cập nhật ngay? EasyKey sẽ tự khởi động lại.",
-		"EasyKey %s is available. Update now? EasyKey will restart."), utf8ToWideString(version).c_str());
-	if (MessageBox(owner, message, _T("EasyKey"), MB_ICONINFORMATION | MB_YESNO) == IDYES)
-		install(owner, version);
+	Job* job = new Job();
+	job->kind = JOB_CHECK;
+	job->owner = owner;
+	job->silent = silent;
+	startJob(job);
 }
 
 void Updater::finishPreviousUpdate() {

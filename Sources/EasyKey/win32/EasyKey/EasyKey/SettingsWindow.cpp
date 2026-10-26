@@ -666,6 +666,31 @@ void SettingsWindow::ensureVisible(const int& item) {
 		scrollTo(rc.bottom + s(8) - viewHeight());
 }
 
+void SettingsWindow::revealGroup(const int& group) {
+	int header = -1;
+	for (int i = 0; i < (int)items.size(); i++) {
+		if (items[i].kind == K_GROUP && items[i].id == group) {
+			header = i;
+			break;
+		}
+	}
+	if (header < 0)
+		return;
+	int bottom = expandArea.bottom;
+	for (int i = header + 1; i < (int)items.size(); i++) {
+		if (items[i].kind == K_GROUP) {
+			bottom = items[i].rc.top;
+			break;
+		}
+	}
+	//scroll down until the group's last row shows, keeping its header in view
+	int top = items[header].rc.top - s(8);
+	if (bottom + s(8) > scrollY + viewHeight())
+		scrollTo(min(top, bottom + s(8) - viewHeight()));
+	else if (top < scrollY)
+		scrollTo(top);
+}
+
 bool SettingsWindow::getThumb(RECT& track, RECT& thumb) const {
 	int view = viewHeight();
 	if (contentHeight <= view || view <= 0)
@@ -1184,12 +1209,18 @@ void SettingsWindow::activate(const int& index, const int& part) {
 	case K_LINK:
 		doAction(item.id);
 		break;
-	case K_GROUP:
-		openGroups ^= 1 << item.id;
+	case K_GROUP: {
+		//one group open at a time; opening one shows all of it
+		int group = item.id;
+		bool opening = (openGroups & (1 << group)) == 0;
+		openGroups = opening ? 1 << group : 0;
 		endHexEdit();
 		fitWindow(false);
+		if (opening)
+			revealGroup(group);
 		InvalidateRect(hWnd, NULL, FALSE);
 		break;
+	}
 	}
 }
 

@@ -20,7 +20,7 @@ class Updater {
 public:
 	//latest version from version.json, true when it is newer than this exe
 	static bool check(string& newVersion);
-	//check, then ask and install. With silent, say nothing when already up to date or offline
+	//check, then ask and install, in the background. With silent, say nothing when already up to date or offline
 	static void checkAndOffer(const HWND& owner, const bool& silent);
 	//on start: remove the previous exe and wait for it to exit after an update
 	static void finishPreviousUpdate();

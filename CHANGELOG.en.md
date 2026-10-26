@@ -2,6 +2,11 @@
 
 [Tiếng Việt](CHANGELOG.md) · **English**
 
+## Next version
+- Update checks run in the background, so the mouse and keyboard no longer stall while EasyKey checks for or downloads an update.
+- Added "Check for updates…" to the tray menu.
+- Advanced settings: only one group is open at a time, and opening a group scrolls so the whole group shows.
+
 ## 1.0.2 (Windows 11 x64)
 - Fixed extra letters in Chrome and Edge on pages that handle keys themselves, such as typing tests ("số" came out as "sốôô"), in Telex and VNI.
 - "Quick Telex" is now called "Quick typing": cc → ch, gg → gi, nn → ng… work with every input method, VNI included.

@@ -17,6 +17,7 @@ redistribute your new version, it MUST be open source.
 #include "SystemTrayHelper.h"
 #include "AppDelegate.h"
 #include "ThemeHelper.h"
+#include "Updater.h"
 
 #define WM_TRAYMESSAGE (WM_USER + 1)
 #define TRAY_ICONUID 100
@@ -35,6 +36,7 @@ redistribute your new version, it MUST be open source.
 
 #define POPUP_MACRO_TABLE 970
 #define POPUP_CONVERT_TOOL 980
+#define POPUP_CHECK_UPDATE 990
 #define POPUP_CONTROL_PANEL 1000
 #define POPUP_EASYKEY_EXIT 2000
 
@@ -62,6 +64,7 @@ static LPCTSTR menuText(const UINT& command) {
 	case POPUP_VN_LOCALE_1258: return _T("CP 1258");
 	case POPUP_MACRO_TABLE: return TR("Bảng gõ tắt…", "Shortcut list…");
 	case POPUP_CONVERT_TOOL: return TR("Công cụ chuyển mã…", "Convert text…");
+	case POPUP_CHECK_UPDATE: return TR("Kiểm tra cập nhật…", "Check for updates…");
 	case POPUP_CONTROL_PANEL: return TR("Cài đặt…", "Settings…");
 	case POPUP_EASYKEY_EXIT: return TR("Thoát EasyKey", "Quit EasyKey");
 	}
@@ -139,6 +142,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 			case POPUP_VN_LOCALE_1258:
 				AppDelegate::getInstance()->onTableCode(4);
 				break;
+			case POPUP_CHECK_UPDATE:
+				Updater::checkAndOffer(NULL, false);
+				break;
 			case POPUP_CONTROL_PANEL:
 				AppDelegate::getInstance()->onControlPanel();
 				break;
@@ -212,6 +218,7 @@ void SystemTrayHelper::createPopupMenu() {
 	AppendMenu(popupMenu, MF_STRING, POPUP_CONVERT_TOOL, menuText(POPUP_CONVERT_TOOL));
 	AppendMenu(popupMenu, MF_STRING, POPUP_CONTROL_PANEL, menuText(POPUP_CONTROL_PANEL));
 	AppendMenu(popupMenu, MF_SEPARATOR, 0, 0);
+	AppendMenu(popupMenu, MF_STRING, POPUP_CHECK_UPDATE, menuText(POPUP_CHECK_UPDATE));
 	AppendMenu(popupMenu, MF_STRING, POPUP_EASYKEY_EXIT, menuText(POPUP_EASYKEY_EXIT));
 
 	SetMenuDefaultItem(popupMenu, POPUP_CONTROL_PANEL, false);
