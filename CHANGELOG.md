@@ -2,8 +2,9 @@
 
 **Tiếng Việt** · [English](CHANGELOG.en.md)
 
-## Bản tiếp theo
+## 1.0.2 (Windows 11 x64)
 - Sửa lỗi gõ thừa chữ trên Chrome, Edge ở các trang tự xử lý phím như trang luyện gõ (ví dụ "số" thành "sốôô"), cả Telex và VNI.
+- Gõ nhanh (cc → ch, gg → gi, nn → ng…) dùng được với mọi kiểu gõ, kể cả VNI; tên tiếng Anh đổi từ "Quick Telex" thành "Quick typing".
 
 ## 1.0.1 (Windows 11 x64)
 - Mở bảng gõ tắt ngay trong cửa sổ cài đặt: "Nâng cao" › "Gõ" › "Bảng gõ tắt".
