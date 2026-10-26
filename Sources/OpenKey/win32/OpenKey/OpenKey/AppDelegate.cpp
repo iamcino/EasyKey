@@ -6,6 +6,9 @@ Contact: maivutuyen.91@gmail.com
 Github: https://github.com/tuyenvm/OpenKey
 Fanpage: https://www.facebook.com/OpenKeyVN
 
+EasyKey - Vietnamese input for Windows 11, based on OpenKey.
+Copyright (C) 2026 duongtheson@proton.me
+
 This file is belong to the OpenKey project, Win32 version
 which is released under GPL license.
 You can fork, modify, improve this program. If you
@@ -41,11 +44,9 @@ int vOtherLanguage = 1;
 int vRememberCode = 1;
 int vTempOffOpenKey = 0;
 
-int vUseGrayIcon = 0;
 int vShowOnStartUp = 0;
 int vRunWithWindows = 1;
 
-int vSupportMetroApp = 1;
 int vCreateDesktopShortcut = 0;
 int vRunAsAdmin = 0;
 int vCheckNewVersion = 0;
@@ -64,20 +65,20 @@ void AppDelegate::checkUpdate() {
 	if (OpenKeyManager::checkUpdate(newVersion)) {
 		WCHAR msg[256];
 		wsprintf(msg,
-			TEXT("OpenKey Có phiên bản mới (%s), bạn có muốn cập nhật không?"),
+			TEXT("EasyKey Có phiên bản mới (%s), bạn có muốn cập nhật không?"),
 			utf8ToWideString(newVersion).c_str());
 
 		int msgboxID = MessageBox(
 			0,
 			msg,
-			_T("OpenKey Update"),
+			_T("EasyKey Update"),
 			MB_ICONEXCLAMATION | MB_YESNO
 		);
 		if (msgboxID == IDYES) {
 			//Call OpenKeyUpdate
 			WCHAR path[MAX_PATH];
 			GetCurrentDirectory(MAX_PATH, path);
-			wsprintf(path, TEXT("%s\\OpenKeyUpdate.exe"), path);
+			wsprintf(path, TEXT("%s\\EasyKeyUpdate.exe"), path);
 			ShellExecute(0, L"", path, 0, 0, SW_SHOWNORMAL);
 			AppDelegate::getInstance()->onOpenKeyExit();
 		}
@@ -188,11 +189,9 @@ void AppDelegate::onDefaultConfig() {
 	APP_SET_DATA(vAllowConsonantZFWJ, 0);
 	APP_SET_DATA(vTempOffSpelling, 0);
 
-	APP_SET_DATA(vUseGrayIcon, 0);
 	APP_SET_DATA(vShowOnStartUp, 1);
 	APP_SET_DATA(vRunWithWindows, 1);
 
-	APP_SET_DATA(vSupportMetroApp, 1);
 	APP_SET_DATA(vRememberCode, 1);
 	APP_SET_DATA(vOtherLanguage, 1);
 	APP_SET_DATA(vTempOffOpenKey, 0);
@@ -263,7 +262,7 @@ void AppDelegate::onQuickConvert() {
 		if (!convertToolDontAlertWhenCompleted) {
 			TCHAR msg[256];
 			LoadString(hInstance, IDS_STRING_CONVERT_COMPLETED, msg, 256);
-			MessageBox(NULL, msg, _T("OpenKey"), MB_OK);
+			MessageBox(NULL, msg, _T("EasyKey"), MB_OK);
 		}
 	}
 }

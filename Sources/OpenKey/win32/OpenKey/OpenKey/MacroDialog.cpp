@@ -6,6 +6,9 @@ Contact: maivutuyen.91@gmail.com
 Github: https://github.com/tuyenvm/OpenKey
 Fanpage: https://www.facebook.com/OpenKeyVN
 
+EasyKey - Vietnamese input for Windows 11, based on OpenKey.
+Copyright (C) 2026 duongtheson@proton.me
+
 This file is belong to the OpenKey project, Win32 version
 which is released under GPL license.
 You can fork, modify, improve this program. If you
@@ -165,7 +168,7 @@ void MacroDialog::onAddMacroButton() {
 	wstring content = buffer;
 
 	if (name.compare(L"") == 0 || content.compare(L"") == 0) {
-		MessageBox(hDlg, _T("Bạn hãy nhập từ cần gõ tắt!"), _T("OpenKey"), MB_OK);
+		MessageBox(hDlg, _T("Bạn hãy nhập từ cần gõ tắt!"), _T("EasyKey"), MB_OK);
 		return;
 	}
 
@@ -182,7 +185,7 @@ void MacroDialog::onDeleteMacroButton() {
 	wstring name = buffer;
 
 	if (name.compare(L"") == 0) {
-		MessageBox(hDlg, _T("Bạn hãy chọn từ cần xoá!"), _T("OpenKey"), MB_OK);
+		MessageBox(hDlg, _T("Bạn hãy chọn từ cần xoá!"), _T("EasyKey"), MB_OK);
 		return;
 	}
 

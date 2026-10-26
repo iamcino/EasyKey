@@ -26,10 +26,8 @@
 #define IDS_STRING_USE_CLIPBOARD        114
 #define IDS_STRING_ALLOW_ZWFJ           115
 #define IDS_STRING_TEMP_OFF_SPELLING    116
-#define IDS_STRING_MODERN_ICON          117
 #define IDS_STRING_CAPS_FIRST_CHAR      118
 #define IDS_STRING_SMART_SWITCH_KEY     119
-#define IDS_STRING_SUPPORT_METRO        120
 #define IDS_STRING_RUN_ON_STARTUP       121
 #define IDS_STRING_SHOW_ON_STARTUP      122
 #define IDS_STRING_CREATE_DESKTOP       123
@@ -42,10 +40,7 @@
 #define IDD_DIALOG_MAIN                 129
 #define IDS_STRING129                   129
 #define IDI_ICON1                       133
-#define IDI_ICON_STATUS_VIET            134
 #define IDI_ICON2                       135
-#define IDI_ICON_STATUS_ENGLISH         135
-#define IDI_ICON_STATUS_ENG             135
 #define IDI_ICON4                       137
 #define IDI_ICON_OK_BUTTON              138
 #define IDI_ICON_EXIT_BUTTON            139
@@ -126,7 +121,6 @@
 #define IDC_BUTTON_CONVERT_BUTTON       1022
 #define IDC_BUTTON_ADD                  1022
 #define ID_BTN_DEFAULT                  1023
-#define IDC_CHECK_MODERN_ICON           1024
 #define IDC_STATIC_APP_TITLE            1024
 #define IDC_STATIC_APP_SUB_TITLE        1025
 #define IDC_CHECK_TEMP_OFF_SPELLING     1025
@@ -168,7 +162,6 @@
 #define IDS_STRING_CTRL                 1052
 #define IDC_CHECK_FIX_CHROMIUM          1052
 #define IDS_STRING_ALT                  1053
-#define IDC_CHECK_SUPPORT_METRO_APP     1053
 #define IDS_STRING_SHIFT                1054
 #define IDS_STRING_WIN                  1055
 #define IDS_STRING_SWITCH_KEY           1056

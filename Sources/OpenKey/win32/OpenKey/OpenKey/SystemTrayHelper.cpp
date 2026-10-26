@@ -6,6 +6,9 @@ Contact: maivutuyen.91@gmail.com
 Github: https://github.com/tuyenvm/OpenKey
 Fanpage: https://www.facebook.com/OpenKeyVN
 
+EasyKey - Vietnamese input for Windows 11, based on OpenKey.
+Copyright (C) 2026 duongtheson@proton.me
+
 This file is belong to the OpenKey project, Win32 version
 which is released under GPL license.
 You can fork, modify, improve this program. If you
@@ -70,7 +73,7 @@ map<UINT, LPCTSTR> menuData = {
 	{POPUP_QUICK_CONVERT, _T("Chuyển mã nhanh")},
 	{POPUP_MACRO_TABLE, _T("Cấu hình gõ tắt...")},
 	{POPUP_CONTROL_PANEL, _T("Bảng điều khiển...")},
-	{POPUP_ABOUT_OPENKEY, _T("Giới thiệu OpenKey")},
+	{POPUP_ABOUT_OPENKEY, _T("Giới thiệu EasyKey")},
 	{POPUP_OPENKEY_EXIT, _T("Thoát")},
 };
 
@@ -248,20 +251,14 @@ void SystemTrayHelper::createPopupMenu() {
 
 static void loadTrayIcon() {
 	int icon = 0;
-	//modern icon is a monochrome glyph, white on a dark taskbar and black on a light one
+	//tray icon is a monochrome glyph, white on a dark taskbar and black on a light one
 	bool darkTaskbar = ThemeHelper::isTaskbarDarkMode();
 	if (vLanguage) {
-		if (vUseGrayIcon)
-			icon = darkTaskbar ? IDI_ICON_STATUS_VIET_DARK : IDI_ICON_STATUS_VIET_LIGHT;
-		else
-			icon = IDI_ICON_STATUS_VIET;
+		icon = darkTaskbar ? IDI_ICON_STATUS_VIET_DARK : IDI_ICON_STATUS_VIET_LIGHT;
 		LoadString(GetModuleHandle(0), IDS_TRAY_TITLE_2, nid.szTip, 128);
 	}
 	else {
-		if (vUseGrayIcon)
-			icon = darkTaskbar ? IDI_ICON_STATUS_ENG_DARK : IDI_ICON_STATUS_ENG_LIGHT;
-		else
-			icon = IDI_ICON_STATUS_ENG;
+		icon = darkTaskbar ? IDI_ICON_STATUS_ENG_DARK : IDI_ICON_STATUS_ENG_LIGHT;
 		LoadString(GetModuleHandle(0), IDS_TRAY_TITLE, nid.szTip, 128);
 	}
 	//load the small icon size directly so the tray does not downscale the 32px one

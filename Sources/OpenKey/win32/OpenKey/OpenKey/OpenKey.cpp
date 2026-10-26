@@ -6,6 +6,9 @@ Contact: maivutuyen.91@gmail.com
 Github: https://github.com/tuyenvm/OpenKey
 Fanpage: https://www.facebook.com/OpenKeyVN
 
+EasyKey - Vietnamese input for Windows 11, based on OpenKey.
+Copyright (C) 2026 duongtheson@proton.me
+
 This file is belong to the OpenKey project, Win32 version
 which is released under GPL license.
 You can fork, modify, improve this program. If you
@@ -38,7 +41,6 @@ static vector<string> _chromiumBrowser = {
 };
 
 extern int vSendKeyStepByStep;
-extern int vUseGrayIcon;
 extern int vShowOnStartUp;
 extern int vRunWithWindows;
 
@@ -100,7 +102,6 @@ void OpenKeyInit() {
 	APP_GET_DATA(vUseMacroInEnglishMode, 0);
 	APP_GET_DATA(vAutoCapsMacro, 0);
 	APP_GET_DATA(vSendKeyStepByStep, 1);
-	APP_GET_DATA(vUseGrayIcon, 0);
 	APP_GET_DATA(vShowOnStartUp, 1);
 	APP_GET_DATA(vRunWithWindows, 1);
 	OpenKeyHelper::registerRunOnStartup(vRunWithWindows);
@@ -110,7 +111,6 @@ void OpenKeyInit() {
 	APP_GET_DATA(vTempOffSpelling, 0);
 	APP_GET_DATA(vQuickStartConsonant, 0);
 	APP_GET_DATA(vQuickEndConsonant, 0);
-	APP_GET_DATA(vSupportMetroApp, 0);
 	APP_GET_DATA(vRunAsAdmin, 0);
 	APP_GET_DATA(vCreateDesktopShortcut, 0);
 	APP_GET_DATA(vCheckNewVersion, 0);
@@ -278,20 +278,12 @@ static void SendKeyCode(Uint32 data) {
 
 static void SendBackspace() {
 	SendInput(2, backspaceEvent, sizeof(INPUT));
-	if (vSupportMetroApp && OpenKeyHelper::getLastAppExecuteName().compare("ApplicationFrameHost.exe") == 0) {//Metro App
-		SendMessage(HWND_BROADCAST, WM_CHAR, VK_BACK, 0L);
-		SendMessage(HWND_BROADCAST, WM_CHAR, VK_BACK, 0L);
-	}
 	if (IS_DOUBLE_CODE(vCodeTable)) { //VNI or Unicode Compound
 		if (_syncKey.back() > 1) {
 			/*if (!(vCodeTable == 3 && containUnicodeCompoundApp(FRONT_APP))) {
 				SendInput(2, backspaceEvent, sizeof(INPUT));
 			}*/
 			SendInput(2, backspaceEvent, sizeof(INPUT));
-			if (vSupportMetroApp && OpenKeyHelper::getLastAppExecuteName().compare("ApplicationFrameHost.exe") == 0) {//Metro App
-				SendMessage(HWND_BROADCAST, WM_CHAR, VK_BACK, 0L);
-				SendMessage(HWND_BROADCAST, WM_CHAR, VK_BACK, 0L);
-			}
 		}
 		_syncKey.pop_back();
 	}
@@ -506,7 +498,7 @@ static void writeDebugKeyLog(WPARAM wParam, DWORD_PTR isImeON) {
 	if (_debugLogFile == NULL) {
 		WCHAR path[MAX_PATH];
 		GetTempPath(MAX_PATH, path);
-		wcscat_s(path, L"OpenKeyKeyLog.txt");
+		wcscat_s(path, L"EasyKeyKeyLog.txt");
 		if (_wfopen_s(&_debugLogFile, path, L"w") != 0)
 			return;
 	}
@@ -644,9 +636,13 @@ LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 			if (vFixRecommendBrowser && pData->extCode != 4) {
 				if (vFixChromiumBrowser && 
 					std::find(_chromiumBrowser.begin(), _chromiumBrowser.end(), OpenKeyHelper::getLastAppExecuteName()) != _chromiumBrowser.end()) {
-					SendCombineKey(KEY_LEFT_SHIFT, KEY_LEFT, 0, KEYEVENTF_EXTENDEDKEY);
-					if (pData->backspaceCount == 1)
-						pData->backspaceCount--;
+					//select the last character so the suggestion is replaced with it; with nothing to delete
+					//(e.g. upper case first char) selecting would eat the character before the caret
+					if (pData->backspaceCount > 0) {
+						SendCombineKey(KEY_LEFT_SHIFT, KEY_LEFT, 0, KEYEVENTF_EXTENDEDKEY);
+						if (pData->backspaceCount == 1)
+							pData->backspaceCount--;
+					}
 				} else {
 					SendEmptyCharacter();
 					pData->backspaceCount++;
@@ -731,10 +727,6 @@ VOID CALLBACK winEventProcCallback(HWINEVENTHOOK hWinEventHook, DWORD dwEvent, H
 			} else {
 				saveSmartSwitchKeyData();
 			}
-		}
-		if (vSupportMetroApp && exe.compare("ApplicationFrameHost.exe") == 0) {//Metro App
-			SendMessage(HWND_BROADCAST, WM_CHAR, VK_BACK, 0L);
-			SendMessage(HWND_BROADCAST, WM_CHAR, VK_BACK, 0L);
 		}
 	}
 }

@@ -153,12 +153,6 @@
     <Image Include="icon.ico">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="StatusViet.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="StatusEng.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
     <Image Include="StatusVietDark.ico">
       <Filter>Resource Files</Filter>
     <Image Include="StatusVietLight.ico">

@@ -6,6 +6,9 @@ Contact: maivutuyen.91@gmail.com
 Github: https://github.com/tuyenvm/OpenKey
 Fanpage: https://www.facebook.com/OpenKeyVN
 
+EasyKey - Vietnamese input for Windows 11, based on OpenKey.
+Copyright (C) 2026 duongtheson@proton.me
+
 This file is belong to the OpenKey project, Win32 version
 which is released under GPL license.
 You can fork, modify, improve this program. If you
@@ -75,8 +78,8 @@ DWORD WINAPI UpdateThreadFunction(LPVOID lpParam) {
 	WCHAR path[MAX_PATH];
 	WCHAR currentDir[MAX_PATH];
 	GetCurrentDirectory(MAX_PATH, currentDir);
-	wsprintf(path, TEXT("%s\\_OpenKey.tempf"), currentDir);
-	HRESULT res = URLDownloadToFile(NULL, L"https://raw.githubusercontent.com/iamcino/OpenKey/master/version.json", path, 0, NULL);
+	wsprintf(path, TEXT("%s\\_EasyKey.tempf"), currentDir);
+	HRESULT res = URLDownloadToFile(NULL, L"https://raw.githubusercontent.com/iamcino/EasyKey/master/version.json", path, 0, NULL);
 
 	wstring data;
 	if (res == S_OK) {
@@ -87,7 +90,7 @@ DWORD WINAPI UpdateThreadFunction(LPVOID lpParam) {
 		DeleteFile(path);
 		data = buffer.str();
 	} else {
-		MessageBox(hDlg, _T("Có lỗi trong quá trình cập nhật, vui lòng thử lại sau!"), _T("OpenKey Update"), MB_OK);
+		MessageBox(hDlg, _T("Có lỗi trong quá trình cập nhật, vui lòng thử lại sau!"), _T("EasyKey Update"), MB_OK);
 		ExitProcess(0);
 		return 0;
 	}
@@ -102,28 +105,27 @@ DWORD WINAPI UpdateThreadFunction(LPVOID lpParam) {
 	
 	//download zip file
 	WCHAR updateUrl[MAX_PATH];
-	wsprintf(updateUrl, TEXT("https://github.com/iamcino/OpenKey/releases/download/%s/OpenKey%s-Windows.zip"),
+	wsprintf(updateUrl, TEXT("https://github.com/iamcino/EasyKey/releases/download/%s/EasyKey%s-Windows.zip"),
 		versionName.c_str(),
 		versionName.c_str());
-	wsprintf(path, TEXT("%s\\_OpenKeyUpdate.zip"), currentDir);
+	wsprintf(path, TEXT("%s\\_EasyKeyUpdate.zip"), currentDir);
 	res = URLDownloadToFile(NULL, updateUrl, path, 0, NULL);
 
 	if (res == S_OK) {
 		//remove old file
-		DeleteFile(L"OpenKey64.exe");
+		DeleteFile(L"EasyKey.exe");
 		//extract zip file
-		WinExec("powershell.exe -NoP -NonI -Command \"Expand-Archive '.\\_OpenKeyUpdate.zip' '.\\_OpenKeyUpdate'\" ", SW_HIDE);
+		WinExec("powershell.exe -NoP -NonI -Command \"Expand-Archive '.\\_EasyKeyUpdate.zip' '.\\_EasyKeyUpdate'\" ", SW_HIDE);
 		Sleep(5000);
-		MoveFile(L"_OpenKeyUpdate\\OpenKey64.exe", L"OpenKey64.exe");
+		MoveFile(L"_EasyKeyUpdate\\EasyKey.exe", L"EasyKey.exe");
 		DeleteFile(path);
-		DeleteFile(L"_OpenKeyUpdate\\OpenKeyUpdate.exe");
-		DeleteFile(L"_OpenKeyUpdate\\OpenKey64.exe");
-		DeleteFile(L"_OpenKeyUpdate\\OpenKey32.exe");
-		RemoveDirectory(L".\\_OpenKeyUpdate");
-		MessageBox(hDlg, _T("Bạn đã cập nhật OpenKey bản mới nhất thành công!"), _T("OpenKey Update"), MB_OK);
+		DeleteFile(L"_EasyKeyUpdate\\EasyKeyUpdate.exe");
+		DeleteFile(L"_EasyKeyUpdate\\EasyKey.exe");
+		RemoveDirectory(L".\\_EasyKeyUpdate");
+		MessageBox(hDlg, _T("Bạn đã cập nhật EasyKey bản mới nhất thành công!"), _T("EasyKey Update"), MB_OK);
 		ExitProcess(0);
 	} else {
-		MessageBox(hDlg, _T("Có lỗi trong quá trình cập nhật, vui lòng thử lại sau!"), _T("OpenKey Update"), MB_OK);
+		MessageBox(hDlg, _T("Có lỗi trong quá trình cập nhật, vui lòng thử lại sau!"), _T("EasyKey Update"), MB_OK);
 		ExitProcess(0);
 	}
 	return 0;

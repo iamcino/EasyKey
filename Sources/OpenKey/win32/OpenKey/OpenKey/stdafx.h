@@ -6,6 +6,9 @@ Contact: maivutuyen.91@gmail.com
 Github: https://github.com/tuyenvm/OpenKey
 Fanpage: https://www.facebook.com/OpenKeyVN
 
+EasyKey - Vietnamese input for Windows 11, based on OpenKey.
+Copyright (C) 2026 duongtheson@proton.me
+
 This file is belong to the OpenKey project, Win32 version
 which is released under GPL license.
 You can fork, modify, improve this program. If you
@@ -55,7 +58,7 @@ extern wchar_t _logBuffer[1024];
 #define APP_SET_DATA(KEY, VAL) KEY = VAL; OpenKeyHelper::setRegInt(_T(#KEY), KEY)
 #define APP_GET_DATA(KEY, DEFAULT_VAL) KEY = OpenKeyHelper::getRegInt(_T(#KEY), DEFAULT_VAL)
 
-#define APP_CLASS _T("OpenKeyVietnameseInputMethod")
+#define APP_CLASS _T("EasyKeyVietnameseInputMethod")
 
 extern void saveSmartSwitchKeyData();
 
@@ -75,10 +78,8 @@ extern int vAutoCapsMacro;
 extern int vSendKeyStepByStep;
 extern int vUseSmartSwitchKey;
 extern int vUpperCaseFirstChar;
-extern int vUseGrayIcon;
 extern int vShowOnStartUp;
 extern int vRunWithWindows;
-extern int vSupportMetroApp;
 extern int vCreateDesktopShortcut;
 extern int vRunAsAdmin;
 extern int vCheckNewVersion;

@@ -1,4 +1,19 @@
-# OpenKey Change Log
+# EasyKey Change Log
+
+##### EasyKey 1.0.0 (Windows 11 x64)
+Bản đầu tiên của EasyKey, phát triển tiếp từ OpenKey 2.0.5 cho Windows.
+- Đổi tên thành EasyKey: `EasyKey.exe`, `EasyKeyUpdate.exe`, cài đặt lưu ở `HKCU\Software\EasyKey`. Lần chạy đầu tự chép cài đặt và gõ tắt từ OpenKey.
+- Chỉ build Windows 11 x64; bỏ bản 32-bit và mã nguồn macOS, Linux.
+- Sửa lỗi không gõ được tiếng Việt trên máy có phần mềm gắn dữ liệu vào phím (ví dụ Bitdefender).
+- Giao diện Windows 11: DPI theo từng màn hình, font Segoe UI, thanh tiêu đề tối, Mica, biểu tượng khay đơn sắc tự đổi màu.
+- Bỏ "Hỗ trợ ứng dụng Metro" (không cần trên Windows 11) và tuỳ chọn "Biểu tượng hiện đại" (luôn dùng biểu tượng Windows 11).
+- Tooltip ngắn gọn hơn.
+- Thêm test engine gõ Telex/VNI chạy trên CI.
+
+---
+
+# OpenKey Change Log (bản gốc)
+
 
 ##### OpenKey for Linux: (in development)
 
