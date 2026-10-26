@@ -66,7 +66,7 @@ msbuild Sources\EasyKey\win32\EasyKey\EasyKey.sln -p:Configuration=Release -p:Pl
 ```
 
 **Cách 2: build trên GitHub, không cần cài gì**
-Fork repo này. Mỗi lần push hoặc mở pull request vào nhánh `master`, GitHub Actions tự chạy test engine rồi build `EasyKey.exe`. Vào tab Actions, mở lần chạy mới nhất và tải `EasyKey` trong mục Artifacts. Khi push tag trùng `versionName` trong `version.json` (ví dụ `1.0.0`), Actions tự tạo bản phát hành.
+Fork repo này. Mỗi lần push hoặc mở pull request vào nhánh `master`, GitHub Actions tự chạy test engine rồi build `EasyKey.exe`. Vào tab Actions, mở lần chạy mới nhất và tải `EasyKey` trong mục Artifacts. Khi push tag trùng `versionName` trong `version.json` (ví dụ `1.0.0`), hoặc chạy tay workflow MSBuild trên nhánh `master` (tab Actions › MSBuild › Run workflow), Actions tự tạo bản phát hành.
 
 **Chạy test engine** (cần [CMake](https://cmake.org) và một trình biên dịch C++, chạy được trên cả Windows và Linux):
 
