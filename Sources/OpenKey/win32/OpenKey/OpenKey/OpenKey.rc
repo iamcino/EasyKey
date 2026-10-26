@@ -38,9 +38,13 @@ IDI_ICON_STATUS_VIET    ICON                    "StatusViet.ico"
 
 IDI_ICON_STATUS_ENG     ICON                    "StatusEng.ico"
 
-IDI_ICON_STATUS_VIET_10 ICON                    "StatusViet10.ico"
+IDI_ICON_STATUS_VIET_DARK ICON                  "StatusVietDark.ico"
 
-IDI_ICON_STATUS_ENG_10  ICON                    "StatusEng10.ico"
+IDI_ICON_STATUS_VIET_LIGHT ICON                 "StatusVietLight.ico"
+
+IDI_ICON_STATUS_ENG_DARK ICON                   "StatusEngDark.ico"
+
+IDI_ICON_STATUS_ENG_LIGHT ICON                  "StatusEngLight.ico"
 
 IDI_ICON_OK_BUTTON      ICON                    "OKButton.ico"
 
@@ -89,7 +93,7 @@ END
 IDD_ABOUTBOX DIALOGEX 0, 0, 287, 157
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Giới thiệu OpenKey"
-FONT 8, "MS Shell Dlg", 0, 0, 0x1
+FONT 9, "Segoe UI", 400, 0, 0x1
 BEGIN
     ICON            IDI_APP_ICON,IDC_STATIC,14,17,20,20
     LTEXT           "OpenKey",IDC_STATIC_APP_TITLE,45,14,206,33,SS_NOPREFIX
@@ -111,7 +115,7 @@ END
 IDD_DIALOG_MAIN DIALOGEX 0, 0, 297, 261
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "OpenKey 1.4 - Bộ gõ Tiếng Việt"
-FONT 8, "MS Shell Dlg", 400, 0, 0x1
+FONT 9, "Segoe UI", 400, 0, 0x1
 BEGIN
     PUSHBUTTON      "Cài đặt gốc",ID_BTN_DEFAULT,113,234,71,20
     GROUPBOX        "Điều khiển",IDC_STATIC,7,7,283,73
@@ -137,7 +141,7 @@ END
 IDD_DIALOG_MACRO DIALOGEX 0, 0, 415, 253
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Thiết lập gõ tắt - OpenKey"
-FONT 8, "MS Shell Dlg", 400, 0, 0x1
+FONT 9, "Segoe UI", 400, 0, 0x1
 BEGIN
     CONTROL         "",IDC_LIST_MACRO_DATA,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_ALIGNLEFT | LVS_NOCOLUMNHEADER | WS_BORDER | WS_TABSTOP,7,41,401,186
     LTEXT           "Từ gõ tắt",IDC_STATIC,7,6,30,8
@@ -155,7 +159,7 @@ END
 IDD_DIALOG_CONVERT_TOOL DIALOGEX 0, 0, 283, 194
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Công cụ chuyển mã - OpenKey"
-FONT 8, "MS Shell Dlg", 400, 0, 0x1
+FONT 9, "Segoe UI", 400, 0, 0x1
 BEGIN
     DEFPUSHBUTTON   "Đóng",IDOK,156,169,71,18
     GROUPBOX        "Tùy chọn chung",IDC_STATIC,7,7,269,59
@@ -186,7 +190,7 @@ END
 IDD_DIALOG_TAB_GENERAL DIALOGEX 0, 0, 353, 137
 STYLE DS_SETFONT | DS_FIXEDSYS | WS_CHILD
 EXSTYLE WS_EX_TRANSPARENT
-FONT 8, "MS Shell Dlg", 400, 0, 0x1
+FONT 9, "Segoe UI", 400, 0, 0x1
 BEGIN
     CONTROL         "Đặt dấu oà, uý (thay vì òa, úy)",IDC_CHECK_MODERN_ORTHORGRAPHY,
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,12,126,10
@@ -214,7 +218,7 @@ END
 IDD_DIALOG_TAB_MACRO DIALOGEX 0, 0, 299, 177
 STYLE DS_SETFONT | DS_FIXEDSYS | WS_CHILD
 EXSTYLE WS_EX_TRANSPARENT
-FONT 8, "MS Shell Dlg", 400, 0, 0x1
+FONT 9, "Segoe UI", 400, 0, 0x1
 BEGIN
     CONTROL         "Gõ nhanh (cc=ch, gg=gi, nn=ng,...)",IDC_CHECK_QUICK_TELEX,
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,133,12,136,10
@@ -233,7 +237,7 @@ END
 IDD_DIALOG_TAB_SYSTEM DIALOGEX 0, 0, 344, 177
 STYLE DS_SETFONT | DS_FIXEDSYS | WS_CHILD
 EXSTYLE WS_EX_TRANSPARENT
-FONT 8, "MS Shell Dlg", 400, 0, 0x1
+FONT 9, "Segoe UI", 400, 0, 0x1
 BEGIN
     CONTROL         "Bật bảng này khi khởi động",IDC_CHECK_SHOW_ON_STARTUP,
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,50,122,10
@@ -257,7 +261,7 @@ END
 IDD_DIALOG_OLD DIALOGEX 0, 0, 316, 268
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Dialog"
-FONT 8, "MS Shell Dlg", 400, 0, 0x1
+FONT 9, "Segoe UI", 400, 0, 0x1
 BEGIN
     DEFPUSHBUTTON   "OK",IDOK,200,247,50,14
     PUSHBUTTON      "Cancel",IDCANCEL,259,247,50,14
@@ -266,7 +270,7 @@ END
 IDD_DIALOG_TAB_INFO DIALOGEX 0, 0, 287, 119
 STYLE DS_SETFONT | DS_FIXEDSYS | WS_CHILD
 EXSTYLE WS_EX_TRANSPARENT
-FONT 8, "MS Shell Dlg", 400, 0, 0x1
+FONT 9, "Segoe UI", 400, 0, 0x1
 BEGIN
     ICON            IDI_APP_ICON,IDC_STATIC,10,13,20,20
     LTEXT           "OpenKey - Bộ gõ Tiếng Việt nguồn mở đa nền tảng",IDC_STATIC_APP_TITLE,39,9,206,8,SS_NOPREFIX
@@ -469,7 +473,7 @@ BEGIN
     IDS_STRING_ALLOW_ZWFJ   "Vẫn cho phép dùng các chữ z w f j làm phụ âm khi có bật tính năng kiểm tra chính tả"
     IDS_STRING_TEMP_OFF_SPELLING 
                             "Tạm tắt kiểm tra chính tả khi gõ một từ nào đó như từ Đắk Lắk, Krông,... Kiểm tra chính tả sẽ phục hồi trở lại cho từ tiếp theo"
-    IDS_STRING_MODERN_ICON  "Dùng biểu tượng đồng bộ với task bar của Windows 10"
+    IDS_STRING_MODERN_ICON  "Dùng biểu tượng đơn sắc, tự đổi màu theo thanh tác vụ sáng hoặc tối của Windows 11"
     IDS_STRING_CAPS_FIRST_CHAR 
                             "Tự động viết hoa sau dấu chấm ngắt câu và sau khi xuống dòng"
     IDS_STRING_SMART_SWITCH_KEY 

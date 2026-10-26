@@ -17,6 +17,8 @@ redistribute your new version, it MUST be open source.
 class MainControlDialog : public BaseDialog {
 private:
 	HWND hTab, hTabPage1, hTabPage2, hTabPage3, hTabPage4;
+	int tabItemWidth, tabItemHeight;
+	UINT tabItemDpi;
 	HWND comboBoxInputType;
 	HWND comboBoxTableCode;
 	HWND checkCtrl, checkAlt, checkWin, checkShift, textSwitchKey, checkBeep;
@@ -34,11 +36,13 @@ private:
 	void onCheckboxClicked(const HWND& hWnd);
 	void onCharacter(const HWND& hWnd, const UINT16& keyCode);
 	void setSwitchKeyText(const HWND& hWnd, const UINT16 & keyCode);
+	void layoutTabPages();
 	void onTabIndexChanged();
 	void onUpdateButton();
 	void requestRestartAsAdmin();
 protected:
 	INT_PTR eventProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
+	void onDpiChanged() override;
 	static INT_PTR CALLBACK tabPageEventProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 public:
 	MainControlDialog(const HINSTANCE& hInstance, const int& resourceId);

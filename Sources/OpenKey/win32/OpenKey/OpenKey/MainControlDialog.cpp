@@ -15,6 +15,7 @@ redistribute your new version, it MUST be open source.
 #include "AppDelegate.h"
 #include <Shlobj.h>
 #include <Uxtheme.h>
+#include "ThemeHelper.h"
 
 #pragma comment(lib, "UxTheme.lib")
 
@@ -69,23 +70,16 @@ void MainControlDialog::initDialog() {
     TabCtrl_InsertItem(hTab, 3, &tci);
     RECT r;
     TabCtrl_GetItemRect(hTab, 0, &r);
-    TabCtrl_SetItemSize(hTab, r.right - r.left, (r.bottom - r.top) * 1.428f);
+    tabItemWidth = r.right - r.left;
+    tabItemHeight = (int)((r.bottom - r.top) * 1.428f);
+    tabItemDpi = ThemeHelper::getDpi(hDlg);
 
     //create tab page
     hTabPage1 = CreateDialogParam(hIns, MAKEINTRESOURCE(IDD_DIALOG_TAB_GENERAL), hDlg, tabPageEventProc, (LPARAM)this);
     hTabPage2 = CreateDialogParam(hIns, MAKEINTRESOURCE(IDD_DIALOG_TAB_MACRO), hDlg, tabPageEventProc, (LPARAM)this);
     hTabPage3 = CreateDialogParam(hIns, MAKEINTRESOURCE(IDD_DIALOG_TAB_SYSTEM), hDlg, tabPageEventProc, (LPARAM)this);
     hTabPage4 = CreateDialogParam(hIns, MAKEINTRESOURCE(IDD_DIALOG_TAB_INFO), hDlg, tabPageEventProc, (LPARAM)this);
-    RECT rc;//find tab control's rectangle
-    GetWindowRect(hTab, &rc);
-    POINT offset = { 0 };
-    ScreenToClient(hDlg, &offset);
-    OffsetRect(&rc, offset.x, offset.y); //convert to client coordinates
-    rc.top += (LONG)((r.bottom - r.top) * 1.428f);
-    SetWindowPos(hTabPage1, 0, rc.left + 1, rc.top + 3, rc.right - rc.left - 5, rc.bottom - rc.top - 5, SWP_HIDEWINDOW);
-    SetWindowPos(hTabPage2, 0, rc.left + 1, rc.top + 3, rc.right - rc.left - 5, rc.bottom - rc.top - 6, SWP_HIDEWINDOW);
-    SetWindowPos(hTabPage3, 0, rc.left + 1, rc.top + 3, rc.right - rc.left - 5, rc.bottom - rc.top - 6, SWP_HIDEWINDOW);
-    SetWindowPos(hTabPage4, 0, rc.left + 1, rc.top + 3, rc.right - rc.left - 5, rc.bottom - rc.top - 6, SWP_HIDEWINDOW);
+    layoutTabPages();
     onTabIndexChanged();
 
     checkCtrl = GetDlgItem(hDlg, IDC_CHECK_SWITCH_KEY_CTRL);
@@ -590,6 +584,29 @@ void MainControlDialog::setSwitchKeyText(const HWND& hWnd, const UINT16& keyCode
         Uint16 key[] = { keyCode, 0 };
         SetWindowText(hWnd, (LPCWSTR)&key);
     }
+}
+
+void MainControlDialog::layoutTabPages() {
+    //item size is measured once, then follows the dialog to other monitors
+    UINT dpi = ThemeHelper::getDpi(hDlg);
+    int itemHeight = MulDiv(tabItemHeight, dpi, tabItemDpi);
+    TabCtrl_SetItemSize(hTab, MulDiv(tabItemWidth, dpi, tabItemDpi), itemHeight);
+
+    RECT rc;//find tab control's rectangle
+    GetWindowRect(hTab, &rc);
+    MapWindowPoints(NULL, hDlg, (LPPOINT)&rc, 2); //convert to client coordinates
+    rc.top += itemHeight;
+    int left = rc.left + ThemeHelper::scale(1, hDlg);
+    int top = rc.top + ThemeHelper::scale(3, hDlg);
+    int width = rc.right - rc.left - ThemeHelper::scale(5, hDlg);
+    SetWindowPos(hTabPage1, 0, left, top, width, rc.bottom - rc.top - ThemeHelper::scale(5, hDlg), SWP_NOACTIVATE);
+    SetWindowPos(hTabPage2, 0, left, top, width, rc.bottom - rc.top - ThemeHelper::scale(6, hDlg), SWP_NOACTIVATE);
+    SetWindowPos(hTabPage3, 0, left, top, width, rc.bottom - rc.top - ThemeHelper::scale(6, hDlg), SWP_NOACTIVATE);
+    SetWindowPos(hTabPage4, 0, left, top, width, rc.bottom - rc.top - ThemeHelper::scale(6, hDlg), SWP_NOACTIVATE);
+}
+
+void MainControlDialog::onDpiChanged() {
+    layoutTabPages();
 }
 
 void MainControlDialog::onTabIndexChanged() {

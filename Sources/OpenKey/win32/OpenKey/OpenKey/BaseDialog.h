@@ -26,6 +26,7 @@ protected:
 	void createToolTip(const HWND& control, LPCTSTR toolTipString);
 	void createToolTip(const HWND& control, const UINT& stringResId);
 	virtual INT_PTR eventProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) = 0;
+	virtual void onDpiChanged() {}
 public:
 	BaseDialog(const HINSTANCE& hInstance, const int& resourceId);
 	void show();

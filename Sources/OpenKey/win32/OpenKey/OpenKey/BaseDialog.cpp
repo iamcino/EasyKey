@@ -12,6 +12,7 @@ You can fork, modify, improve this program. If you
 redistribute your new version, it MUST be open source.
 -----------------------------------------------------------*/
 #include "BaseDialog.h"
+#include "ThemeHelper.h"
 static TCHAR tooltipBuff[1024];
 
 static INT_PTR CALLBACK DialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
@@ -22,7 +23,10 @@ static INT_PTR CALLBACK DialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM l
 		SetWindowLong(hDlg, GWL_USERDATA, lParam);
 #endif
 		BaseDialog*b = (BaseDialog*)lParam;
-		return b->eventProc(hDlg, uMsg, wParam, lParam);
+		INT_PTR result = b->eventProc(hDlg, uMsg, wParam, lParam);
+		ThemeHelper::applyWindowFrame(hDlg);
+		ThemeHelper::applyDialogFont(hDlg);
+		return result;
 	}
 #ifdef _WIN64
 	LONG_PTR attr = GetWindowLongPtr(hDlg, GWLP_USERDATA);
@@ -30,6 +34,16 @@ static INT_PTR CALLBACK DialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM l
 	long attr = GetWindowLong(hDlg, GWL_USERDATA);
 #endif
 	if (attr != 0) {
+		if (ThemeHelper::isThemeChangedMessage(uMsg, lParam)) {
+			ThemeHelper::applyWindowFrame(hDlg);
+		} else if (uMsg == WM_DPICHANGED) {
+			//the dialog manager rescales the dialog after this message, so finish up afterwards
+			PostMessage(hDlg, WM_OPENKEY_DPI_CHANGED, 0, 0);
+		} else if (uMsg == WM_OPENKEY_DPI_CHANGED) {
+			ThemeHelper::applyDialogFont(hDlg);
+			((BaseDialog*)attr)->onDpiChanged();
+			return TRUE;
+		}
 		return ((BaseDialog*)attr)->eventProc(hDlg, uMsg, wParam, lParam);
 	}
 	return FALSE;

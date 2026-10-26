@@ -74,6 +74,9 @@
     </ClInclude>
     <ClInclude Include="SystemTrayHelper.h">
       <Filter>Header Files</Filter>
+    <ClInclude Include="ThemeHelper.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     </ClInclude>
     <ClInclude Include="AboutDialog.h">
       <Filter>Header Files</Filter>
@@ -127,6 +130,9 @@
     </ClCompile>
     <ClCompile Include="SystemTrayHelper.cpp">
       <Filter>Source Files</Filter>
+    <ClCompile Include="ThemeHelper.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     </ClCompile>
     <ClCompile Include="AboutDialog.cpp">
       <Filter>Source Files</Filter>
@@ -153,11 +159,17 @@
     <Image Include="StatusEng.ico">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="StatusViet10.ico">
+    <Image Include="StatusVietDark.ico">
+      <Filter>Resource Files</Filter>
+    <Image Include="StatusVietLight.ico">
       <Filter>Resource Files</Filter>
     </Image>
-    <Image Include="StatusEng10.ico">
+    </Image>
+    <Image Include="StatusEngDark.ico">
       <Filter>Resource Files</Filter>
+    <Image Include="StatusEngLight.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
     </Image>
     <Image Include="OKButton.ico">
       <Filter>Resource Files</Filter>
