@@ -53,7 +53,7 @@ private:
 	RECT heroArea, expandArea;
 	int contentHeight = 0, scrollY = 0;
 	bool expanded = false;
-	int openGroups = 1 << 1; //bit per group of Nâng cao, Gõ starts open
+	int openGroups = 0; //bit per group of Nâng cao, all start closed
 
 	int hotItem = -1, hotPart = 0;
 	int pressedItem = -1, pressedPart = 0;

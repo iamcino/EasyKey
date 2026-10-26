@@ -5,7 +5,7 @@
 ## Bản tiếp theo
 - Kiểm tra cập nhật chạy ngầm, chuột và phím không còn bị khựng trong lúc kiểm tra hay tải bản mới.
 - Thêm "Kiểm tra cập nhật…" vào menu ở khay hệ thống.
-- Phần Nâng cao: mỗi lần chỉ mở một nhóm, và mở nhóm nào thì cuộn để thấy trọn nhóm đó.
+- Phần Nâng cao: mọi nhóm đều đóng khi mở ra, mỗi lần chỉ mở một nhóm, và mở nhóm nào thì cuộn để thấy trọn nhóm đó.
 - Mang lại tùy chọn lối tắt trên màn hình nền (Nâng cao › Hệ thống).
 - Icon ở khay hệ thống: chữ V (đang gõ tiếng Việt) theo màu nhấn, chữ E giữ đen trắng.
 - Phím tắt đổi kiểu gõ (Nâng cao › Gõ, mặc định tắt): mỗi lần bấm chuyển Telex → VNI → Simple Telex và hiện popup, chỉ có tác dụng khi đang gõ tiếng Việt.

@@ -5,7 +5,7 @@
 ## Next version
 - Update checks run in the background, so the mouse and keyboard no longer stall while EasyKey checks for or downloads an update.
 - Added "Check for updates…" to the tray menu.
-- Advanced settings: only one group is open at a time, and opening a group scrolls so the whole group shows.
+- Advanced settings: every group starts closed, only one group is open at a time, and opening a group scrolls so the whole group shows.
 - "Code table" is now called "Character encoding" in English.
 - Brought back the desktop shortcut option (Advanced › System).
 - Tray icon: the V (typing Vietnamese) takes the accent color; the E stays black and white.

@@ -1096,6 +1096,8 @@ void SettingsWindow::doAction(const int& action) {
 	switch (action) {
 	case ACT_EXPAND:
 		expanded = !expanded;
+		if (!expanded)
+			openGroups = 0; //Nâng cao opens again with every group closed
 		endHexEdit();
 		fitWindow(false);
 		if (expanded) {
