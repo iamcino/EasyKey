@@ -10,6 +10,7 @@
 - Icon ở khay hệ thống: chữ V (đang gõ tiếng Việt) theo màu nhấn, chữ E giữ đen trắng.
 - Phím tắt đổi kiểu gõ (Nâng cao › Gõ, mặc định tắt): mỗi lần bấm chuyển Telex → VNI → Simple Telex và hiện popup, chỉ có tác dụng khi đang gõ tiếng Việt.
 - Popup Việt/Anh cũng hiện khi đổi từ menu ở khay hệ thống hay trong cửa sổ Cài đặt.
+- Chọn chế độ màu Theo Windows, Sáng hoặc Tối (Nâng cao › Giao diện).
 
 ## 1.0.2 (Windows 11 x64)
 - Sửa lỗi gõ thừa chữ trên Chrome, Edge ở các trang tự xử lý phím như trang luyện gõ (ví dụ "số" thành "sốôô"), cả Telex và VNI.

@@ -65,6 +65,7 @@ int vShowSwitchFlyout = 1;
 int vSwitchInputType = 0;
 int vInputTypeHotKey = 0xFE0000FE; //no key set
 int vUiLanguage = 0;
+int vThemeMode = 0;
 int vAccentColor = 0;
 int vAccentLight = RGB(0x4F, 0x46, 0xE5);
 int vAccentDark = RGB(0xA5, 0xB4, 0xFC);
@@ -316,6 +317,7 @@ void AppDelegate::onDefaultConfig() {
 	APP_SET_DATA(vSwitchInputType, 0);
 	APP_SET_DATA(vInputTypeHotKey, 0xFE0000FE);
 	APP_SET_DATA(vUiLanguage, 0);
+	APP_SET_DATA(vThemeMode, 0);
 	APP_SET_DATA(vAccentColor, 0);
 	APP_SET_DATA(vAccentAutoDark, 1);
 	APP_SET_DATA(vRunWithWindows, 1);

@@ -39,7 +39,7 @@ redistribute your new version, it MUST be open source.
 
 enum ItemKind {
 	K_LANG, K_HOTKEY, K_SECTION, K_SEGMENT, K_SEGBUTTON, K_EXPANDER,
-	K_GROUP, K_SUBTOGGLE, K_SUBCOMBO, K_SUBBUTTON, K_SUBSEG, K_UILANG, K_SUBLABEL, K_SWATCH, K_HEXFIELD, K_NOTE,
+	K_GROUP, K_SUBTOGGLE, K_SUBCOMBO, K_SUBBUTTON, K_SUBSEG, K_UILANG, K_THEME, K_SUBLABEL, K_SWATCH, K_HEXFIELD, K_NOTE,
 	K_LINK, K_VERSION
 };
 
@@ -525,22 +525,28 @@ void SettingsWindow::layout() {
 			if (!groupOpen)
 				continue;
 			if (row.kind == K_SUBLABEL) {
-				//display language: three choices in a small segmented control
-				i = add(K_SUBSEG, 0, T(_T("Ngôn ngữ giao diện"), _T("Display language")), NULL, s(44));
-				items[i].afterLabel = afterLabel;
-				LPCTSTR names[] = { T(_T("Theo Windows"), _T("Windows")), _T("Tiếng Việt"), _T("English") };
-				int widths[3], total = s(4);
-				for (int n = 0; n < 3; n++) {
-					widths[n] = textWidth(fontCaption, names[n]) + s(16);
-					total += widths[n] + s(2);
-				}
-				items[i].ctl = makeRect(items[i].rc.right - s(14) - total, centerY(items[i].rc) - s(15), total, s(30));
-				items[i].textRight = items[i].ctl.left - s(10);
-				int x = items[i].ctl.left + s(2);
-				for (int n = 0; n < 3; n++) {
-					push(K_UILANG, n, names[n], NULL, makeRect(x, items[i].ctl.top + s(2), widths[n], s(26)));
-					x += widths[n] + s(2);
-				}
+				//display language and color mode: three choices each in a small segmented control
+				auto addChoices = [&](const int& id, const int& kind, LPCTSTR label, LPCTSTR* names) {
+					i = add(K_SUBSEG, id, label, NULL, s(44));
+					items[i].afterLabel = afterLabel;
+					afterLabel = false;
+					int widths[3], total = s(4);
+					for (int n = 0; n < 3; n++) {
+						widths[n] = textWidth(fontCaption, names[n]) + s(16);
+						total += widths[n] + s(2);
+					}
+					items[i].ctl = makeRect(items[i].rc.right - s(14) - total, centerY(items[i].rc) - s(15), total, s(30));
+					items[i].textRight = items[i].ctl.left - s(10);
+					int x = items[i].ctl.left + s(2);
+					for (int n = 0; n < 3; n++) {
+						push(kind, n, names[n], NULL, makeRect(x, items[i].ctl.top + s(2), widths[n], s(26)));
+						x += widths[n] + s(2);
+					}
+				};
+				LPCTSTR languages[] = { T(_T("Theo Windows"), _T("Windows")), _T("Tiếng Việt"), _T("English") };
+				addChoices(0, K_UILANG, T(_T("Ngôn ngữ giao diện"), _T("Display language")), languages);
+				LPCTSTR modes[] = { T(_T("Theo Windows"), _T("Windows")), T(_T("Sáng"), _T("Light")), T(_T("Tối"), _T("Dark")) };
+				addChoices(1, K_THEME, T(_T("Chế độ màu"), _T("Color mode")), modes);
 
 				//accent: label row, then the swatches, five to a row
 				add(K_SUBLABEL, 0, T(_T("Màu nhấn"), _T("Accent color")), T(_T("Trái: chế độ sáng · Phải: tối"), _T("Left: light mode · Right: dark")), s(36));
@@ -933,8 +939,9 @@ void SettingsWindow::paintItem(Gdiplus::Graphics& g, const Item& item, const int
 		drawLabel(fontBody, rc.left + s(14), pal.text, pal.sub);
 		fillRound(g, ctl, (float)s(8), pal.track, pal.stroke);
 		break;
-	case K_UILANG: {
-		bool on = item.id == vUiLanguage;
+	case K_UILANG:
+	case K_THEME: {
+		bool on = item.id == (item.kind == K_UILANG ? vUiLanguage : vThemeMode);
 		if (on)
 			fillRound(g, rc, (float)s(6), pal.field, pal.stroke);
 		else if (hot)
@@ -1111,6 +1118,8 @@ bool SettingsWindow::isInteractive(const int& item, const int& part) const {
 		return part == 0 && it.id != vInputType;
 	case K_UILANG:
 		return part == 0 && it.id != vUiLanguage;
+	case K_THEME:
+		return part == 0 && it.id != vThemeMode;
 	case K_SWATCH:
 		return part == 0 && it.id != vAccentColor;
 	case K_HEXFIELD:
@@ -1204,6 +1213,11 @@ void SettingsWindow::activate(const int& index, const int& part) {
 		break;
 	case K_UILANG:
 		APP_SET_DATA(vUiLanguage, item.id);
+		AppDelegate::getInstance()->onAppearanceChanged();
+		break;
+	case K_THEME:
+		APP_SET_DATA(vThemeMode, item.id);
+		ThemeHelper::applyMenuTheme();
 		AppDelegate::getInstance()->onAppearanceChanged();
 		break;
 	case K_SWATCH:

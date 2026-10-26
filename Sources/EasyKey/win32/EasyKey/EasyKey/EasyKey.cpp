@@ -112,6 +112,7 @@ void EasyKeyInit() {
 	APP_GET_DATA(vSwitchInputType, 0);
 	APP_GET_DATA(vInputTypeHotKey, EMPTY_HOTKEY);
 	APP_GET_DATA(vUiLanguage, 0);
+	APP_GET_DATA(vThemeMode, 0);
 	APP_GET_DATA(vAccentColor, 0);
 	APP_GET_DATA(vAccentLight, RGB(0x4F, 0x46, 0xE5));
 	APP_GET_DATA(vAccentDark, RGB(0xA5, 0xB4, 0xFC));
