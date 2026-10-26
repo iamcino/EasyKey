@@ -2,7 +2,7 @@
 
 [Tiếng Việt](CHANGELOG.md) · **English**
 
-## Next version
+## 1.0.1 (Windows 11 x64)
 - Open the shortcut list from the settings window: "Advanced" › "Typing" › "Shortcut list".
 - Esc to put back the typed keys now works in web chats such as Facebook (EasyKey also holds back the Esc key release, so the page does not close the chat).
 - Capitalizing the first letter of a sentence now also works after "?" and "!", not only after "." and Enter.
