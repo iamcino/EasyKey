@@ -1,0 +1,15 @@
+EasyKey
+Copyright (C) 2026 Cino <duongtheson@proton.me>
+
+EasyKey is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free
+Software Foundation, version 3. See the LICENSE file for the full text.
+
+EasyKey is a modified version of OpenKey:
+  OpenKey - The Cross platform Open source Vietnamese Keyboard application
+  Copyright (C) 2019 Mai Vu Tuyen
+  https://github.com/tuyenvm/OpenKey
+  Released under the GNU General Public License version 3.
+
+Changes from OpenKey are listed in CHANGELOG.md and in the git history.
+The original copyright notices are kept in the source files.

@@ -1,144 +1,36 @@
-# OpenKey Change Log
+# Nhật ký thay đổi
 
-##### OpenKey for Linux: (in development)
+## 1.0.0 (Windows 11 x64)
+Bản đầu tiên của EasyKey.
 
-##### Version 1.2 RC5: (26/08/2019)
-- Sửa lỗi không gõ được chữ "quởn".
-- Không kiểm tra chính tả khi sử dụng dấu "[ ] { }".
-
-##### Version 1.2 RC4: (24/08/2019)
-- Bảng gõ tắt tiện lợi hơn, thêm tính năng Sửa từ.
-- Cải thiện khả năng bỏ dấu, tốc độ nhanh hơn.
-- Tự phục hồi dấu câu khi xóa ký tự (chữ “tuỳa” xóa “a” sẽ thành “tùy”,… )
-- Sửa lỗi không gõ được từ “quét” khi bật chức năng tự phục hồi phím.
-- Sửa lỗi ư và ơ khi gõ font Palatino trong MS Word.
-- Sửa lỗi bảng mã VNI khi xóa ký tự, không thể gõ tiếng việt tiếp.
-
-##### Version 1.2 RC3: (16/08/2019)
-- Không gõ được "dui9, duoi96".
-- Không gõ được "tuyps".
-
-##### Version 1.2 RC2: (15/08/2019)
-- Sửa lỗi không gõ được d i e u 9 6.
-- Sửa lỗi không gõ tắt được khi dùng chế độ tiếng Anh với từ bắt đầu bằng.
-- Sửa lỗi tự nhảy dấu khi gõ sai.
-- Thêm thông tin phiên bản trong bảng giới thiệu.
-
-##### Version 1.2 RC1: (13/08/2019)
-- Chuyển chế độ thông minh: Bạn đang dùng chế độ gõ Tiếng Việt trên ứng dụng A, bạn chuyển qua ứng dụng B trước đó bạn dùng chế độ gõ Tiếng Anh, OpenKey sẽ tự động chuyển qua chế độ gõ Tiếng Anh cho bạn, khi bạn quay lại ứng dụng A, OpenKey tất nhiên sẽ chuyển lại chế độ gõ tiếng Việt, rất cơ động.
-- Viết Hoa chữ cái đầu câu: Khi gõ văn bản dài, đôi khi bạn quên ghi hoa chữ cái đầu câu khi kết thúc một câu hoặc khi xuống hàng, tính năng này sẽ tự ghi hoa chữ cái đầu câu cho bạn, thật tuyệt vời.
-Khôi phục phím với từ sai: hỗ trợ thêm các dấu ngắt câu như dấu chấm, phẩy,...
-Sửa vài lỗi nho nhỏ khác.
-
-##### Version 1.1 RC: (12/08/2019)
-- Chế độ “Gửi từng phím”: OpenKey bản mới (1.1) mặc định dùng kỹ thuật mới gửi dữ liệu 1 lần thay vì gửi nhiều lần cho chuỗi ký tự, nên nếu có ứng dụng nào không tương thích, hãy bật tính năng này lên, mặc định thì nên tắt vì kỹ thuật mới sẽ chạy nhanh hơn.
-- Phục hồi phím với từ sai.
-- Nâng cao khả năng check chính tả.
-- Sửa lỗi thanh địa chỉ trình duyệt (on/off).
-- Bỏ tính năng "cho phép bỏ dấu tự do".
-- Gõ tắt: bao gồm bật/tắt, bảng soạn các từ gõ tắt, hỗ trợ ký tự bất kỳ, bảng mã bất kỳ. Khi soạn thảo các từ gõ tắt, bạn phải nhập ở bảng mã Unicode dựng sẵn.
-- Gõ tắt ngay khi trong chế độ gõ tiếng Anh (on/off).
-- Sửa lỗi trên một số phần mềm.
-
-##### Version 1.0.20: (06/08/2019)
-- Sửa lỗi phím tắt chuyển chế độ, phím tắt của ứng dụng khác vẫn hoạt động nếu bị trùng.
-- Cho phép gõ “Đ” ngay sau phụ âm.
-- Không hiện Icon trên thanh Dock mục recent app.
-- Sửa lỗi “oăc” ra “ooạc” trong kiểu gõ VNI.
-- Sửa vài lỗi nhỏ xíu khác.
-
-##### Version 1.0.19: (04/08/2019)
-- Sửa lỗi không gõ được chữ “gì” khi dùng bỏ dấu kiểu cũ.
-- Sửa lỗi không gõ được Unicode tổ hợp trên ứng dụng Stickies.
-- Sửa lỗi gõ các âm "oong, ooc".
-
-##### Version 1.0.18: (01/08/2019)
-- Không sử dụng w -> ư trong Simple Telex.
-- Bật tắt kêu beep khi chuyển chế độ.
-- Thêm phím chuyển Shift, giờ có thể sử dụng Ctrl + Shift hoặc Command + Shift.
-- Sửa vài lỗi khác.
-- Hỗ trợ cho macOS bản cũ.
-
-##### Version 1.0.17: (31/07/2019)
-- Add Simple Telex mode.
-- Black/White icon on menu bar.
-- Space and back key improved.
-- Modern orthography.
-- Custom switch key.
-- Quick telex (cc=ch, gg=gi, kk=kh, nn=ng, qq=qu, pp=ph, tt=th).
-- Support TextWrangler.
-
-##### Version 1.0.14: (09/04/2019)
-- Add case "uýt".
-- Improve typing English in Vietnamese mode.
-
-##### Version 1.0.11: (27/02/2019)
-- Add case "chú thòong", "gòong".
-
-##### Version 1.0.10: (26/02/2019)
-- Fix case "duocd".
-
-##### Version 1.0.9: (22/02/2019)
-- Fix incorrect word when switch language without pressing Space key.
-
-##### Version 1.0.8: (19/02/2019)
-- Switch key: Control + Command + Space  --> Control + Z
-
-##### Version 1.0.7: (15/02/2019)
-- Fix case "duongd".
-- Fix end consonant "t".
-
-##### Version 1.0.6: (15/02/2019)
-- Fix case "quatw".
-
-##### Version 1.0.5: (13/02/2019)
-- Spelling enhanced.
-- Correct 1x menu icon.
-
-##### Version 1.0.3: (11/02/2019)
-- Fix auto correct on Chrome.
-
-##### Version 1.0: (11/02/2019)
-- First release.
-
-
-
-# OpenKey lịch sử
-
-##### Version 1.0.17: (31/07/2019)
-- Thêm chế độ Simple Telex.
-- Icon trắng đen trên menu bar.
-- Lỡ bấm phím Space, xoá space vẫn có thể bỏ dấu.
-- Bỏ dấu kiểu cũ/mới: òa, úy | oà, uý.
-- Tuỳ chọn phím chuyển.
-- Gõ nhanh (cc=ch, gg=gi, kk=kh, nn=ng, qq=qu, pp=ph, tt=th).
-- Hỗ trợ TextWrangler.
-
-##### Version 1.0.11: (27/02/2019)
-- Thêm trường hợp "chú thòong", "gòong".
-
-##### Version 1.0.10: (26/02/2019)
-- Sửa lỗi "duocd".
-
-##### Version 1.0.9: (22/02/2019)
-- Sửa lỗi từ sai khi đổi chế độ mà không bấm phím Space.
-
-##### Version 1.0.8: (19/02/2019)
-- Phím chuyển: Control + Command + Space  --> Control + Z
-
-##### Version 1.0.7: (15/02/2019)
-- Sửa lỗi "duongd".
-- Sửa lỗi phụ âm cuối "t".
-
-##### Version 1.0.6: (15/02/2019)
-- Sửa lỗi "quatw".
-
-##### Version 1.0.5: (13/02/2019)
-- Nâng cao chính tả.
-- Sửa icon cho màn hình non-retina.
-
-##### Version 1.0.3: (11/02/2019)
-- Sửa lỗi thanh địa chỉ trên Chrome.
-
-##### Version 1.0: (11/02/2019)
-- Phát hành lần đầu.
+- Chỉ hỗ trợ Windows 11 64-bit.
+- Tự chép cài đặt và bảng gõ tắt từ OpenKey ở lần chạy đầu.
+- Sửa lỗi không gõ được tiếng Việt trên máy có phần mềm gắn dữ liệu vào phím, ví dụ Bitdefender.
+- Cửa sổ cài đặt mới kiểu Windows 11 năm 2026: nền Mica, màu nhấn theo Windows, hai nút lớn Tiếng Việt/Tiếng Anh, chọn kiểu gõ bằng một hàng nút, các tuỳ chọn khác gom vào mục "Nâng cao". Thay đổi có hiệu lực ngay. Chế độ sáng/tối theo Windows và đổi ngay khi Windows đổi.
+- Thông báo nhỏ ở cuối màn hình khi chuyển Việt/Anh bằng phím tắt, có thể tắt trong "Nâng cao".
+- Mặc định dùng Unicode. Bảng mã cũ (Unicode tổ hợp, TCVN3, VNI Windows) chuyển vào "Nâng cao" › "Bảng mã cũ". Bỏ CP 1258 khỏi danh sách, chỉ còn hiện cho ai đang dùng.
+- Đặt phím chuyển Việt/Anh bằng cách bấm thẳng tổ hợp phím, ví dụ Ctrl + Shift hoặc Alt + Z.
+- Menu khay có chế độ tối.
+- DPI theo từng màn hình, font Segoe UI Variable, biểu tượng khay đơn sắc tự đổi màu theo thanh tác vụ.
+- Phím chuyển mặc định khi cài mới là Alt + Z (trước đây bị đặt nhầm mã phím của macOS).
+- Bỏ tuỳ chọn "gõ trong các ngôn ngữ khác" vì không có tác dụng trên Windows.
+- "Sửa lỗi trên Chrome, Edge" bật mặc định; sửa lỗi xoá nhầm ký tự trước con trỏ khi viết hoa đầu câu.
+- Bỏ tuỳ chọn "Hỗ trợ ứng dụng Metro" và "Biểu tượng hiện đại".
+- Tooltip ngắn gọn hơn.
+- Test engine gõ Telex/VNI chạy trên CI.
+- Cửa sổ cài đặt gọn hơn (rộng 440 px). Màn hình chính chỉ còn chuyển Việt/Anh, phím chuyển và kiểu gõ; mọi tuỳ chọn khác nằm trong "Nâng cao".
+- "Gõ thông minh" gộp kiểm tra chính tả và tự khôi phục phím khi gõ sai thành một công tắc.
+- Bấm Esc ngay sau một từ để lấy lại phím vừa gõ, ví dụ "việt" thành "vieejt".
+- Lần chạy đầu không hỏi gì, chỉ hiện thông báo nhỏ cách chuyển Việt/Anh; cửa sổ cài đặt không tự mở khi khởi động.
+- Cảnh báo khi UniKey, EVKey, OpenKey, GoTiengViet hoặc bàn phím tiếng Việt của Windows đang chạy cùng (có "Không nhắc lại"). EasyKey không tự tắt ứng dụng khác.
+- Trang "Có gì mới" hiện một lần sau mỗi lần cập nhật.
+- Menu khay chỉ có chữ: Gõ tiếng Việt, Kiểu gõ, Bảng mã, Bảng gõ tắt, Công cụ chuyển mã, Cài đặt, Thoát.
+- Giao diện tiếng Anh: chọn Theo Windows, Tiếng Việt hoặc English trong "Nâng cao" › "Giao diện". Áp dụng cho cài đặt, menu khay, thông báo và các hộp thoại.
+- Chọn màu nhấn: theo Windows, 7 màu có sẵn (mỗi màu có sắc riêng cho chế độ sáng và tối) hoặc nhập mã hex riêng, tự tạo sắc cho chế độ tối và báo độ tương phản.
+- Tự nối lại phím khi Windows ngắt hook của EasyKey (ví dụ sau khi máy chậm hoặc thức dậy từ chế độ ngủ).
+- Không hiện thông báo chuyển Việt/Anh khi đang chơi game hay trình chiếu toàn màn hình.
+- Báo một lần khi gõ vào cửa sổ chạy quyền Admin, vì Windows không cho EasyKey gõ vào đó.
+- Nút "Gỡ EasyKey khỏi Windows": bỏ chạy cùng Windows, xoá lối tắt và cài đặt, rồi mở thư mục để xoá file.
+- Cập nhật ngay trong EasyKey.exe: tải bản mới qua HTTPS, kiểm tra SHA-256, luôn hỏi trước khi cài và tự khởi động lại. Bỏ EasyKeyUpdate.exe.
+- Bản phát hành có thêm `EasyKey.exe` và `EasyKey.exe.sha256` bên cạnh file zip.
+- README có hướng dẫn hết gạch đỏ chính tả tiếng Việt theo từng ứng dụng và hướng dẫn tự build.

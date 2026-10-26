@@ -3,12 +3,15 @@ name: MSBuild
 on:
   push:
     branches: [ "master" ]
+    # a version tag like 1.0.0 publishes a release; EasyKey's updater downloads
+    # releases/download/<versionName>/EasyKey.exe and checks it against EasyKey.exe.sha256
+    tags: [ "[0-9]+.[0-9]+.[0-9]+" ]
   pull_request:
     branches: [ "master" ]
 
 env:
   # Path to the solution file relative to the root of the project.
-  SOLUTION_FILE_PATH: .\Sources\OpenKey\win32\OpenKey
+  SOLUTION_FILE_PATH: .\Sources\EasyKey\win32\EasyKey
 
   # Configuration type to build.
   # You can convert this to a build matrix if you need coverage of multiple configuration types.
@@ -19,32 +22,55 @@ permissions:
   contents: read
 
 jobs:
-  build:
-    runs-on: windows-latest
+  engine-tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
+
+    - name: Configure engine tests
+      run: cmake -S Sources/EasyKey/tests -B build/tests
+
+    - name: Build engine tests
+      run: cmake --build build/tests --config Release
+
+    - name: Run engine tests
+      run: ctest --test-dir build/tests -C Release --output-on-failure
+
+  build:
+    runs-on: windows-latest
+    needs: engine-tests
+
+    steps:
+    - uses: actions/checkout@v7
 
     - name: Add MSBuild to PATH
-      uses: microsoft/setup-msbuild@v2
-
-    - name: Build x86
-      run: msbuild -m -target:Rebuild -p:Configuration=Release -p:Platform=x86 ${{env.SOLUTION_FILE_PATH}}
+      uses: microsoft/setup-msbuild@v3
 
     - name: Build x64
       run: msbuild -m -target:Rebuild -p:Configuration=Release -p:Platform=x64 ${{env.SOLUTION_FILE_PATH}}
 
+    - name: Report the exe size
+      shell: pwsh
+      run: |
+        $size = (Get-Item "${{env.SOLUTION_FILE_PATH}}\x64\Release\EasyKey.exe").Length
+        Write-Output "EasyKey.exe: $size bytes"
+        "EasyKey.exe: $([math]::Round($size / 1KB)) KB ($size bytes)" >> $env:GITHUB_STEP_SUMMARY
+
     - name: Upload a Build Artifact
       id: upload
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
-        name: OpenKey
-        path: |
-          ${{env.SOLUTION_FILE_PATH}}/Release/
-          ${{env.SOLUTION_FILE_PATH}}/x64/Release/
+        name: EasyKey
+        path: ${{env.SOLUTION_FILE_PATH}}/x64/Release/EasyKey.exe
+        if-no-files-found: error
 
     outputs:
-      subject-name: OpenKey
+      subject-name: EasyKey
       subject-digest: ${{steps.upload.outputs.artifact-digest}}
 
   attest:
@@ -58,7 +84,57 @@ jobs:
 
     steps:
     - name: Generate artifact attestation
-      uses: actions/attest-build-provenance@v2
+      uses: actions/attest-build-provenance@v4
       with:
         subject-name: ${{needs.build.outputs.subject-name}}
         subject-digest: sha256:${{needs.build.outputs.subject-digest}}
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: windows-latest
+    needs: build
+
+    permissions:
+      id-token: write
+      contents: write
+      attestations: write
+
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Check the tag matches version.json
+      shell: pwsh
+      run: |
+        $version = (Get-Content version.json | ConvertFrom-Json).latestWinVersion.versionName
+        if ($version -ne "${{ github.ref_name }}") {
+          throw "Tag ${{ github.ref_name }} does not match version.json versionName $version"
+        }
+
+    - name: Add MSBuild to PATH
+      uses: microsoft/setup-msbuild@v3
+
+    - name: Build x64
+      run: msbuild -m -target:Rebuild -p:Configuration=Release -p:Platform=x64 ${{env.SOLUTION_FILE_PATH}}
+
+    - name: Package
+      shell: pwsh
+      run: |
+        $out = "${{env.SOLUTION_FILE_PATH}}\x64\Release"
+        Copy-Item "$out\EasyKey.exe" EasyKey.exe
+        Compress-Archive -Path EasyKey.exe -DestinationPath "EasyKey${{ github.ref_name }}-Windows.zip"
+        # the in-app updater reads "<sha256>  EasyKey.exe"
+        $hash = (Get-FileHash EasyKey.exe -Algorithm SHA256).Hash.ToLower()
+        [IO.File]::WriteAllText("EasyKey.exe.sha256", "$hash  EasyKey.exe`n")
+
+    - name: Generate artifact attestation
+      uses: actions/attest-build-provenance@v4
+      with:
+        subject-path: |
+          EasyKey${{ github.ref_name }}-Windows.zip
+          EasyKey.exe
+
+    - name: Publish the release
+      shell: pwsh
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: gh release create "${{ github.ref_name }}" "EasyKey${{ github.ref_name }}-Windows.zip" EasyKey.exe EasyKey.exe.sha256 --title "EasyKey ${{ github.ref_name }}" --notes-file CHANGELOG.md --verify-tag
