@@ -516,7 +516,7 @@ void SettingsWindow::layout() {
 			comboWidth = max(comboWidth, textWidth(fontSmall, T(table.vi, table.en)) + s(10 + 32));
 		for (const RowInfo& row : advancedRows) {
 			if (row.kind == K_GROUP) {
-				add(row.kind, row.id, T(row.vi, row.en), NULL, s(32));
+				add(row.kind, row.id, T(row.vi, row.en), NULL, s(44));
 				afterLabel = true;
 				continue;
 			}
@@ -848,7 +848,7 @@ void SettingsWindow::paintItem(Gdiplus::Graphics& g, const Item& item, const int
 		break;
 	case K_GROUP:
 		drawText(g, item.label, makeRect(rc.left + s(14), rc.top, rc.right - rc.left - s(28), rc.bottom - rc.top - s(6)),
-			fontStrong, pal.sub, 0, 2);
+			fontTitle, pal.text, 0, 2);
 		break;
 	case K_SUBTOGGLE:
 		divider();
