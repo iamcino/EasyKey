@@ -28,4 +28,6 @@ public:
 
 
 	static void createDesktopShortcut();
+	static void removeDesktopShortcut();
+	static bool hasDesktopShortcut();
 };

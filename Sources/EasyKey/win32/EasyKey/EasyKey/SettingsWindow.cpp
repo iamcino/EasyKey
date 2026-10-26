@@ -50,7 +50,7 @@ enum Option {
 	OPT_QUICK_TELEX, OPT_QUICK_START, OPT_QUICK_END, OPT_CAPS_FIRST, OPT_MACRO_ENGLISH, OPT_MACRO_AUTO_CAPS,
 	OPT_SMART_SWITCH, OPT_REMEMBER_CODE, OPT_TEMP_OFF_EASYKEY,
 	OPT_CLIPBOARD, OPT_FLYOUT, OPT_BEEP,
-	OPT_WARN_CONFLICT, OPT_RUN_AS_ADMIN, OPT_CHECK_UPDATE,
+	OPT_WARN_CONFLICT, OPT_RUN_AS_ADMIN, OPT_DESKTOP_SHORTCUT, OPT_CHECK_UPDATE,
 	OPT_AUTO_DARK
 };
 
@@ -102,6 +102,7 @@ static const RowInfo advancedRows[] = {
 	{ K_SUBTOGGLE, OPT_RUN_WITH_WINDOWS, _T("Chạy cùng Windows"), _T("Start with Windows") },
 	{ K_SUBTOGGLE, OPT_WARN_CONFLICT, _T("Cảnh báo khi bộ gõ khác đang chạy"), _T("Warn when another Vietnamese keyboard runs") },
 	{ K_SUBTOGGLE, OPT_RUN_AS_ADMIN, _T("Chạy với quyền Admin"), _T("Run as administrator"), _T("Để gõ được trong ứng dụng chạy quyền Admin"), _T("To type in apps that run as administrator") },
+	{ K_SUBTOGGLE, OPT_DESKTOP_SHORTCUT, _T("Lối tắt trên màn hình nền"), _T("Desktop shortcut") },
 	{ K_SUBTOGGLE, OPT_CHECK_UPDATE, _T("Tự kiểm tra bản mới khi khởi động"), _T("Check for updates at start") },
 	{ K_SUBBUTTON, ACT_DEFAULT_CONFIG, _T("Đưa mọi cài đặt về mặc định"), _T("Reset all settings") },
 	{ K_SUBBUTTON, ACT_UNINSTALL, _T("Gỡ EasyKey khỏi Windows"), _T("Remove EasyKey from Windows"), _T("Xoá chạy cùng Windows, lối tắt và cài đặt"), _T("Removes startup, shortcut and settings") },
@@ -1297,6 +1298,7 @@ bool SettingsWindow::getOption(const int& id) const {
 	case OPT_FLYOUT: return vShowSwitchFlyout != 0;
 	case OPT_BEEP: return HAS_BEEP(switchKey) != 0;
 	case OPT_RUN_AS_ADMIN: return vRunAsAdmin != 0;
+	case OPT_DESKTOP_SHORTCUT: return EasyKeyManager::hasDesktopShortcut();
 	case OPT_CHECK_UPDATE: return vCheckNewVersion != 0;
 	case OPT_AUTO_DARK: return vAccentAutoDark != 0;
 	}
@@ -1359,6 +1361,13 @@ void SettingsWindow::setOption(const int& id, const bool& on) {
 	case OPT_RUN_AS_ADMIN:
 		APP_SET_DATA(vRunAsAdmin, val);
 		requestRestartAsAdmin();
+		break;
+	case OPT_DESKTOP_SHORTCUT:
+		//the switch shows whether the shortcut is there, so off removes it
+		if (on)
+			EasyKeyManager::createDesktopShortcut();
+		else
+			EasyKeyManager::removeDesktopShortcut();
 		break;
 	case OPT_CHECK_UPDATE: APP_SET_DATA(vCheckNewVersion, val); break;
 	case OPT_AUTO_DARK:

@@ -54,6 +54,24 @@ void EasyKeyManager::freeEngine() {
 	EasyKeyFree();
 }
 
+static wstring desktopShortcutPath() {
+	TCHAR desktop[MAX_PATH];
+	if (FAILED(SHGetFolderPath(NULL, CSIDL_DESKTOP, NULL, 0, desktop)))
+		return L"";
+	return wstring(desktop) + L"\\EasyKey.lnk";
+}
+
+bool EasyKeyManager::hasDesktopShortcut() {
+	wstring path = desktopShortcutPath();
+	return !path.empty() && GetFileAttributes(path.c_str()) != INVALID_FILE_ATTRIBUTES;
+}
+
+void EasyKeyManager::removeDesktopShortcut() {
+	wstring path = desktopShortcutPath();
+	if (!path.empty())
+		DeleteFile(path.c_str());
+}
+
 void EasyKeyManager::createDesktopShortcut() {
 	CoInitialize(NULL);
 	IShellLink* pShellLink = NULL;
@@ -70,11 +88,7 @@ void EasyKeyManager::createDesktopShortcut() {
 		hres = pShellLink->QueryInterface(IID_IPersistFile, (void**)&pPersistFile);
 
 		if (SUCCEEDED(hres)) {
-			wchar_t desktopPath[MAX_PATH + 1];
-			wchar_t savePath[MAX_PATH + 10];
-			SHGetFolderPath(NULL, CSIDL_DESKTOP, NULL, 0, desktopPath);
-			wsprintf(savePath, _T("%s\\EasyKey.lnk"), desktopPath);
-			hres = pPersistFile->Save(savePath, TRUE);
+			hres = pPersistFile->Save(desktopShortcutPath().c_str(), TRUE);
 			pPersistFile->Release();
 			pShellLink->Release();
 		}

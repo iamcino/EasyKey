@@ -7,6 +7,7 @@
 - Added "Check for updates…" to the tray menu.
 - Advanced settings: only one group is open at a time, and opening a group scrolls so the whole group shows.
 - "Code table" is now called "Character encoding" in English.
+- Brought back the desktop shortcut option (Advanced › System).
 
 ## 1.0.2 (Windows 11 x64)
 - Fixed extra letters in Chrome and Edge on pages that handle keys themselves, such as typing tests ("số" came out as "sốôô"), in Telex and VNI.

@@ -6,6 +6,7 @@
 - Kiểm tra cập nhật chạy ngầm, chuột và phím không còn bị khựng trong lúc kiểm tra hay tải bản mới.
 - Thêm "Kiểm tra cập nhật…" vào menu ở khay hệ thống.
 - Phần Nâng cao: mỗi lần chỉ mở một nhóm, và mở nhóm nào thì cuộn để thấy trọn nhóm đó.
+- Mang lại tùy chọn lối tắt trên màn hình nền (Nâng cao › Hệ thống).
 
 ## 1.0.2 (Windows 11 x64)
 - Sửa lỗi gõ thừa chữ trên Chrome, Edge ở các trang tự xử lý phím như trang luyện gõ (ví dụ "số" thành "sốôô"), cả Telex và VNI.
