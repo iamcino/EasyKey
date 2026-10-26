@@ -29,6 +29,10 @@ redistribute your new version, it MUST be open source.
 #define DYNA_DATA(macro, pos) (macro ? pData->macroData[pos] : pData->charData[pos])
 #define EMPTY_HOTKEY 0xFE0000FE
 
+//tag for events sent by OpenKey itself; other software (keyboard filter drivers, security suites)
+//may set dwExtraInfo on real key events, so only skip events carrying this exact value
+#define OPENKEY_EXTRA_INFO 0x4F4B4559
+
 static vector<string> _chromiumBrowser = {
 	"chrome.exe", "brave.exe", "msedge.exe"
 };
@@ -66,6 +70,10 @@ static bool _hasJustUsedHotKey = false;
 
 static INPUT backspaceEvent[2];
 static INPUT keyEvent[2];
+
+static int vDebugKeyLog = 0;
+static FILE* _debugLogFile = NULL;
+static int _debugLogCount = 0;
 
 LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam);
 LRESULT CALLBACK mouseHookProcess(int nCode, WPARAM wParam, LPARAM lParam);
@@ -125,6 +133,8 @@ void OpenKeyInit() {
 		convertToolHotKey = EMPTY_HOTKEY;
 	}
 
+	APP_GET_DATA(vDebugKeyLog, 0);
+
 	pData = (vKeyHookState*)vKeyInit();
 
 	//pre-create back key
@@ -133,14 +143,14 @@ void OpenKeyInit() {
 	backspaceEvent[0].ki.wVk = VK_BACK;
 	backspaceEvent[0].ki.wScan = 0;
 	backspaceEvent[0].ki.time = 0;
-	backspaceEvent[0].ki.dwExtraInfo = 1;
+	backspaceEvent[0].ki.dwExtraInfo = OPENKEY_EXTRA_INFO;
 
 	backspaceEvent[1].type = INPUT_KEYBOARD;
 	backspaceEvent[1].ki.dwFlags = KEYEVENTF_KEYUP;
 	backspaceEvent[1].ki.wVk = VK_BACK;
 	backspaceEvent[1].ki.wScan = 0;
 	backspaceEvent[1].ki.time = 0;
-	backspaceEvent[1].ki.dwExtraInfo = 1;
+	backspaceEvent[1].ki.dwExtraInfo = OPENKEY_EXTRA_INFO;
 
 	//get key state
 	_flag = 0;
@@ -184,7 +194,7 @@ static inline void prepareKeyEvent(INPUT& input, const Uint16& keycode, const bo
 	input.ki.wVk = keycode;
 	input.ki.wScan = 0;
 	input.ki.time = 0;
-	input.ki.dwExtraInfo = 1;
+	input.ki.dwExtraInfo = OPENKEY_EXTRA_INFO;
 }
 
 static inline void prepareUnicodeEvent(INPUT& input, const Uint16& unicode, const bool& isPress) {
@@ -193,7 +203,7 @@ static inline void prepareUnicodeEvent(INPUT& input, const Uint16& unicode, cons
 	input.ki.wScan = unicode;
 	input.ki.time = 0;
 	input.ki.dwFlags = (isPress ? 0 : KEYEVENTF_KEYUP) | KEYEVENTF_UNICODE;
-	input.ki.dwExtraInfo = 1;
+	input.ki.dwExtraInfo = OPENKEY_EXTRA_INFO;
 }
 
 static void SendCombineKey(const Uint16& key1, const Uint16& key2, const DWORD& flagKey1=0, const DWORD& flagKey2 = 0) {
@@ -489,17 +499,44 @@ static bool UnsetModifierMask(const Uint16& vkCode) {
 	return true;
 }
 
+//diagnostic log, enabled by setting registry value vDebugKeyLog = 1; stops after 200 events
+static void writeDebugKeyLog(WPARAM wParam, DWORD_PTR isImeON) {
+	if (_debugLogCount >= 200)
+		return;
+	if (_debugLogFile == NULL) {
+		WCHAR path[MAX_PATH];
+		GetTempPath(MAX_PATH, path);
+		wcscat_s(path, L"OpenKeyKeyLog.txt");
+		if (_wfopen_s(&_debugLogFile, path, L"w") != 0)
+			return;
+	}
+	fprintf(_debugLogFile, "msg=%04X vk=%02X scan=%02X flags=%02X injected=%d extra=%llX ime=%d lang=%d app=%s\n",
+		(unsigned)wParam, keyboardData->vkCode, keyboardData->scanCode, keyboardData->flags,
+		(keyboardData->flags & LLKHF_INJECTED) ? 1 : 0, (unsigned long long)keyboardData->dwExtraInfo,
+		(int)isImeON, vLanguage, OpenKeyHelper::getLastAppExecuteName().c_str());
+	fflush(_debugLogFile);
+	if (++_debugLogCount >= 200) {
+		fclose(_debugLogFile);
+		_debugLogFile = NULL;
+	}
+}
+
 LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 	keyboardData = (KBDLLHOOKSTRUCT *)lParam;
 	//ignore my event
-	if (keyboardData->dwExtraInfo != 0) {
+	if (keyboardData->dwExtraInfo == OPENKEY_EXTRA_INFO) {
 		return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
 	}
 	
 	//ignore if IME pad is open when typing Japanese/Chinese...
 	HWND hWnd = GetForegroundWindow();
 	HWND hIME = ImmGetDefaultIMEWnd(hWnd);
-	LRESULT isImeON = SendMessage(hIME, WM_IME_CONTROL, IMC_GETOPENSTATUS, 0);
+	DWORD_PTR isImeON = 0;
+	//don't block the hook on a hung window, Windows removes hooks that exceed LowLevelHooksTimeout
+	SendMessageTimeout(hIME, WM_IME_CONTROL, IMC_GETOPENSTATUS, 0, SMTO_ABORTIFHUNG, 50, &isImeON);
+	if (vDebugKeyLog) {
+		writeDebugKeyLog(wParam, isImeON);
+	}
 	if (isImeON) {
 		return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
 	}
