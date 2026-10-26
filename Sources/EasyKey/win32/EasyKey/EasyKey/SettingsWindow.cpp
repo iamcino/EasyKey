@@ -78,9 +78,9 @@ static const RowInfo advancedRows[] = {
 	{ K_SUBTOGGLE, OPT_ESCAPE, _T("Esc trả lại phím vừa gõ: việt → vieejt"), _T("Esc puts back the keys typed: việt → vieejt") },
 	{ K_GROUP, 2, _T("Giao diện"), _T("Appearance") },
 	{ K_SUBLABEL, 0, NULL, NULL },
-	{ K_GROUP, 3, _T("Bảng mã"), _T("Code table") },
-	{ K_SUBCOMBO, OPT_CODE_TABLE, _T("Bảng mã cũ"), _T("Legacy code table"), _T("Chỉ dùng cho văn bản và font cũ"), _T("Only for old documents and fonts") },
-	{ K_SUBTOGGLE, OPT_REMEMBER_CODE, _T("Nhớ bảng mã theo từng ứng dụng"), _T("Remember the code table per app") },
+	{ K_GROUP, 3, _T("Bảng mã"), _T("Character encoding") },
+	{ K_SUBCOMBO, OPT_CODE_TABLE, _T("Bảng mã cũ"), _T("Legacy encoding"), _T("Chỉ dùng cho văn bản và font cũ"), _T("Only for old documents and fonts") },
+	{ K_SUBTOGGLE, OPT_REMEMBER_CODE, _T("Nhớ bảng mã theo từng ứng dụng"), _T("Remember the encoding per app") },
 	{ K_GROUP, 4, _T("Chính tả"), _T("Spelling") },
 	{ K_SUBTOGGLE, OPT_ZWJF, _T("Cho phép z, w, j, f làm phụ âm đầu"), _T("Allow z, w, j, f as first consonants") },
 	{ K_SUBTOGGLE, OPT_TEMP_OFF_SPELLING, _T("Tạm tắt chính tả bằng phím Ctrl"), _T("Hold Ctrl to skip spell check") },
@@ -495,7 +495,7 @@ void SettingsWindow::layout() {
 
 	//everything else is folded into one expander
 	int expander = add(K_EXPANDER, ACT_EXPAND, T(_T("Nâng cao"), _T("Advanced")),
-		T(_T("Gõ, giao diện, bảng mã, hệ thống"), _T("Typing, appearance, code table, system")), s(48));
+		T(_T("Gõ, giao diện, bảng mã, hệ thống"), _T("Typing, appearance, encoding, system")), s(48));
 	items[expander].ctl = makeRect(items[expander].rc.right - s(14) - s(16), centerY(items[expander].rc) - s(8), s(16), s(16));
 	items[expander].textRight = items[expander].ctl.left - s(12);
 	if (expanded) {

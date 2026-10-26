@@ -211,7 +211,7 @@ void SystemTrayHelper::createPopupMenu() {
 	AppendMenu(menuCodeTable, MF_UNCHECKED, POPUP_UNICODE_COMPOUND, menuText(POPUP_UNICODE_COMPOUND));
 	AppendMenu(menuCodeTable, MF_UNCHECKED, POPUP_TCVN3, menuText(POPUP_TCVN3));
 	AppendMenu(menuCodeTable, MF_UNCHECKED, POPUP_VNI_WINDOWS, menuText(POPUP_VNI_WINDOWS));
-	AppendMenu(popupMenu, MF_POPUP, (UINT_PTR)menuCodeTable, TR("Bảng mã", "Code table"));
+	AppendMenu(popupMenu, MF_POPUP, (UINT_PTR)menuCodeTable, TR("Bảng mã", "Character encoding"));
 
 	//text only, checkmarks show what is in use
 	AppendMenu(popupMenu, MF_STRING, POPUP_MACRO_TABLE, menuText(POPUP_MACRO_TABLE));
