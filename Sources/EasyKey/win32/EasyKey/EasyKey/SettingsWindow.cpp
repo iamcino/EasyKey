@@ -90,7 +90,7 @@ static const RowInfo advancedRows[] = {
 	{ K_SUBTOGGLE, OPT_QUICK_START, _T("Phụ âm đầu: f → ph, j → gi, w → qu"), _T("First consonants: f → ph, j → gi, w → qu") },
 	{ K_SUBTOGGLE, OPT_QUICK_END, _T("Phụ âm cuối: g → ng, h → nh, k → ch"), _T("Last consonants: g → ng, h → nh, k → ch") },
 	{ K_SUBTOGGLE, OPT_CAPS_FIRST, _T("Viết hoa chữ cái đầu câu"), _T("Capitalize the first letter of sentences") },
-	{ K_SUBTOGGLE, OPT_MACRO_ENGLISH, _T("Gõ tắt cả khi đang gõ tiếng Anh"), _T("Shortcuts in English mode too") },
+	{ K_SUBTOGGLE, OPT_MACRO_ENGLISH, _T("Gõ tắt cả khi đang gõ tiếng Anh"), _T("Also use shortcuts in English mode") },
 	{ K_SUBTOGGLE, OPT_MACRO_AUTO_CAPS, _T("Tự viết hoa theo từ gõ tắt"), _T("Match the capitalization of shortcuts") },
 	{ K_GROUP, 6, _T("Ứng dụng"), _T("Apps") },
 	{ K_SUBTOGGLE, OPT_SMART_SWITCH, _T("Nhớ chế độ Việt/Anh theo từng ứng dụng"), _T("Remember Vietnamese/English per app") },
