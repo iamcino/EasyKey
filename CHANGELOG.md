@@ -2,7 +2,7 @@
 
 **Tiếng Việt** · [English](CHANGELOG.en.md)
 
-## Bản tiếp theo
+## 1.0.3 (Windows 11 x64)
 - Kiểm tra cập nhật chạy ngầm, chuột và phím không còn bị khựng trong lúc kiểm tra hay tải bản mới.
 - Thêm "Kiểm tra cập nhật…" vào menu ở khay hệ thống.
 - Phần Nâng cao: mọi nhóm đều đóng khi mở ra, mỗi lần chỉ mở một nhóm, và mở nhóm nào thì cuộn để thấy trọn nhóm đó.

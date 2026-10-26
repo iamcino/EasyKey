@@ -27,10 +27,14 @@ redistribute your new version, it MUST be open source.
 #pragma comment(lib, "comctl32.lib")
 
 //shown once after updating to this version; change it with each release
-#define WHATS_NEW_VI L"• Sửa lỗi gõ thừa chữ trên Chrome, Edge ở các trang tự xử lý phím như trang luyện gõ.\n" \
-	L"• Gõ nhanh (cc → ch, gg → gi…) cũng dùng được khi gõ VNI."
-#define WHATS_NEW_EN L"• Fixed extra letters in Chrome and Edge on pages that handle keys themselves, such as typing tests.\n" \
-	L"• \"Quick Telex\" is now \"Quick typing\": cc → ch, gg → gi… work in VNI too."
+#define WHATS_NEW_VI L"• Chọn chế độ màu Theo Windows, Sáng hoặc Tối; mọi cửa sổ và hộp thoại của EasyKey đều theo.\n" \
+	L"• Phím tắt đổi kiểu gõ Telex → VNI → Simple Telex (Nâng cao › Gõ, mặc định tắt).\n" \
+	L"• Kiểm tra cập nhật chạy ngầm, chuột và phím không còn bị khựng; thêm \"Kiểm tra cập nhật…\" vào menu khay.\n" \
+	L"• Icon khay theo màu nhấn, mang lại lối tắt trên màn hình nền."
+#define WHATS_NEW_EN L"• Color mode: follow Windows, Light or Dark; every EasyKey window and dialog follows it.\n" \
+	L"• A shortcut to switch Telex → VNI → Simple Telex (Advanced › Typing, off by default).\n" \
+	L"• Update checks run in the background, so the mouse and keyboard no longer stall; \"Check for updates…\" is in the tray menu.\n" \
+	L"• The tray icon takes the accent color, and the desktop shortcut option is back."
 
 static AppDelegate* _instance;
 

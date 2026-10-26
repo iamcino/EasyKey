@@ -2,7 +2,7 @@
 
 [Tiếng Việt](CHANGELOG.md) · **English**
 
-## Next version
+## 1.0.3 (Windows 11 x64)
 - Update checks run in the background, so the mouse and keyboard no longer stall while EasyKey checks for or downloads an update.
 - Added "Check for updates…" to the tray menu.
 - Advanced settings: every group starts closed, only one group is open at a time, and opening a group scrolls so the whole group shows.
