@@ -24,7 +24,6 @@ redistribute your new version, it MUST be open source.
 #include "SettingsWindow.h"
 #include "AppDelegate.h"
 #include "ThemeHelper.h"
-#include "Updater.h"
 
 #ifndef WM_DWMCOLORIZATIONCOLORCHANGED
 #define WM_DWMCOLORIZATIONCOLORCHANGED 0x0320
@@ -49,14 +48,14 @@ enum Option {
 	OPT_SPELLING, OPT_MODERN, OPT_MACRO, OPT_RUN_WITH_WINDOWS,
 	OPT_ESCAPE, OPT_ZWJF, OPT_TEMP_OFF_SPELLING,
 	OPT_QUICK_TELEX, OPT_QUICK_START, OPT_QUICK_END, OPT_CAPS_FIRST, OPT_MACRO_ENGLISH, OPT_MACRO_AUTO_CAPS,
-	OPT_SMART_SWITCH, OPT_REMEMBER_CODE, OPT_FIX_BROWSER, OPT_FIX_CHROMIUM, OPT_TEMP_OFF_EASYKEY,
+	OPT_SMART_SWITCH, OPT_REMEMBER_CODE, OPT_TEMP_OFF_EASYKEY,
 	OPT_CLIPBOARD, OPT_FLYOUT, OPT_BEEP,
-	OPT_WARN_CONFLICT, OPT_RUN_AS_ADMIN, OPT_SHOW_ON_STARTUP, OPT_DESKTOP_SHORTCUT, OPT_CHECK_UPDATE,
+	OPT_WARN_CONFLICT, OPT_RUN_AS_ADMIN, OPT_CHECK_UPDATE,
 	OPT_AUTO_DARK
 };
 
 enum Action {
-	ACT_EXPAND = 100, ACT_CAPTURE, ACT_ABOUT, ACT_CHECK_UPDATE, ACT_DEFAULT_CONFIG,
+	ACT_EXPAND = 100, ACT_CAPTURE, ACT_ABOUT, ACT_DEFAULT_CONFIG,
 	ACT_SPELLING_GUIDE, ACT_UNINSTALL, ACT_MACRO_TABLE
 };
 
@@ -71,44 +70,39 @@ struct RowInfo {
 
 //K_SUBLABEL marks where the appearance rows (language, accent swatches, custom color) go
 static const RowInfo advancedRows[] = {
-	{ K_GROUP, 0, _T("Gõ"), _T("Typing") },
+	{ K_GROUP, 1, _T("Gõ"), _T("Typing") },
 	{ K_SUBTOGGLE, OPT_SPELLING, _T("Gõ thông minh"), _T("Smart typing"), _T("Chỉ bỏ dấu khi đúng chính tả, gõ sai thì trả lại phím"), _T("Marks only real words, puts the keys back otherwise") },
 	{ K_SUBTOGGLE, OPT_MODERN, _T("Dấu kiểu mới: hoà, thuý"), _T("Modern marks: hoà, thuý") },
 	{ K_SUBTOGGLE, OPT_MACRO, _T("Gõ tắt: ko → không"), _T("Shortcuts: ko → không") },
 	{ K_SUBBUTTON, ACT_MACRO_TABLE, _T("Bảng gõ tắt"), _T("Shortcut list") },
 	{ K_SUBTOGGLE, OPT_ESCAPE, _T("Esc trả lại phím vừa gõ: việt → vieejt"), _T("Esc puts back the keys typed: việt → vieejt") },
-	{ K_GROUP, 0, _T("Giao diện"), _T("Appearance") },
+	{ K_GROUP, 2, _T("Giao diện"), _T("Appearance") },
 	{ K_SUBLABEL, 0, NULL, NULL },
-	{ K_GROUP, 0, _T("Bảng mã"), _T("Code table") },
+	{ K_GROUP, 3, _T("Bảng mã"), _T("Code table") },
 	{ K_SUBCOMBO, OPT_CODE_TABLE, _T("Bảng mã cũ"), _T("Legacy code table"), _T("Chỉ dùng cho văn bản và font cũ"), _T("Only for old documents and fonts") },
 	{ K_SUBTOGGLE, OPT_REMEMBER_CODE, _T("Nhớ bảng mã theo từng ứng dụng"), _T("Remember the code table per app") },
-	{ K_GROUP, 0, _T("Chính tả"), _T("Spelling") },
+	{ K_GROUP, 4, _T("Chính tả"), _T("Spelling") },
 	{ K_SUBTOGGLE, OPT_ZWJF, _T("Cho phép z, w, j, f làm phụ âm đầu"), _T("Allow z, w, j, f as first consonants") },
 	{ K_SUBTOGGLE, OPT_TEMP_OFF_SPELLING, _T("Tạm tắt chính tả bằng phím Ctrl"), _T("Hold Ctrl to skip spell check") },
 	{ K_SUBBUTTON, ACT_SPELLING_GUIDE, _T("Windows gạch đỏ chữ Việt?"), _T("Red underlines under Vietnamese?") },
-	{ K_GROUP, 0, _T("Gõ nhanh và gõ tắt"), _T("Quick typing and shortcuts") },
+	{ K_GROUP, 5, _T("Gõ nhanh và gõ tắt"), _T("Quick typing and shortcuts") },
 	{ K_SUBTOGGLE, OPT_QUICK_TELEX, _T("Gõ nhanh: cc → ch, gg → gi, nn → ng…"), _T("Quick Telex: cc → ch, gg → gi, nn → ng…") },
 	{ K_SUBTOGGLE, OPT_QUICK_START, _T("Phụ âm đầu: f → ph, j → gi, w → qu"), _T("First consonants: f → ph, j → gi, w → qu") },
 	{ K_SUBTOGGLE, OPT_QUICK_END, _T("Phụ âm cuối: g → ng, h → nh, k → ch"), _T("Last consonants: g → ng, h → nh, k → ch") },
 	{ K_SUBTOGGLE, OPT_CAPS_FIRST, _T("Viết hoa chữ cái đầu câu"), _T("Capitalize the first letter of sentences") },
 	{ K_SUBTOGGLE, OPT_MACRO_ENGLISH, _T("Gõ tắt cả khi đang gõ tiếng Anh"), _T("Shortcuts in English mode too") },
 	{ K_SUBTOGGLE, OPT_MACRO_AUTO_CAPS, _T("Tự viết hoa theo từ gõ tắt"), _T("Match the capitalization of shortcuts") },
-	{ K_GROUP, 0, _T("Ứng dụng"), _T("Apps") },
+	{ K_GROUP, 6, _T("Ứng dụng"), _T("Apps") },
 	{ K_SUBTOGGLE, OPT_SMART_SWITCH, _T("Nhớ chế độ Việt/Anh theo từng ứng dụng"), _T("Remember Vietnamese/English per app") },
-	{ K_SUBTOGGLE, OPT_FIX_BROWSER, _T("Sửa lỗi ở ô có gợi ý tự động"), _T("Fix fields with autocomplete") },
-	{ K_SUBTOGGLE, OPT_FIX_CHROMIUM, _T("Sửa lỗi trên Chrome, Edge"), _T("Fix Chrome and Edge") },
 	{ K_SUBTOGGLE, OPT_TEMP_OFF_EASYKEY, _T("Tạm tắt EasyKey bằng phím Alt"), _T("Hold Alt to pause EasyKey") },
 	{ K_SUBTOGGLE, OPT_CLIPBOARD, _T("Gửi chữ qua Clipboard"), _T("Send text through the clipboard") },
 	{ K_SUBTOGGLE, OPT_FLYOUT, _T("Hiện thông báo khi chuyển Việt/Anh"), _T("Show a notice when switching") },
 	{ K_SUBTOGGLE, OPT_BEEP, _T("Kêu bíp khi chuyển Việt/Anh"), _T("Beep when switching") },
-	{ K_GROUP, 0, _T("Hệ thống"), _T("System") },
+	{ K_GROUP, 7, _T("Hệ thống"), _T("System") },
 	{ K_SUBTOGGLE, OPT_RUN_WITH_WINDOWS, _T("Chạy cùng Windows"), _T("Start with Windows") },
 	{ K_SUBTOGGLE, OPT_WARN_CONFLICT, _T("Cảnh báo khi bộ gõ khác đang chạy"), _T("Warn when another Vietnamese keyboard runs") },
 	{ K_SUBTOGGLE, OPT_RUN_AS_ADMIN, _T("Chạy với quyền Admin"), _T("Run as administrator"), _T("Để gõ được trong ứng dụng chạy quyền Admin"), _T("To type in apps that run as administrator") },
-	{ K_SUBTOGGLE, OPT_SHOW_ON_STARTUP, _T("Mở cửa sổ này khi EasyKey khởi động"), _T("Open this window when EasyKey starts") },
-	{ K_SUBTOGGLE, OPT_DESKTOP_SHORTCUT, _T("Tạo lối tắt trên Desktop"), _T("Desktop shortcut") },
 	{ K_SUBTOGGLE, OPT_CHECK_UPDATE, _T("Tự kiểm tra bản mới khi khởi động"), _T("Check for updates at start") },
-	{ K_SUBBUTTON, ACT_CHECK_UPDATE, _T("Kiểm tra bản mới ngay"), _T("Check for updates now") },
 	{ K_SUBBUTTON, ACT_DEFAULT_CONFIG, _T("Đưa mọi cài đặt về mặc định"), _T("Reset all settings") },
 	{ K_SUBBUTTON, ACT_UNINSTALL, _T("Gỡ EasyKey khỏi Windows"), _T("Remove EasyKey from Windows"), _T("Xoá chạy cùng Windows, lối tắt và cài đặt"), _T("Removes startup, shortcut and settings") },
 };
@@ -507,19 +501,26 @@ void SettingsWindow::layout() {
 	if (expanded) {
 		bool afterLabel = false;
 		int buttonWidth = s(64);
-		LPCTSTR buttonTexts[] = { T(_T("Kiểm tra"), _T("Check")), T(_T("Đang kiểm tra…"), _T("Checking…")),
+		LPCTSTR buttonTexts[] = { T(_T("Mở"), _T("Open")),
 			T(_T("Khôi phục"), _T("Reset")), T(_T("Xem cách sửa"), _T("How to fix")), T(_T("Gỡ"), _T("Remove")) };
 		for (LPCTSTR text : buttonTexts)
 			buttonWidth = max(buttonWidth, textWidth(fontSmall, text) + s(28));
 		int comboWidth = s(140);
 		for (auto& table : codeTables)
 			comboWidth = max(comboWidth, textWidth(fontSmall, T(table.vi, table.en)) + s(10 + 32));
+		bool groupOpen = true;
 		for (const RowInfo& row : advancedRows) {
 			if (row.kind == K_GROUP) {
-				add(row.kind, row.id, T(row.vi, row.en), NULL, s(44));
-				afterLabel = true;
+				//each group folds; its header is a row with a chevron
+				groupOpen = (openGroups & (1 << row.id)) != 0;
+				i = add(row.kind, row.id, T(row.vi, row.en), NULL, s(44));
+				items[i].ctl = makeRect(items[i].rc.right - s(14) - s(16), centerY(items[i].rc) - s(8), s(16), s(16));
+				items[i].textRight = items[i].ctl.left - s(12);
+				afterLabel = groupOpen;
 				continue;
 			}
+			if (!groupOpen)
+				continue;
 			if (row.kind == K_SUBLABEL) {
 				//display language: three choices in a small segmented control
 				i = add(K_SUBSEG, 0, T(_T("Ngôn ngữ giao diện"), _T("Display language")), NULL, s(44));
@@ -846,10 +847,15 @@ void SettingsWindow::paintItem(Gdiplus::Graphics& g, const Item& item, const int
 		drawLabel(fontBody, rc.left + s(14), pal.text, pal.sub);
 		drawChevron(g, pal.text, (ctl.left + ctl.right) / 2.0f, (float)centerY(ctl), (float)s(10), expanded);
 		break;
-	case K_GROUP:
-		drawText(g, item.label, makeRect(rc.left + s(14), rc.top, rc.right - rc.left - s(28), rc.bottom - rc.top - s(6)),
-			fontTitle, pal.text, 0, 2);
+	case K_GROUP: {
+		bool open = (openGroups & (1 << item.id)) != 0;
+		divider();
+		rowHover();
+		drawText(g, item.label, makeRect(rc.left + s(14), rc.top, item.textRight - rc.left - s(14), rc.bottom - rc.top),
+			fontTitle, pal.text, 0, 1);
+		drawChevron(g, pal.sub, (ctl.left + ctl.right) / 2.0f, (float)centerY(ctl), (float)s(10), open);
 		break;
+	}
 	case K_SUBTOGGLE:
 		divider();
 		if (enabled)
@@ -873,9 +879,7 @@ void SettingsWindow::paintItem(Gdiplus::Graphics& g, const Item& item, const int
 		drawLabel(fontBody, rc.left + s(14), pal.text, pal.sub);
 		fillRound(g, ctl, (float)s(6), (hot && active) ? (pressed ? pal.field : pal.fieldHover) : pal.field, pal.stroke);
 		LPCTSTR text = T(_T("Khôi phục"), _T("Reset"));
-		if (item.id == ACT_CHECK_UPDATE)
-			text = checkingUpdate ? T(_T("Đang kiểm tra…"), _T("Checking…")) : T(_T("Kiểm tra"), _T("Check"));
-		else if (item.id == ACT_SPELLING_GUIDE)
+		if (item.id == ACT_SPELLING_GUIDE)
 			text = T(_T("Xem cách sửa"), _T("How to fix"));
 		else if (item.id == ACT_UNINSTALL)
 			text = T(_T("Gỡ"), _T("Remove"));
@@ -1072,13 +1076,14 @@ bool SettingsWindow::isInteractive(const int& item, const int& part) const {
 	case K_HEXFIELD:
 		return part == 0 && (it.id == 0 || !vAccentAutoDark);
 	case K_EXPANDER:
+	case K_GROUP:
 	case K_SUBCOMBO:
 	case K_LINK:
 		return part == 0;
 	case K_SUBTOGGLE:
 		return part == 0 && isOptionEnabled(it.id);
 	case K_SUBBUTTON:
-		return part == 0 && !(it.id == ACT_CHECK_UPDATE && checkingUpdate);
+		return part == 0;
 	}
 	return false;
 }
@@ -1179,6 +1184,12 @@ void SettingsWindow::activate(const int& index, const int& part) {
 	case K_LINK:
 		doAction(item.id);
 		break;
+	case K_GROUP:
+		openGroups ^= 1 << item.id;
+		endHexEdit();
+		fitWindow(false);
+		InvalidateRect(hWnd, NULL, FALSE);
+		break;
 	}
 }
 
@@ -1205,9 +1216,6 @@ void SettingsWindow::doAction(const int& action) {
 		break;
 	case ACT_ABOUT:
 		AppDelegate::getInstance()->onEasyKeyAbout();
-		break;
-	case ACT_CHECK_UPDATE:
-		checkUpdate();
 		break;
 	case ACT_SPELLING_GUIDE:
 		ShellExecute(NULL, _T("open"), SPELLING_GUIDE_URL, NULL, NULL, SW_SHOWNORMAL);
@@ -1253,15 +1261,11 @@ bool SettingsWindow::getOption(const int& id) const {
 	case OPT_MACRO_AUTO_CAPS: return vAutoCapsMacro != 0;
 	case OPT_SMART_SWITCH: return vUseSmartSwitchKey != 0;
 	case OPT_REMEMBER_CODE: return vRememberCode != 0;
-	case OPT_FIX_BROWSER: return vFixRecommendBrowser != 0;
-	case OPT_FIX_CHROMIUM: return vFixChromiumBrowser != 0;
 	case OPT_TEMP_OFF_EASYKEY: return vTempOffOpenKey != 0;
 	case OPT_CLIPBOARD: return vSendKeyStepByStep == 0;
 	case OPT_FLYOUT: return vShowSwitchFlyout != 0;
 	case OPT_BEEP: return HAS_BEEP(switchKey) != 0;
 	case OPT_RUN_AS_ADMIN: return vRunAsAdmin != 0;
-	case OPT_SHOW_ON_STARTUP: return vShowOnStartUp != 0;
-	case OPT_DESKTOP_SHORTCUT: return vCreateDesktopShortcut != 0;
 	case OPT_CHECK_UPDATE: return vCheckNewVersion != 0;
 	case OPT_AUTO_DARK: return vAccentAutoDark != 0;
 	}
@@ -1276,8 +1280,6 @@ bool SettingsWindow::isOptionEnabled(const int& id) const {
 	case OPT_MACRO_ENGLISH:
 	case OPT_MACRO_AUTO_CAPS:
 		return vUseMacro != 0;
-	case OPT_FIX_CHROMIUM:
-		return vFixRecommendBrowser != 0;
 	}
 	return true;
 }
@@ -1316,8 +1318,6 @@ void SettingsWindow::setOption(const int& id, const bool& on) {
 	case OPT_MACRO_AUTO_CAPS: APP_SET_DATA(vAutoCapsMacro, val); break;
 	case OPT_SMART_SWITCH: APP_SET_DATA(vUseSmartSwitchKey, val); break;
 	case OPT_REMEMBER_CODE: APP_SET_DATA(vRememberCode, val); break;
-	case OPT_FIX_BROWSER: APP_SET_DATA(vFixRecommendBrowser, val); break;
-	case OPT_FIX_CHROMIUM: APP_SET_DATA(vFixChromiumBrowser, val); break;
 	case OPT_TEMP_OFF_EASYKEY: APP_SET_DATA(vTempOffOpenKey, val); break;
 	case OPT_CLIPBOARD: APP_SET_DATA(vSendKeyStepByStep, on ? 0 : 1); break;
 	case OPT_FLYOUT: APP_SET_DATA(vShowSwitchFlyout, val); break;
@@ -1328,12 +1328,6 @@ void SettingsWindow::setOption(const int& id, const bool& on) {
 	case OPT_RUN_AS_ADMIN:
 		APP_SET_DATA(vRunAsAdmin, val);
 		requestRestartAsAdmin();
-		break;
-	case OPT_SHOW_ON_STARTUP: APP_SET_DATA(vShowOnStartUp, val); break;
-	case OPT_DESKTOP_SHORTCUT:
-		APP_SET_DATA(vCreateDesktopShortcut, val);
-		if (on)
-			EasyKeyManager::createDesktopShortcut();
 		break;
 	case OPT_CHECK_UPDATE: APP_SET_DATA(vCheckNewVersion, val); break;
 	case OPT_AUTO_DARK:
@@ -1393,19 +1387,6 @@ void SettingsWindow::requestRestartAsAdmin() {
 		}
 	} else {
 		EasyKeyHelper::registerRunOnStartup(vRunWithWindows);
-	}
-}
-
-void SettingsWindow::checkUpdate() {
-	checkingUpdate = true;
-	InvalidateRect(hWnd, NULL, FALSE);
-	UpdateWindow(hWnd);
-	HWND owner = hWnd;
-	Updater::checkAndOffer(owner, false);
-	//the update may have closed this window
-	if (IsWindow(owner) && hWnd == owner) {
-		checkingUpdate = false;
-		InvalidateRect(hWnd, NULL, FALSE);
 	}
 }
 

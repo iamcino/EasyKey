@@ -57,6 +57,7 @@ private:
 	RECT heroArea, expandArea;
 	int contentHeight = 0, scrollY = 0;
 	bool expanded = false;
+	int openGroups = 1 << 1; //bit per group of Nâng cao, Gõ starts open
 
 	int hotItem = -1, hotPart = 0;
 	int pressedItem = -1, pressedPart = 0;
@@ -67,7 +68,6 @@ private:
 
 	bool capturing = false;
 	int savedSwitchKey = 0, captureModifiers = 0;
-	bool checkingUpdate = false;
 	int hexEditing = -1; //custom accent field being typed in: 0 light, 1 dark
 	wstring hexBuffer;
 private:
@@ -106,7 +106,6 @@ private:
 	void setOption(const int& id, const bool& on);
 	void showDropDown(const Item& item);
 	void requestRestartAsAdmin();
-	void checkUpdate();
 
 	void startHexEdit(const int& field);
 	void endHexEdit();

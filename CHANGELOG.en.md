@@ -7,6 +7,8 @@
 - Esc to put back the typed keys now works in web chats such as Facebook (EasyKey also holds back the Esc key release, so the page does not close the chat).
 - Capitalizing the first letter of a sentence now also works after "?" and "!", not only after "." and Enter.
 - Capitalizing the first letter: the first word typed after switching to another window is capitalized too.
+- A tidier "Advanced" section: groups are folded, click a group name to open it, "Typing" starts open. Larger, stronger group headers.
+- The autocomplete fix and the Chrome and Edge fix are always on, with no switch. Removed "Open this window when EasyKey starts", "Desktop shortcut" and "Check for updates now" (it is in About). To open Settings, run EasyKey.exe again or pick Settings in the tray menu.
 
 ## 1.0.0 (Windows 11 x64)
 The first release of EasyKey.

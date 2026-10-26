@@ -101,12 +101,11 @@ void EasyKeyInit() {
 	APP_GET_DATA(vQuickTelex, 0);
 	APP_GET_DATA(vSwitchKeyStatus, 0x5A00025A); //Alt + Z, same as the default config (0x7A000206 was a macOS key code)
 	APP_GET_DATA(vRestoreIfWrongSpelling, 1);
-	APP_GET_DATA(vFixRecommendBrowser, 1);
 	APP_GET_DATA(vUseMacro, 1);
 	APP_GET_DATA(vUseMacroInEnglishMode, 0);
 	APP_GET_DATA(vAutoCapsMacro, 0);
 	APP_GET_DATA(vSendKeyStepByStep, 1);
-	APP_GET_DATA(vShowOnStartUp, 0);
+	vShowOnStartUp = 0; //no longer an option, OpenKey's copied settings often had it on; open EasyKey again to show Settings
 	APP_GET_DATA(vShowSwitchFlyout, 1);
 	APP_GET_DATA(vUiLanguage, 0);
 	APP_GET_DATA(vAccentColor, 0);
@@ -130,7 +129,10 @@ void EasyKeyInit() {
 	APP_GET_DATA(vRestoreOnEscape, 1);
 	APP_GET_DATA(vWarnOtherKeyboards, 1);
 	APP_GET_DATA(vLastVersion, 0);
-	APP_GET_DATA(vFixChromiumBrowser, 1);
+	//the browser fixes are always on; vFixBrowserOff = 1 in the registry turns them off for an app they break
+	int vFixBrowserOff;
+	APP_GET_DATA(vFixBrowserOff, 0);
+	vFixRecommendBrowser = vFixChromiumBrowser = vFixBrowserOff ? 0 : 1;
 
 	//init convert tool
 	APP_GET_DATA(convertToolDontAlertWhenCompleted, 0);
