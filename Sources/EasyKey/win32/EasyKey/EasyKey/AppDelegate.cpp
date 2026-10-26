@@ -279,8 +279,8 @@ void AppDelegate::onAppearanceChanged() {
 void AppDelegate::onUninstall() {
 	EasyKeyManager::freeEngine();
 	EasyKeyHelper::removeFromSystem();
-	MessageBox(NULL, TR("Đã gỡ EasyKey khỏi Windows: không còn chạy cùng Windows, lối tắt và cài đặt đã xoá.\n"
-		"Thư mục chứa EasyKey.exe sẽ mở ra để bạn xoá file nếu muốn.",
+	//one literal per language: _T() only widens the first piece of a concatenated string
+	MessageBox(NULL, TR("Đã gỡ EasyKey khỏi Windows: không còn chạy cùng Windows, lối tắt và cài đặt đã xoá.\nThư mục chứa EasyKey.exe sẽ mở ra để bạn xoá file nếu muốn.",
 		"EasyKey was removed from Windows: it no longer starts with Windows, and its shortcut and settings are gone.\n"
 		"The folder with EasyKey.exe opens next, so you can delete the file if you like."), _T("EasyKey"), MB_ICONINFORMATION | MB_OK);
 	wstring select = L"/select,\"" + EasyKeyHelper::getFullPath() + L"\"";
