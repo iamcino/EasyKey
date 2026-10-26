@@ -19,14 +19,34 @@ permissions:
   contents: read
 
 jobs:
-  build:
-    runs-on: windows-latest
+  engine-tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
+
+    - name: Configure engine tests
+      run: cmake -S Sources/OpenKey/tests -B build/tests
+
+    - name: Build engine tests
+      run: cmake --build build/tests --config Release
+
+    - name: Run engine tests
+      run: ctest --test-dir build/tests -C Release --output-on-failure
+
+  build:
+    runs-on: windows-latest
+    needs: engine-tests
+
+    steps:
+    - uses: actions/checkout@v7
 
     - name: Add MSBuild to PATH
-      uses: microsoft/setup-msbuild@v2
+      uses: microsoft/setup-msbuild@v3
 
     - name: Build x86
       run: msbuild -m -target:Rebuild -p:Configuration=Release -p:Platform=x86 ${{env.SOLUTION_FILE_PATH}}
@@ -36,7 +56,7 @@ jobs:
 
     - name: Upload a Build Artifact
       id: upload
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: OpenKey
         path: |
@@ -58,7 +78,7 @@ jobs:
 
     steps:
     - name: Generate artifact attestation
-      uses: actions/attest-build-provenance@v2
+      uses: actions/attest-build-provenance@v4
       with:
         subject-name: ${{needs.build.outputs.subject-name}}
         subject-digest: sha256:${{needs.build.outputs.subject-digest}}
