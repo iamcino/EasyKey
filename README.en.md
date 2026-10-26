@@ -34,7 +34,7 @@ Please weigh this before using it. If you trust it, you can add the EasyKey fold
 - Unicode code table. The legacy tables Unicode combining, TCVN3 (ABC) and VNI Windows are under Advanced.
 - Modern mark placement (hoà, thuý) or the classic one (hòa, thúy).
 - Smart typing: marks are added only to real Vietnamese words, and misspelled words get their keys back. Press Esc right after a word to get back the keys you typed (việt → vieejt).
-- Quick Telex, shorthand for first and last consonants, and shortcuts (macros) of any length.
+- Quick typing (cc → ch, gg → gi, nn → ng…), shorthand for first and last consonants, and shortcuts (macros) of any length.
 - Remembers Vietnamese/English mode and the code table per app.
 - Fixes repeated letters in fields with autocomplete, including the Chrome and Edge address bar.
 - Text converter and shortcut list, opened from the tray menu.
