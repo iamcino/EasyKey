@@ -88,9 +88,9 @@ FlyoutWindow::~FlyoutWindow() {
 	freeBitmap();
 }
 
-void FlyoutWindow::notify() {
+void FlyoutWindow::notify(const bool& inputType) {
 	if (hWnd && vShowSwitchFlyout)
-		PostMessage(hWnd, WM_FLYOUT_SHOW, 0, 0);
+		PostMessage(hWnd, WM_FLYOUT_SHOW, inputType ? 1 : 0, 0);
 }
 
 void FlyoutWindow::showMessage(const wstring& title, const wstring& detail, const bool& warning) {
@@ -147,7 +147,13 @@ void FlyoutWindow::render(const UINT& dpi, const RECT& workArea, const bool& mes
 		detail = messageDetail;
 	} else if (vietnamese) {
 		vector<LPCTSTR>& inputTypes = EasyKeyManager::getInputType();
-		detail = (vInputType >= 0 && vInputType < (int)inputTypes.size() ? inputTypes[vInputType] : _T("")) + wstring(_T(" · ")) + codeTableName(vCodeTable);
+		wstring inputType = vInputType >= 0 && vInputType < (int)inputTypes.size() ? inputTypes[vInputType] : _T("");
+		if (inputTypeShown) {
+			title = inputType;
+			detail = TR("Kiểu gõ · ", "Input method · ") + wstring(codeTableName(vCodeTable));
+		} else {
+			detail = inputType + wstring(_T(" · ")) + codeTableName(vCodeTable);
+		}
 	} else {
 		detail = TR("Bấm ", "Press ") + EasyKeyHelper::getHotKeyString(vSwitchKeyStatus) + TR(" để gõ tiếng Việt", " to type Vietnamese");
 	}
@@ -268,6 +274,7 @@ LRESULT CALLBACK FlyoutWindow::windowProc(HWND hWnd, UINT uMsg, WPARAM wParam, L
 LRESULT FlyoutWindow::handleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	switch (uMsg) {
 	case WM_FLYOUT_SHOW:
+		inputTypeShown = wParam != 0;
 		showNow(false);
 		return 0;
 	case WM_FLYOUT_MESSAGE:

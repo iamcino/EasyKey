@@ -9,6 +9,8 @@
 - "Code table" is now called "Character encoding" in English.
 - Brought back the desktop shortcut option (Advanced › System).
 - Tray icon: the V (typing Vietnamese) takes the accent color; the E stays black and white.
+- Input method shortcut (Advanced › Typing, off by default): each press moves Telex → VNI → Simple Telex and shows the popup. It works only while typing Vietnamese.
+- The Vietnamese/English popup also shows when switching from the tray menu or the Settings window.
 
 ## 1.0.2 (Windows 11 x64)
 - Fixed extra letters in Chrome and Edge on pages that handle keys themselves, such as typing tests ("số" came out as "sốôô"), in Telex and VNI.

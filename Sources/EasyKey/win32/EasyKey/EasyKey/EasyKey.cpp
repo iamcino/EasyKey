@@ -43,6 +43,8 @@ static vector<string> _chromiumBrowser = {
 extern int vSendKeyStepByStep;
 extern int vShowOnStartUp;
 extern int vShowSwitchFlyout;
+extern int vSwitchInputType;
+extern int vInputTypeHotKey;
 extern int vRunWithWindows;
 
 static HHOOK hKeyboardHook;
@@ -107,6 +109,8 @@ void EasyKeyInit() {
 	APP_GET_DATA(vSendKeyStepByStep, 1);
 	vShowOnStartUp = 0; //no longer an option, OpenKey's copied settings often had it on; open EasyKey again to show Settings
 	APP_GET_DATA(vShowSwitchFlyout, 1);
+	APP_GET_DATA(vSwitchInputType, 0);
+	APP_GET_DATA(vInputTypeHotKey, EMPTY_HOTKEY);
 	APP_GET_DATA(vUiLanguage, 0);
 	APP_GET_DATA(vAccentColor, 0);
 	APP_GET_DATA(vAccentLight, RGB(0x4F, 0x46, 0xE5));
@@ -431,6 +435,19 @@ void switchLanguage() {
 	startNewSession();
 }
 
+//Telex, VNI, Simple Telex in turn; only while typing Vietnamese
+static bool isInputTypeHotKey(const bool& checkKeyCode) {
+	return vSwitchInputType && vLanguage && checkHotKey(vInputTypeHotKey, checkKeyCode && GET_SWITCH_KEY(vInputTypeHotKey) != 0xFE);
+}
+
+void switchInputType() {
+	vInputType = (vInputType + 1) % (int)EasyKeyManager::getInputType().size();
+	if (HAS_BEEP(vSwitchKeyStatus))
+		MessageBeep(MB_OK);
+	AppDelegate::getInstance()->onInputTypeFromHotKey();
+	startNewSession();
+}
+
 static void SendPureCharacter(const Uint16& ch) {
 	if (ch < 128)
 		SendKeyCode(ch);
@@ -591,7 +608,8 @@ LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 
 	//switch language shortcut; convert hotkey
 	if ((wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN) && !_isFlagKey && _keycode != 0) {
-		if (GET_SWITCH_KEY(vSwitchKeyStatus) != _keycode && GET_SWITCH_KEY(convertToolHotKey) != _keycode) {
+		if (GET_SWITCH_KEY(vSwitchKeyStatus) != _keycode && GET_SWITCH_KEY(convertToolHotKey) != _keycode &&
+			!(vSwitchInputType && GET_SWITCH_KEY(vInputTypeHotKey) == _keycode)) {
 			_lastFlag = 0;
 		} else {
 			if (GET_SWITCH_KEY(vSwitchKeyStatus) == _keycode && checkHotKey(vSwitchKeyStatus, GET_SWITCH_KEY(vSwitchKeyStatus) != 0xFE)) {
@@ -602,6 +620,12 @@ LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 			}
 			if (GET_SWITCH_KEY(convertToolHotKey) == _keycode && checkHotKey(convertToolHotKey, GET_SWITCH_KEY(convertToolHotKey) != 0xFE)) {
 				AppDelegate::getInstance()->onQuickConvert();
+				_hasJustUsedHotKey = true;
+				_keycode = 0;
+				return -1;
+			}
+			if (GET_SWITCH_KEY(vInputTypeHotKey) == _keycode && isInputTypeHotKey(true)) {
+				switchInputType();
 				_hasJustUsedHotKey = true;
 				_keycode = 0;
 				return -1;
@@ -619,6 +643,10 @@ LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 			}
 			if (checkHotKey(convertToolHotKey, GET_SWITCH_KEY(convertToolHotKey) != 0xFE)) {
 				AppDelegate::getInstance()->onQuickConvert();
+				_hasJustUsedHotKey = true;
+			}
+			if (isInputTypeHotKey(true)) {
+				switchInputType();
 				_hasJustUsedHotKey = true;
 			}
 			//check temporarily turn off spell checking

@@ -44,6 +44,7 @@ public:
 	void closeSettingsWindow();
 public: //event
 	void onInputMethodChangedFromHotKey();
+	void onInputTypeFromHotKey();
 	void showSwitchFlyout();
 	//the foreground window runs with more rights than EasyKey, so typing there is not seen
 	void onElevatedWindow(const HWND& hWnd);

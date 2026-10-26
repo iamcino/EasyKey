@@ -46,7 +46,7 @@ enum ItemKind {
 enum Option {
 	OPT_NONE, OPT_LANGUAGE, OPT_CODE_TABLE,
 	OPT_SPELLING, OPT_MODERN, OPT_MACRO, OPT_RUN_WITH_WINDOWS,
-	OPT_ESCAPE, OPT_ZWJF, OPT_TEMP_OFF_SPELLING,
+	OPT_ESCAPE, OPT_INPUT_HOTKEY, OPT_ZWJF, OPT_TEMP_OFF_SPELLING,
 	OPT_QUICK_TELEX, OPT_QUICK_START, OPT_QUICK_END, OPT_CAPS_FIRST, OPT_MACRO_ENGLISH, OPT_MACRO_AUTO_CAPS,
 	OPT_SMART_SWITCH, OPT_REMEMBER_CODE, OPT_TEMP_OFF_EASYKEY,
 	OPT_CLIPBOARD, OPT_FLYOUT, OPT_BEEP,
@@ -56,7 +56,7 @@ enum Option {
 
 enum Action {
 	ACT_EXPAND = 100, ACT_CAPTURE, ACT_ABOUT, ACT_DEFAULT_CONFIG,
-	ACT_SPELLING_GUIDE, ACT_UNINSTALL, ACT_MACRO_TABLE
+	ACT_SPELLING_GUIDE, ACT_UNINSTALL, ACT_MACRO_TABLE, ACT_CAPTURE_INPUT
 };
 
 #define CUSTOM_ACCENT (ThemeHelper::ACCENT_PRESETS + 1)
@@ -76,6 +76,7 @@ static const RowInfo advancedRows[] = {
 	{ K_SUBTOGGLE, OPT_MACRO, _T("Gõ tắt: ko → không"), _T("Shortcuts: ko → không") },
 	{ K_SUBBUTTON, ACT_MACRO_TABLE, _T("Bảng gõ tắt"), _T("Shortcut list") },
 	{ K_SUBTOGGLE, OPT_ESCAPE, _T("Esc trả lại phím vừa gõ: việt → vieejt"), _T("Esc puts back the keys typed: việt → vieejt") },
+	{ K_SUBTOGGLE, OPT_INPUT_HOTKEY, _T("Đổi kiểu gõ bằng phím tắt"), _T("Switch input method with keys"), _T("Telex → VNI → Simple Telex, khi đang gõ tiếng Việt"), _T("Telex → VNI → Simple Telex, while typing Vietnamese") },
 	{ K_GROUP, 2, _T("Giao diện"), _T("Appearance") },
 	{ K_SUBLABEL, 0, NULL, NULL },
 	{ K_GROUP, 3, _T("Bảng mã"), _T("Character encoding") },
@@ -341,6 +342,7 @@ void SettingsWindow::destroy() {
 	if (capturing) {
 		capturing = false;
 		vSwitchKeyStatus = savedSwitchKey;
+		vInputTypeHotKey = savedInputKey;
 	}
 	if (hWnd) {
 		SetWindowLongPtr(hWnd, GWLP_USERDATA, 0);
@@ -475,7 +477,7 @@ void SettingsWindow::layout() {
 	push(K_LANG, 0, T(_T("Tiếng Anh"), _T("English")), NULL, makeRect(left + pad + half + gap, y + pad, inner - half - gap, s(56)));
 	int i = push(K_HOTKEY, 0, T(_T("Chuyển nhanh"), _T("Switch with")), NULL, makeRect(left + pad, y + pad + s(56) + gap, inner, s(32)));
 	items[i].linkAction = ACT_CAPTURE;
-	LPCTSTR linkText = capturing ? T(_T("Huỷ"), _T("Cancel")) : T(_T("Đổi phím"), _T("Change"));
+	LPCTSTR linkText = capturing && captureTarget == 0 ? T(_T("Huỷ"), _T("Cancel")) : T(_T("Đổi phím"), _T("Change"));
 	int linkWidth = textWidth(fontSmall, linkText) + s(16);
 	items[i].link = makeRect(items[i].rc.right - linkWidth, centerY(items[i].rc) - s(13), linkWidth, s(26));
 	y = heroArea.bottom + s(14);
@@ -574,6 +576,14 @@ void SettingsWindow::layout() {
 				placeSwitch(items[i]);
 			else
 				placeField(items[i], row.kind == K_SUBCOMBO ? comboWidth : buttonWidth);
+			if (row.id == OPT_INPUT_HOTKEY && vSwitchInputType) {
+				//the keys, with a link to change them, under the switch
+				i = add(K_HOTKEY, 1, T(_T("Phím tắt"), _T("Keys")), NULL, s(40));
+				items[i].linkAction = ACT_CAPTURE_INPUT;
+				LPCTSTR text = capturing && captureTarget == 1 ? T(_T("Huỷ"), _T("Cancel")) : T(_T("Đổi phím"), _T("Change"));
+				int width = textWidth(fontSmall, text) + s(16);
+				items[i].link = makeRect(items[i].rc.right - s(8) - width, centerY(items[i].rc) - s(13), width, s(26));
+			}
 		}
 		y += s(6);
 		expandArea = makeRect(left, items[expander].rc.top, right - left, y - items[expander].rc.top);
@@ -821,12 +831,16 @@ void SettingsWindow::paintItem(Gdiplus::Graphics& g, const Item& item, const int
 		break;
 	}
 	case K_HOTKEY: {
-		int x = rc.left + s(8);
+		//0 the switch key under the language buttons, 1 the input method key in Nâng cao
+		bool mine = capturing && captureTarget == item.id;
+		if (item.id == 1)
+			divider();
+		int x = rc.left + s(item.id == 1 ? 14 : 8);
 		int labelWidth = textWidth(fontCaption, item.label);
 		drawText(g, item.label, makeRect(x, rc.top, labelWidth, rc.bottom - rc.top), fontCaption, pal.sub, 0, 1);
 		x += labelWidth + s(8);
 		RECT link = toView(item.link);
-		if (capturing) {
+		if (mine) {
 			if (captureModifiers) {
 				x = drawKeys(EasyKeyHelper::getHotKeyString(captureModifiers | 0xFE), x);
 				drawText(g, _T("+ …"), makeRect(x, rc.top, link.left - x, rc.bottom - rc.top), fontCaption, pal.sub, 0, 1);
@@ -834,7 +848,7 @@ void SettingsWindow::paintItem(Gdiplus::Graphics& g, const Item& item, const int
 				drawText(g, T(_T("Nhấn tổ hợp phím mới…"), _T("Press the new keys…")), makeRect(x, rc.top, link.left - x, rc.bottom - rc.top), fontCaption, pal.text, 0, 1);
 			}
 		} else {
-			wstring hotKey = EasyKeyHelper::getHotKeyString(vSwitchKeyStatus);
+			wstring hotKey = EasyKeyHelper::getHotKeyString(item.id == 1 ? vInputTypeHotKey : vSwitchKeyStatus);
 			if (hotKey.empty())
 				drawText(g, T(_T("Chưa đặt phím"), _T("No key set")), makeRect(x, rc.top, link.left - x, rc.bottom - rc.top), fontCaption, pal.text, 0, 1);
 			else
@@ -843,7 +857,7 @@ void SettingsWindow::paintItem(Gdiplus::Graphics& g, const Item& item, const int
 		bool linkHot = index == hotItem && hotPart == 1;
 		if (linkHot)
 			fillRound(g, link, (float)s(6), pal.cardHover);
-		drawText(g, capturing ? T(_T("Huỷ"), _T("Cancel")) : T(_T("Đổi phím"), _T("Change")), link, fontSmall, linkHot ? pal.linkHover : pal.link, 1, 1);
+		drawText(g, mine ? T(_T("Huỷ"), _T("Cancel")) : T(_T("Đổi phím"), _T("Change")), link, fontSmall, linkHot ? pal.linkHover : pal.link, 1, 1);
 		break;
 	}
 	case K_SECTION:
@@ -1241,11 +1255,14 @@ void SettingsWindow::doAction(const int& action) {
 		InvalidateRect(hWnd, NULL, FALSE);
 		break;
 	case ACT_CAPTURE:
-		if (capturing)
-			endCapture(false, 0);
-		else
-			startCapture();
+	case ACT_CAPTURE_INPUT: {
+		int target = action == ACT_CAPTURE ? 0 : 1;
+		bool same = capturing && captureTarget == target;
+		endCapture(false, 0);
+		if (!same)
+			startCapture(target);
 		break;
+	}
 	case ACT_ABOUT:
 		AppDelegate::getInstance()->onEasyKeyAbout();
 		break;
@@ -1296,6 +1313,7 @@ bool SettingsWindow::getOption(const int& id) const {
 	case OPT_TEMP_OFF_EASYKEY: return vTempOffOpenKey != 0;
 	case OPT_CLIPBOARD: return vSendKeyStepByStep == 0;
 	case OPT_FLYOUT: return vShowSwitchFlyout != 0;
+	case OPT_INPUT_HOTKEY: return vSwitchInputType != 0;
 	case OPT_BEEP: return HAS_BEEP(switchKey) != 0;
 	case OPT_RUN_AS_ADMIN: return vRunAsAdmin != 0;
 	case OPT_DESKTOP_SHORTCUT: return EasyKeyManager::hasDesktopShortcut();
@@ -1322,6 +1340,7 @@ void SettingsWindow::setOption(const int& id, const bool& on) {
 	switch (id) {
 	case OPT_LANGUAGE:
 		APP_SET_DATA(vLanguage, val);
+		AppDelegate::getInstance()->showSwitchFlyout();
 		if (vUseSmartSwitchKey) {
 			setAppInputMethodStatus(EasyKeyHelper::getFrontMostAppExecuteName(), vLanguage | (vCodeTable << 1));
 			saveSmartSwitchKeyData();
@@ -1354,6 +1373,13 @@ void SettingsWindow::setOption(const int& id, const bool& on) {
 	case OPT_TEMP_OFF_EASYKEY: APP_SET_DATA(vTempOffOpenKey, val); break;
 	case OPT_CLIPBOARD: APP_SET_DATA(vSendKeyStepByStep, on ? 0 : 1); break;
 	case OPT_FLYOUT: APP_SET_DATA(vShowSwitchFlyout, val); break;
+	case OPT_INPUT_HOTKEY:
+		if (!on && capturing && captureTarget == 1)
+			endCapture(false, 0);
+		APP_SET_DATA(vSwitchInputType, val);
+		if (on && vInputTypeHotKey == 0xFE0000FE)
+			startCapture(1); //no keys yet, ask for them now
+		break;
 	case OPT_BEEP:
 		vSwitchKeyStatus = on ? (vSwitchKeyStatus | 0x8000) : (vSwitchKeyStatus & ~0x8000);
 		APP_SET_DATA(vSwitchKeyStatus, vSwitchKeyStatus);
@@ -1492,15 +1518,18 @@ bool SettingsWindow::onHexKey(const UINT& uMsg, const WPARAM& key) {
 
 /*-------------------------------- switch key capture --------------------------------*/
 
-void SettingsWindow::startCapture() {
+void SettingsWindow::startCapture(const int& target) {
 	if (capturing)
 		return;
 	endHexEdit();
 	capturing = true;
+	captureTarget = target;
 	savedSwitchKey = vSwitchKeyStatus;
+	savedInputKey = vInputTypeHotKey;
 	captureModifiers = 0;
-	//keep the keyboard hook from acting on the old hotkey while the new one is typed
+	//keep the keyboard hook from acting on the old hotkeys while the new one is typed
 	vSwitchKeyStatus = (savedSwitchKey & 0x8000) | 0xFE0000FE;
+	vInputTypeHotKey = 0xFE0000FE;
 	SetFocus(hWnd);
 	layout();
 	InvalidateRect(hWnd, NULL, FALSE);
@@ -1511,15 +1540,27 @@ void SettingsWindow::endCapture(const bool& save, const int& hotKey) {
 		return;
 	capturing = false;
 	vSwitchKeyStatus = savedSwitchKey;
-	if (save) {
+	vInputTypeHotKey = savedInputKey;
+	if (save && captureTarget == 0) {
 		vSwitchKeyStatus = (savedSwitchKey & 0x8000) | hotKey;
 		APP_SET_DATA(vSwitchKeyStatus, vSwitchKeyStatus);
 		SystemTrayHelper::updateData();
+	} else if (save) {
+		APP_SET_DATA(vInputTypeHotKey, hotKey);
+	} else if (captureTarget == 1 && vInputTypeHotKey == 0xFE0000FE) {
+		//turned on but no keys given: off again
+		APP_SET_DATA(vSwitchInputType, 0);
 	}
 	if (hWnd) {
 		layout();
 		InvalidateRect(hWnd, NULL, FALSE);
 	}
+}
+
+//the other hotkey already uses these keys
+bool SettingsWindow::isHotKeyTaken(const int& hotKey) const {
+	int other = captureTarget == 0 ? (vSwitchInputType ? savedInputKey : 0xFE0000FE) : (savedSwitchKey & ~0x8000);
+	return other != 0xFE0000FE && (other & ~0x8000) == hotKey;
 }
 
 bool SettingsWindow::onCaptureKey(const UINT& uMsg, const WPARAM& vk) {
@@ -1535,7 +1576,11 @@ bool SettingsWindow::onCaptureKey(const UINT& uMsg, const WPARAM& vk) {
 		if (vk == VK_ESCAPE && mods == 0) {
 			endCapture(false, 0);
 		} else if (mods != 0 && (vk == VK_SPACE || keyCodeToCharacter((Uint32)vk) != 0)) {
-			endCapture(true, mods | (int)vk | ((int)vk << 24));
+			int hotKey = mods | (int)vk | ((int)vk << 24);
+			if (isHotKeyTaken(hotKey))
+				MessageBeep(MB_OK);
+			else
+				endCapture(true, hotKey);
 		} else {
 			MessageBeep(MB_OK); //a hotkey needs at least one modifier and a typing key
 		}
@@ -1543,9 +1588,12 @@ bool SettingsWindow::onCaptureKey(const UINT& uMsg, const WPARAM& vk) {
 	}
 	//modifiers only, like Ctrl + Shift: saved when the first of them is released
 	if (mask && (captureModifiers & mask)) {
-		if (countModifiers(captureModifiers) >= 2) {
-			endCapture(true, captureModifiers | 0xFE | (0xFE << 24));
+		int hotKey = captureModifiers | 0xFE | (0xFE << 24);
+		if (countModifiers(captureModifiers) >= 2 && !isHotKeyTaken(hotKey)) {
+			endCapture(true, hotKey);
 		} else {
+			if (isHotKeyTaken(hotKey))
+				MessageBeep(MB_OK);
 			captureModifiers = 0;
 			InvalidateRect(hWnd, NULL, FALSE);
 		}

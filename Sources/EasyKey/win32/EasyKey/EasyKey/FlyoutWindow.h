@@ -26,6 +26,7 @@ private:
 	int alpha = 0;
 	wstring messageTitle, messageDetail; //a notice instead of the language, see showMessage
 	bool messageWarning = true;        //"!" badge, otherwise the V/E badge
+	bool inputTypeShown = false;       //the input method was switched, not the language
 private:
 	static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 	LRESULT handleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam);
@@ -36,8 +37,9 @@ private:
 public:
 	FlyoutWindow(const HINSTANCE& hInstance);
 	~FlyoutWindow();
-	//safe to call from the keyboard hook, the flyout is drawn later by the message loop
-	void notify();
+	//safe to call from the keyboard hook, the flyout is drawn later by the message loop.
+	//With inputType, it names the input method instead of the language
+	void notify(const bool& inputType = false);
 	//a notice in the same pill, shown a little longer
 	void showMessage(const wstring& title, const wstring& detail, const bool& warning = true);
 };
