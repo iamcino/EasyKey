@@ -28,9 +28,11 @@ See LICENSE and NOTICE.
 
 //shown once after updating to this version; change it with each release
 #define WHATS_NEW_VI L"• Sửa lỗi bảng mã VNI Windows, TCVN3, Unicode tổ hợp… tự quay về Unicode sau khi chọn trong Cài đặt hay menu khay.\n" \
-	L"• Popup kiểu gõ cũng hiện khi đổi kiểu gõ từ menu khay hay trong Cài đặt."
+	L"• Popup kiểu gõ cũng hiện khi đổi kiểu gõ từ menu khay hay trong Cài đặt.\n" \
+	L"• Chạy với quyền Admin: tác vụ khởi động không còn bị Windows dừng sau 72 giờ và vẫn chạy khi dùng pin."
 #define WHATS_NEW_EN L"• Fixed VNI Windows, TCVN3, Unicode compound… going back to Unicode after picking them in Settings or the tray menu.\n" \
-	L"• The input method popup also shows when the input method is changed from the tray menu or Settings."
+	L"• The input method popup also shows when the input method is changed from the tray menu or Settings.\n" \
+	L"• Run as administrator: the startup task is no longer stopped after 72 hours and also runs on battery."
 
 static AppDelegate* _instance;
 
