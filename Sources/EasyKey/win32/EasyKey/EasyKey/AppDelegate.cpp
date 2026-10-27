@@ -27,12 +27,10 @@ See LICENSE and NOTICE.
 #pragma comment(lib, "comctl32.lib")
 
 //shown once after updating to this version; change it with each release
-#define WHATS_NEW_VI L"• Sửa lỗi bảng mã VNI Windows, TCVN3, Unicode tổ hợp… tự quay về Unicode sau khi chọn trong Cài đặt hay menu khay.\n" \
-	L"• Popup kiểu gõ cũng hiện khi đổi kiểu gõ từ menu khay hay trong Cài đặt.\n" \
-	L"• Chạy với quyền Admin: tác vụ khởi động không còn bị Windows dừng sau 72 giờ và vẫn chạy khi dùng pin."
-#define WHATS_NEW_EN L"• Fixed VNI Windows, TCVN3, Unicode combining… going back to Unicode after picking them in Settings or the tray menu.\n" \
-	L"• The input method popup also shows when the input method is changed from the tray menu or Settings.\n" \
-	L"• Run as administrator: the startup task is no longer stopped after 72 hours and also runs on battery."
+#define WHATS_NEW_VI L"• Popup hiện mỗi khi đổi bảng mã, và hiện đúng kiểu gõ hay bảng mã mới cả khi đang gõ tiếng Anh.\n" \
+	L"• Bỏ hai tùy chọn tạm tắt bằng phím Ctrl và Alt (bấm Esc sau một từ để lấy lại phím vừa gõ)."
+#define WHATS_NEW_EN L"• A popup shows whenever the character encoding changes, and names the new input method or encoding even while typing English.\n" \
+	L"• Removed the Ctrl and Alt temporary off options (press Esc after a word to get back the keys you typed)."
 
 static AppDelegate* _instance;
 
