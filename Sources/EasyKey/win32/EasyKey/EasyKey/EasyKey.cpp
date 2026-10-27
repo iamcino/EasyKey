@@ -51,6 +51,8 @@ extern int vRunWithWindows;
 static HHOOK hKeyboardHook;
 static HHOOK hMouseHook;
 static DWORD _lastHookTick = 0; //last time either hook ran, see checkHooks
+//key presses from a real keyboard, counted by the keyboard hook and by raw input, see onRawKeyboard
+static DWORD _rawKeyDowns = 0, _hookKeyDowns = 0;
 static HWINEVENTHOOK hSystemEvent;
 static KBDLLHOOKSTRUCT* keyboardData;
 static MSLLHOOKSTRUCT* mouseData;
@@ -91,6 +93,7 @@ static int _debugLogCount = 0;
 LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam);
 LRESULT CALLBACK mouseHookProcess(int nCode, WPARAM wParam, LPARAM lParam);
 VOID CALLBACK winEventProcCallback(HWINEVENTHOOK hWinEventHook, DWORD dwEvent, HWND hwnd, LONG idObject, LONG idChild, DWORD dwEventThread, DWORD dwmsEventTime);
+static void watchRawKeyboard();
 
 void EasyKeyFree() {
 	UnhookWindowsHookEx(hMouseHook);
@@ -219,6 +222,7 @@ void EasyKeyInit() {
 	hKeyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, keyboardHookProcess, hInstance, 0);
 	hMouseHook = SetWindowsHookEx(WH_MOUSE_LL, mouseHookProcess, hInstance, 0);
 	hSystemEvent = SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, NULL, winEventProcCallback, 0, 0, WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS);
+	watchRawKeyboard();
 }
 
 //exe name of a window, without the cache of getFrontMostAppExecuteName that keeps the previous app for Explorer
@@ -586,31 +590,63 @@ static bool UnsetModifierMask(const Uint16& vkCode) {
 	return true;
 }
 
-//diagnostic log, enabled by setting registry value vDebugKeyLog = 1; stops after 200 events
-static void writeDebugKeyLog(WPARAM wParam, DWORD_PTR isImeON) {
-	if (_debugLogCount >= 200)
-		return;
-	if (_debugLogFile == NULL) {
-		WCHAR path[MAX_PATH];
-		GetTempPath(MAX_PATH, path);
-		wcscat_s(path, L"EasyKeyKeyLog.txt");
-		if (_wfopen_s(&_debugLogFile, path, L"w") != 0)
-			return;
+//diagnostic log, enabled by setting registry value vDebugKeyLog = 1. It keeps going so a rare
+//wrong word can be caught: every 2000 lines the file moves to EasyKeyKeyLog.old.txt
+static bool openDebugLog() {
+	if (_debugLogFile != NULL && _debugLogCount < 2000)
+		return true;
+	WCHAR path[MAX_PATH], oldPath[MAX_PATH];
+	GetTempPath(MAX_PATH, path);
+	wcscpy_s(oldPath, path);
+	wcscat_s(path, L"EasyKeyKeyLog.txt");
+	wcscat_s(oldPath, L"EasyKeyKeyLog.old.txt");
+	if (_debugLogFile != NULL) {
+		fclose(_debugLogFile);
+		_debugLogFile = NULL;
+		MoveFileEx(path, oldPath, MOVEFILE_REPLACE_EXISTING);
 	}
-	fprintf(_debugLogFile, "msg=%04X vk=%02X scan=%02X flags=%02X injected=%d extra=%llX ime=%d lang=%d app=%s\n",
-		(unsigned)wParam, keyboardData->vkCode, keyboardData->scanCode, keyboardData->flags,
+	_debugLogCount = 0;
+	return _wfopen_s(&_debugLogFile, path, L"w") == 0;
+}
+
+static void writeDebugLine(const char* text) {
+	if (!openDebugLog())
+		return;
+	fprintf(_debugLogFile, "t=%lu %s\n", GetTickCount(), text);
+	fflush(_debugLogFile);
+	_debugLogCount++;
+}
+
+static void writeDebugKeyLog(WPARAM wParam, DWORD_PTR isImeON) {
+	if (!openDebugLog())
+		return;
+	fprintf(_debugLogFile, "t=%lu msg=%04X vk=%02X scan=%02X flags=%02X injected=%d extra=%llX ime=%d lang=%d app=%s\n",
+		GetTickCount(), (unsigned)wParam, keyboardData->vkCode, keyboardData->scanCode, keyboardData->flags,
 		(keyboardData->flags & LLKHF_INJECTED) ? 1 : 0, (unsigned long long)keyboardData->dwExtraInfo,
 		(int)isImeON, vLanguage, EasyKeyHelper::getLastAppExecuteName().c_str());
 	fflush(_debugLogFile);
-	if (++_debugLogCount >= 200) {
-		fclose(_debugLogFile);
-		_debugLogFile = NULL;
-	}
+	_debugLogCount++;
+}
+
+static void reinstallHooks(const char* reason) {
+	HINSTANCE hInstance = GetModuleHandle(NULL);
+	UnhookWindowsHookEx(hKeyboardHook);
+	UnhookWindowsHookEx(hMouseHook);
+	hKeyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, keyboardHookProcess, hInstance, 0);
+	hMouseHook = SetWindowsHookEx(WH_MOUSE_LL, mouseHookProcess, hInstance, 0);
+	_lastHookTick = GetTickCount();
+	if ((int)(_rawKeyDowns - _hookKeyDowns) > 0)
+		_hookKeyDowns = _rawKeyDowns;
+	//the keys typed while the hook was gone reached the app as they were, start over
+	startNewSession();
+	if (vDebugKeyLog)
+		writeDebugLine(reason);
 }
 
 //Windows silently removes a low-level hook that once answered too slowly (LowLevelHooksTimeout),
-//after which typing does nothing until EasyKey restarts. Input that keeps arriving without
-//reaching the hooks means they are gone, so put them back.
+//after which keys reach the app untouched ("chaats" instead of "chất") until the hook is back.
+//Raw keyboard input (onRawKeyboard) finds a lost keyboard hook on the next key; this timer is
+//the fallback: input that keeps arriving without reaching the hooks means they are gone.
 void checkHooks() {
 	LASTINPUTINFO info = { sizeof(info) };
 	if (!GetLastInputInfo(&info))
@@ -622,17 +658,60 @@ void checkHooks() {
 	HWND foreground = GetForegroundWindow();
 	if (foreground && EasyKeyHelper::isWindowElevated(foreground))
 		return;
-	HINSTANCE hInstance = GetModuleHandle(NULL);
-	UnhookWindowsHookEx(hKeyboardHook);
-	UnhookWindowsHookEx(hMouseHook);
-	hKeyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, keyboardHookProcess, hInstance, 0);
-	hMouseHook = SetWindowsHookEx(WH_MOUSE_LL, mouseHookProcess, hInstance, 0);
-	_lastHookTick = now;
+	reinstallHooks("hooks reinstalled (timer)");
+}
+
+//raw input gets every key from a keyboard, hook or not. Windows calls the low-level hooks before
+//it makes the raw input, so a key press the hook did not see means the keyboard hook is gone.
+//checkHooks alone missed it while the mouse moved: the mouse hook still ran and looked alive
+static void onRawKeyboard(HRAWINPUT input) {
+	RAWINPUT raw;
+	UINT size = sizeof(raw);
+	if (GetRawInputData(input, RID_INPUT, &raw, &size, sizeof(RAWINPUTHEADER)) == (UINT)-1 ||
+		raw.header.dwType != RIM_TYPEKEYBOARD || raw.header.hDevice == NULL) //no device: sent by software
+		return;
+	if (raw.data.keyboard.Message != WM_KEYDOWN && raw.data.keyboard.Message != WM_SYSKEYDOWN)
+		return;
+	//the hook runs first, so its count is ahead or equal unless it missed keys; allow one to be safe
+	if ((int)(++_rawKeyDowns - _hookKeyDowns) < 2)
+		return;
+	//an elevated window gets input the hooks are not allowed to see
+	HWND foreground = GetForegroundWindow();
+	if (foreground && EasyKeyHelper::isWindowElevated(foreground)) {
+		_hookKeyDowns = _rawKeyDowns;
+		return;
+	}
+	reinstallHooks("hooks reinstalled (raw input)");
+}
+
+static LRESULT CALLBACK rawInputProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
+	if (message == WM_INPUT)
+		onRawKeyboard((HRAWINPUT)lParam);
+	return DefWindowProc(hWnd, message, wParam, lParam);
+}
+
+static void watchRawKeyboard() {
+	WNDCLASS wc = {};
+	wc.lpfnWndProc = rawInputProc;
+	wc.hInstance = GetModuleHandle(NULL);
+	wc.lpszClassName = _T("EasyKeyRawInput");
+	RegisterClass(&wc);
+	HWND window = CreateWindow(wc.lpszClassName, NULL, 0, 0, 0, 0, 0, HWND_MESSAGE, NULL, wc.hInstance, NULL);
+	if (!window)
+		return;
+	RAWINPUTDEVICE device = {};
+	device.usUsagePage = 0x01; //generic desktop
+	device.usUsage = 0x06;     //keyboard
+	device.dwFlags = RIDEV_INPUTSINK; //also while other apps are in front
+	device.hwndTarget = window;
+	RegisterRawInputDevices(&device, 1, sizeof(device));
 }
 
 LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 	_lastHookTick = GetTickCount();
 	keyboardData = (KBDLLHOOKSTRUCT *)lParam;
+	if ((wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN) && !(keyboardData->flags & LLKHF_INJECTED))
+		_hookKeyDowns++;
 	//ignore my event
 	if (keyboardData->dwExtraInfo == EASYKEY_EXTRA_INFO) {
 		return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);

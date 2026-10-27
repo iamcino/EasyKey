@@ -2,6 +2,9 @@
 
 [Tiếng Việt](CHANGELOG.md) · **English**
 
+## Next version
+- Fix occasional raw keys in the text (for example "chaats" instead of "chất"), seen most in Discord and other Electron apps: when Windows quietly removes EasyKey's keyboard hook, EasyKey now notices on the next key and puts it back, even while the mouse is in use (it used to take a few seconds, or not notice at all).
+
 ## 1.0.6 (Windows 11 x64)
 - Update notice: EasyKey checks at start and every 6 hours (on by default, can be turned off in Settings › System). When a new version is out, the tray icon gets a green arrow, the tray menu shows "Update to …" and Settings shows an update line at the bottom; nothing is installed without asking.
 - Game mode: turn it on per game from the tray menu ("Game mode for …") or Settings › Apps › Game mode. In the game, keys go straight to the game so Q, W, E, R… are never turned into marked letters; press Enter to open the chat and type Vietnamese, Enter (send) or Esc (close) goes back.
