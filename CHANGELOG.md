@@ -2,6 +2,9 @@
 
 **Tiếng Việt** · [English](CHANGELOG.en.md)
 
+## Bản tiếp theo
+- Sửa lỗi thỉnh thoảng gõ ra phím thô (ví dụ "chaats" thay vì "chất"), hay gặp ở Discord và các app Electron: khi Windows lặng lẽ gỡ hook bàn phím của EasyKey, EasyKey giờ nhận ra ngay ở phím kế tiếp và gắn lại, kể cả khi đang dùng chuột (trước đây phải chờ vài giây và có khi không nhận ra).
+
 ## 1.0.6 (Windows 11 x64)
 - Báo có bản mới: EasyKey tự kiểm tra khi khởi động và mỗi 6 giờ (bật sẵn, tắt được trong Cài đặt › Hệ thống). Khi có bản mới, biểu tượng khay có mũi tên xanh, menu khay hiện "Cập nhật lên …" và cuối cửa sổ Cài đặt có dòng cập nhật; EasyKey không tự cài khi chưa hỏi.
 - Chế độ game: bật cho từng game trong menu khay ("Chế độ game cho …") hoặc Cài đặt › Ứng dụng › Chế độ game. Trong game, phím đi thẳng vào game nên Q, W, E, R… không bị đổi thành chữ có dấu; bấm Enter mở khung chat thì gõ được tiếng Việt, Enter (gửi) hoặc Esc (đóng) thì trở lại.
