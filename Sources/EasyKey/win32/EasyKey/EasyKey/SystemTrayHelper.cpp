@@ -25,6 +25,7 @@ See LICENSE and NOTICE.
 #define WM_DWMCOLORIZATIONCOLORCHANGED 0x0320
 #endif
 #define TRAY_ICONUID 100
+#define TIMER_TRAY_CLICK 1
 
 #define POPUP_VIET_ON_OFF 900
 
@@ -102,13 +103,27 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 	case WM_USER+2019:
 		AppDelegate::getInstance()->onControlPanel();
 		break;
+	case WM_TIMER:
+		//a single click: no second one came, switch Vietnamese/English
+		if (wParam == TIMER_TRAY_CLICK) {
+			KillTimer(hWnd, TIMER_TRAY_CLICK);
+			AppDelegate::getInstance()->onToggleVietnamese();
+			SystemTrayHelper::updateData();
+		}
+		break;
 	case WM_TRAYMESSAGE: {
+		//a double click opens Settings without switching twice on the way
+		static bool doubleClicked = false;
 		if (lParam == WM_LBUTTONDBLCLK) {
+			KillTimer(hWnd, TIMER_TRAY_CLICK);
+			doubleClicked = true;
 			AppDelegate::getInstance()->onControlPanel();
 		}
 		if (lParam == WM_LBUTTONUP) {
-			AppDelegate::getInstance()->onToggleVietnamese();
-			SystemTrayHelper::updateData();
+			if (doubleClicked)
+				doubleClicked = false;
+			else
+				SetTimer(hWnd, TIMER_TRAY_CLICK, GetDoubleClickTime(), NULL);
 		} else if (lParam == WM_RBUTTONDOWN) {
 			POINT curPoint;
 			GetCursorPos(&curPoint);
@@ -437,7 +452,7 @@ static void loadTrayIcon() {
 
 //"Game mode for <app>", checked when the app is in game mode; grayed when there is no app to name
 static void updateGameItem(const string& exe) {
-	bool known = !exe.empty() && exe != "UnknownProgram";
+	bool known = EasyKeyHelper::isRealApp(exe);
 	wstring text = TR("Chế độ game", "Game mode");
 	if (known)
 		text += TR(" cho ", " for ") + utf8ToWideString(exe);

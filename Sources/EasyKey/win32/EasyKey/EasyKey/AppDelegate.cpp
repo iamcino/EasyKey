@@ -23,6 +23,7 @@ See LICENSE and NOTICE.
 #include "ConvertToolWindow.h"
 #include "MacroWindow.h"
 #include <commctrl.h>
+#include <Shlobj.h>
 
 #pragma comment(lib, "comctl32.lib")
 
@@ -225,6 +226,8 @@ void AppDelegate::greet() {
 		//no questions on the first run, the defaults work: just say how to switch
 		flyout->showMessage(TR("EasyKey đang chạy", "EasyKey is running"),
 			TR("Bấm ", "Press ") + EasyKeyHelper::getHotKeyString(vSwitchKeyStatus) + TR(" để chuyển Việt/Anh", " to switch Vietnamese/English"), false);
+		if (offerToMoveApp())
+			return;
 	} else if (updated) {
 		showWhatsNew();
 	}
@@ -234,6 +237,49 @@ void AppDelegate::greet() {
 		if (!other.empty())
 			warnOtherKeyboard(other);
 	}
+}
+
+static bool isUnder(const wstring& path, wstring folder) {
+	if (folder.empty())
+		return false;
+	if (folder.back() != L'\\')
+		folder += L'\\';
+	return path.size() > folder.size() && _wcsnicmp(path.c_str(), folder.c_str(), folder.size()) == 0;
+}
+
+//started from Downloads, or from a zip opened in Explorer (a temp folder): the startup entry breaks
+//once that folder is cleaned up, so the first start offers a fixed folder
+bool AppDelegate::offerToMoveApp() {
+	wstring path = EasyKeyHelper::getFullPath();
+	PWSTR downloads = NULL, programs = NULL;
+	TCHAR temp[MAX_PATH] = { 0 };
+	GetTempPath(MAX_PATH, temp);
+	bool passing = isUnder(path, temp);
+	if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_Downloads, 0, NULL, &downloads)))
+		passing = passing || isUnder(path, downloads);
+	CoTaskMemFree(downloads);
+	wstring folder;
+	if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_UserProgramFiles, KF_FLAG_CREATE, NULL, &programs)))
+		folder = wstring(programs) + L"\\EasyKey";
+	CoTaskMemFree(programs);
+	if (!passing || folder.empty())
+		return false;
+
+	if (!MessageWindow::ask(NULL, TR("Chuyển EasyKey vào thư mục cố định?", "Move EasyKey to a permanent folder?"),
+			TR("EasyKey đang chạy từ thư mục Tải về hoặc thư mục tạm. Dọn thư mục đó thì EasyKey không còn chạy cùng Windows. Chuyển sang ",
+				"EasyKey runs from Downloads or a temporary folder. Once that folder is cleaned up, EasyKey no longer starts with Windows. Move it to ")
+				+ folder + TR("? Sau đó có thể xoá file vừa tải về.", "? The downloaded file can be deleted afterwards."),
+			TR("Chuyển", "Move"), TR("Để nguyên", "Keep it here")))
+		return false;
+	wstring target = folder + L"\\EasyKey.exe";
+	CreateDirectory(folder.c_str(), NULL);
+	if (!CopyFile(path.c_str(), target.c_str(), FALSE)) {
+		MessageWindow::notice(NULL, TR("Chưa chuyển được EasyKey", "EasyKey was not moved"),
+			TR("Không chép được vào ", "Could not copy it to ") + folder + TR(". EasyKey vẫn chạy từ chỗ cũ.", ". EasyKey keeps running from where it is."));
+		return false;
+	}
+	Updater::restartAs(target);
+	return true;
 }
 
 void AppDelegate::warnOtherKeyboard(const wstring& name) {

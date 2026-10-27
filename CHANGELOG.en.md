@@ -4,6 +4,15 @@
 
 ## Next version
 - Fix occasional raw keys in the text (for example "chaats" instead of "chất"), seen most in Discord and other Electron apps: when Windows quietly removes EasyKey's keyboard hook, EasyKey now notices on the next key and puts it back, even while the mouse is in use (it used to take a few seconds, or not notice at all).
+- Alt + Z (or any hotkey with Alt or Win) no longer makes the app open its menu bar, so what you type right after it is not lost to the menu.
+- The convert tool keeps capitals when the case option is "Keep", also when removing marks ("Tiếng Việt" → "Tieng Viet"). It now converts from TCVN3 to Unicode by default.
+- Email addresses and words followed by @ ! # are no longer marked (user@gmail.com used to become ủe@gmail.com). "www." keeps all three w's.
+- A few shortcuts come with the first start: ko → không, dc → được, vs → với, mn → mọi người, ntn → như thế nào. Vietnamese can be typed in the shortcut list.
+- The interface is in Vietnamese when Windows is set to the Vietnam region or formats, also on English Windows.
+- Started from Downloads or a temporary folder, EasyKey offers to move itself to a permanent folder on the first start.
+- "Check for updates" shows "Checking…", and says it could not check when offline instead of "up to date".
+- Double-clicking the tray icon only opens Settings, without switching Vietnamese/English twice.
+- Game mode no longer shows the internal name "TheEasyKeyProject" before any app was used. The startup entry is quoted, so it works with spaces in the user name.
 
 ## 1.0.6 (Windows 11 x64)
 - Update notice: EasyKey checks at start and every 6 hours (on by default, can be turned off in Settings › System). When a new version is out, the tray icon gets a green arrow, the tray menu shows "Update to …" and Settings shows an update line at the bottom; nothing is installed without asking.

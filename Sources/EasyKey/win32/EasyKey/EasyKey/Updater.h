@@ -23,8 +23,9 @@ the MIT license, see LICENSES/MIT.txt.
  */
 class Updater {
 public:
-	//latest version from version.json, true when it is newer than this exe
-	static bool check(string& newVersion);
+	//latest version from version.json, true when it is newer than this exe.
+	//failed is set when version.json could not be read (offline, blocked)
+	static bool check(string& newVersion, bool& failed);
 	//check, then ask and install, in the background. With silent, say nothing when already up to date or offline
 	static void checkAndOffer(const HWND& owner, const bool& silent);
 	//check in the background without asking; a newer version shows in the tray and Settings
@@ -33,4 +34,6 @@ public:
 	static const string& availableVersion();
 	//on start: remove the previous exe and wait for it to exit after an update
 	static void finishPreviousUpdate();
+	//start the EasyKey at path, which waits for this one, and exit
+	static void restartAs(const wstring& path);
 };

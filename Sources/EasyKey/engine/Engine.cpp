@@ -1202,10 +1202,23 @@ void handleQuickTelex(const Uint16& data, const bool& isCaps) {
     insertKey(_quickTelex[data][1], isCaps, false);
 }
 
+//Telex: www keeps all three letters (w, ww gives back w, www gives ww), so a word with www is not Vietnamese.
+//A doubled mark key (ass -> as, tesst -> test) stays undone: that is how Telex users type English words
+static bool hasTripleW() {
+    if (vInputType == vVNI)
+        return false;
+    for (ii = 2; ii < _stateIndex; ii++) {
+        if ((KeyStates[ii] & CHAR_MASK) == KEY_W && (KeyStates[ii - 1] & CHAR_MASK) == KEY_W && (KeyStates[ii - 2] & CHAR_MASK) == KEY_W)
+            return true;
+    }
+    return false;
+}
+
 bool checkRestoreIfWrongSpelling(const int& handleCode) {
+    bool undone = hasTripleW();
     for (ii = 0; ii < _index; ii++) {
-        if (!IS_CONSONANT(CHR(ii)) &&
-            (TypingWord[ii] & MARK_MASK || TypingWord[ii] & TONE_MASK || TypingWord[ii] & TONEW_MASK)) {
+        if (undone || (!IS_CONSONANT(CHR(ii)) &&
+            (TypingWord[ii] & MARK_MASK || TypingWord[ii] & TONE_MASK || TypingWord[ii] & TONEW_MASK))) {
             
             hCode = handleCode;
             hBPC = _index;
@@ -1345,7 +1358,7 @@ void vKeyHandleEvent(const vKeyEvent& event,
             _hasHandledMacro = true;
         } else if ((vQuickStartConsonant || vQuickEndConsonant) && !tempDisableKey && isMacroBreakCode(data)) {
             checkQuickConsonant();
-        } else if (vRestoreIfWrongSpelling && isWordBreak(event, state, data)) { //restore key if wrong spelling with break-key
+        } else if (vRestoreIfWrongSpelling && (isWordBreak(event, state, data) || (IS_NUMBER_KEY(data) && capsStatus == 1))) { //restore key if wrong spelling with break-key, also @ ! # ...
             if (!tempDisableKey && vCheckSpelling) {
                 checkSpelling(true); //force check spelling
             }

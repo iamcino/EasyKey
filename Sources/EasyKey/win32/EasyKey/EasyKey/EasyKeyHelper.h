@@ -36,6 +36,8 @@ public:
 	static LPTSTR getExecutePath();
 
 	static string& getFrontMostAppExecuteName();
+	//false for the placeholders getFrontMostAppExecuteName gives before any app was used
+	static bool isRealApp(const string& exe);
 	static string& getLastAppExecuteName();
 
 	static wstring getFullPath();
@@ -51,7 +53,7 @@ public:
 	//"Ctrl + Shift + Z" for a hotkey stored like vSwitchKeyStatus, empty if none is set
 	static wstring getHotKeyString(const int& hotKey);
 
-	//vUiLanguage resolved, following the Windows display language when it is 0
+	//vUiLanguage resolved; when it is 0, Vietnamese for Vietnamese Windows or the Vietnam region
 	static bool isEnglishUi();
 	//true when the window belongs to a process with a higher integrity level than EasyKey,
 	//whose keystrokes the keyboard hook never sees
