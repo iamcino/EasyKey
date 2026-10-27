@@ -16,6 +16,7 @@ See LICENSE and NOTICE.
 -----------------------------------------------------------*/
 #include "stdafx.h"
 #include "AppDelegate.h"
+#include <algorithm>
 
 #pragma comment(lib, "imm32")
 #define IMC_GETOPENSTATUS 0x0005
@@ -73,6 +74,10 @@ static int _languageTemp = 0; //use for smart switch key
 static vector<Byte> savedSmartSwitchKeyData; ////use for smart switch key
 
 static bool _hasJustUsedHotKey = false;
+//game mode, see isGameApp
+static vector<string> _gameApps;
+static bool _inGame = false;   //the foreground app is in game mode
+static bool _gameChat = false; //Enter opened the chat in it
 //Esc that put back the typed keys: its key up is swallowed too, web chats (Facebook...) act on it
 static bool _escapeRestored = false;
 
@@ -191,11 +196,64 @@ void EasyKeyInit() {
 	BYTE* data = EasyKeyHelper::getRegBinary(_T("smartSwitchKey"), smartSwitchKeySize);
 	initSmartSwitchKey((Byte*)data, (int)smartSwitchKeySize);
 
+	//game mode apps, exe names separated by new lines
+	DWORD gameAppsSize;
+	BYTE* gameApps = EasyKeyHelper::getRegBinary(_T("gameApps"), gameAppsSize);
+	if (gameApps && gameAppsSize > 0) {
+		string list((char*)gameApps, gameAppsSize), name;
+		for (char c : list) {
+			if (c == '\n') {
+				if (!name.empty())
+					_gameApps.push_back(name);
+				name.clear();
+			} else {
+				name += c;
+			}
+		}
+		if (!name.empty())
+			_gameApps.push_back(name);
+	}
+
 	//init hook
 	HINSTANCE hInstance = GetModuleHandle(NULL);
 	hKeyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, keyboardHookProcess, hInstance, 0);
 	hMouseHook = SetWindowsHookEx(WH_MOUSE_LL, mouseHookProcess, hInstance, 0);
 	hSystemEvent = SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, NULL, winEventProcCallback, 0, 0, WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS);
+}
+
+//exe name of a window, without the cache of getFrontMostAppExecuteName that keeps the previous app for Explorer
+static string exeNameOfWindow(const HWND& hWnd) {
+	DWORD processId = 0;
+	GetWindowThreadProcessId(hWnd, &processId);
+	HANDLE process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, processId);
+	if (!process)
+		return "";
+	TCHAR path[MAX_PATH];
+	DWORD size = MAX_PATH;
+	string name;
+	if (QueryFullProcessImageName(process, 0, path, &size)) {
+		LPCTSTR file = _tcsrchr(path, '\\');
+		name = wideStringToUtf8(file ? file + 1 : path);
+	}
+	CloseHandle(process);
+	return name;
+}
+
+bool isGameApp(const string& exe) {
+	return std::find(_gameApps.begin(), _gameApps.end(), exe) != _gameApps.end();
+}
+
+void setGameApp(const string& exe, const bool& on) {
+	_gameApps.erase(std::remove(_gameApps.begin(), _gameApps.end(), exe), _gameApps.end());
+	if (on)
+		_gameApps.push_back(exe);
+	string list;
+	for (auto& name : _gameApps)
+		list += name + "\n";
+	EasyKeyHelper::setRegBinary(_T("gameApps"), (BYTE*)list.data(), (int)list.size());
+	//the app is in the background while the tray menu is open, it applies when it comes back
+	_inGame = false;
+	_gameChat = false;
 }
 
 void saveSmartSwitchKeyData() {
@@ -656,6 +714,18 @@ LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 		return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
 	}
 
+	//game mode: keys go straight to the game (skills on Q, W, E, R...) until Enter opens the chat;
+	//Enter (send) or Esc (close) ends the chat
+	if (_inGame && vLanguage && (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN)) {
+		if ((_keycode == VK_RETURN || _keycode == VK_ESCAPE) && !(_flag & (MASK_ALT | MASK_CONTROL))) { //not Alt + Enter
+			_gameChat = _keycode == VK_RETURN && !_gameChat;
+			startNewSession();
+			return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
+		}
+		if (!_gameChat)
+			return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
+	}
+
 	//if is in english mode
 	if (vLanguage == 0) {
 		if (vUseMacro && vUseMacroInEnglishMode && (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN)) {
@@ -777,6 +847,8 @@ VOID CALLBACK winEventProcCallback(HWINEVENTHOOK hWinEventHook, DWORD dwEvent, H
 	//typing in another window usually starts a new sentence
 	startNewSession();
 	vStartSentence();
+	_inGame = !_gameApps.empty() && hwnd && isGameApp(exeNameOfWindow(hwnd));
+	_gameChat = false;
 	//smart switch key
 	if (vUseSmartSwitchKey || vRememberCode) {
 		string& exe = EasyKeyHelper::getFrontMostAppExecuteName();

@@ -37,6 +37,7 @@ See LICENSE and NOTICE.
 #define POPUP_UNICODE_COMPOUND 933
 #define POPUP_VN_LOCALE_1258 934
 
+#define POPUP_GAME_MODE 960
 #define POPUP_MACRO_TABLE 970
 #define POPUP_CONVERT_TOOL 980
 #define POPUP_CHECK_UPDATE 990
@@ -74,6 +75,8 @@ static LPCTSTR menuText(const UINT& command) {
 	return _T("");
 }
 
+static void updateGameItem(const string& exe);
+
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
 	static UINT taskbarCreated;
 
@@ -108,6 +111,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 		} else if (lParam == WM_RBUTTONDOWN) {
 			POINT curPoint;
 			GetCursorPos(&curPoint);
+			string gameApp = EasyKeyHelper::getFrontMostAppExecuteName(); //the app the user came from
+			updateGameItem(gameApp);
 			SetForegroundWindow(hWnd);
 			UINT commandId = TrackPopupMenu(
 				popupMenu,
@@ -122,6 +127,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 			case POPUP_VIET_ON_OFF:
 				AppDelegate::getInstance()->onToggleVietnamese();
 				break;
+			case POPUP_GAME_MODE: {
+				bool on = !isGameApp(gameApp);
+				setGameApp(gameApp, on);
+				wstring app = utf8ToWideString(gameApp);
+				if (on)
+					AppDelegate::getInstance()->showNotice(TR("Đã bật chế độ game", "Game mode on"),
+						app + TR(": bấm Enter để chat tiếng Việt", ": press Enter to chat in Vietnamese"));
+				else
+					AppDelegate::getInstance()->showNotice(TR("Đã tắt chế độ game", "Game mode off"), app);
+				break;
+			}
 			case POPUP_MACRO_TABLE:
 				AppDelegate::getInstance()->onMacroTable();
 				break;
@@ -222,6 +238,7 @@ void SystemTrayHelper::createPopupMenu() {
 	AppendMenu(menuCodeTable, MF_UNCHECKED, POPUP_TCVN3, menuText(POPUP_TCVN3));
 	AppendMenu(menuCodeTable, MF_UNCHECKED, POPUP_VNI_WINDOWS, menuText(POPUP_VNI_WINDOWS));
 	AppendMenu(popupMenu, MF_POPUP, (UINT_PTR)menuCodeTable, TR("Bảng mã", "Character encoding"));
+	AppendMenu(popupMenu, MF_STRING, POPUP_GAME_MODE, TR("Chế độ game", "Game mode")); //named after the app by updateGameItem
 
 	//text only, checkmarks show what is in use
 	AppendMenu(popupMenu, MF_STRING, POPUP_MACRO_TABLE, menuText(POPUP_MACRO_TABLE));
@@ -295,6 +312,17 @@ static void loadTrayIcon() {
 	//the tray copies the icon, so the old one can go once the new one is set
 	if (previous)
 		PostMessage(nid.hWnd, WM_APP + 7, 0, (LPARAM)previous);
+}
+
+//"Game mode for <app>", checked when the app is in game mode; grayed when there is no app to name
+static void updateGameItem(const string& exe) {
+	bool known = !exe.empty() && exe != "UnknownProgram";
+	wstring text = TR("Chế độ game", "Game mode");
+	if (known)
+		text += TR(" cho ", " for ") + utf8ToWideString(exe);
+	ModifyMenu(popupMenu, POPUP_GAME_MODE, MF_BYCOMMAND | MF_STRING |
+		(known && isGameApp(exe) ? MF_CHECKED : MF_UNCHECKED) | (known ? MF_ENABLED : MF_GRAYED),
+		POPUP_GAME_MODE, text.c_str());
 }
 
 void SystemTrayHelper::rebuildMenu() {

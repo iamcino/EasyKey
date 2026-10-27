@@ -64,6 +64,9 @@ extern wchar_t _logBuffer[1024];
 #define TR(VI, EN) (EasyKeyHelper::isEnglishUi() ? _T(EN) : _T(VI))
 
 extern void saveSmartSwitchKeyData();
+//game mode: in these apps keys go straight to the game, Enter opens the chat for Vietnamese
+extern bool isGameApp(const string& exe);
+extern void setGameApp(const string& exe, const bool& on);
 extern void checkHooks();
 
 extern int vLanguage;

@@ -3,6 +3,7 @@
 **Tiếng Việt** · [English](CHANGELOG.en.md)
 
 ## Bản tiếp theo
+- Chế độ game: bật cho từng game trong menu khay ("Chế độ game cho …"). Trong game, phím đi thẳng vào game nên Q, W, E, R… không bị đổi thành chữ có dấu; bấm Enter mở khung chat thì gõ được tiếng Việt, Enter (gửi) hoặc Esc (đóng) thì trở lại.
 - Phím tắt đổi kiểu gõ chạy được cả khi đang gõ tiếng Anh; popup hiện kiểu gõ mới kèm dòng "dùng khi gõ tiếng Việt".
 
 ## 1.0.5 (Windows 11 x64)

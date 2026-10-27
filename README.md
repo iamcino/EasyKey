@@ -25,6 +25,7 @@ Bộ gõ tiếng Việt gọn nhẹ cho Windows 11: một file `EasyKey.exe` ch�
 - **Nhớ Việt/Anh và bảng mã theo từng ứng dụng.**
 - **Không lặp chữ** ở thanh địa chỉ Chrome, Edge và các ô có gợi ý tự động.
 - **Giao diện Windows 11:** sáng/tối, chọn màu nhấn, tiếng Việt hoặc tiếng Anh, popup nhỏ khi chuyển Việt/Anh.
+- **Chế độ game:** phím kỹ năng (Q, W, E, R…) không bị bỏ dấu, bấm Enter mở chat là gõ được tiếng Việt.
 - **Không hiện ô ngôn ngữ ENG/VIE** trên thanh tác vụ.
 - **Tự cập nhật** ngay trong ứng dụng (luôn hỏi trước, kiểm tra SHA-256), gỡ sạch bằng một nút.
 

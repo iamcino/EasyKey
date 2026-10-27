@@ -25,6 +25,7 @@ A lightweight Vietnamese keyboard for Windows 11: one `EasyKey.exe` under 1 MB, 
 - **Remembers Vietnamese/English and the character encoding per app.**
 - **No repeated letters** in the Chrome and Edge address bar or other autocomplete fields.
 - **Windows 11 look:** light/dark, accent colors, Vietnamese or English UI, a small popup when you switch between Vietnamese and English.
+- **Game mode:** skill keys (Q, W, E, R…) are never turned into marked letters; press Enter to chat in Vietnamese.
 - **No ENG/VIE language indicator** on the taskbar.
 - **Updates itself** from inside the app (always asks first, checks the SHA-256) and removes itself cleanly with one button.
 
