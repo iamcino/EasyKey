@@ -95,7 +95,6 @@
     <ClInclude Include="..\..\..\engine\Engine.h" />
     <ClInclude Include="..\..\..\engine\Macro.h" />
     <ClInclude Include="..\..\..\engine\platforms\linux.h" />
-    <ClInclude Include="..\..\..\engine\platforms\mac.h" />
     <ClInclude Include="..\..\..\engine\platforms\win32.h" />
     <ClInclude Include="..\..\..\engine\SmartSwitchKey.h" />
     <ClInclude Include="..\..\..\engine\Vietnamese.h" />

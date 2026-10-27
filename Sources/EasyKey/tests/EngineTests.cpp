@@ -1,6 +1,8 @@
 //
 //  EngineTests.cpp
-//  OpenKey
+//  EasyKey
+//  Copyright (C) 2026 Cino
+//  SPDX-License-Identifier: GPL-3.0-only
 //
 //  Unit tests for the shared typing engine: feed key strokes into
 //  vKeyHandleEvent and check the text an application would end up with.

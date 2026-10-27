@@ -5,6 +5,8 @@
 ## Bản tiếp theo
 - Sửa lỗi chọn bảng mã cũ (VNI Windows, TCVN3, Unicode tổ hợp…) hoặc Việt/Anh trong cửa sổ Cài đặt hay menu khay rồi quay lại ứng dụng thì bị trả về lựa chọn cũ, ví dụ về Unicode. EasyKey giờ nhớ lựa chọn cho đúng ứng dụng bạn đang gõ.
 - Popup kiểu gõ cũng hiện khi đổi kiểu gõ từ menu ở khay hệ thống hay trong cửa sổ Cài đặt.
+- Khi bật "Chạy với quyền admin", EasyKey tự khởi động qua Task Scheduler bằng API của Windows thay cho lệnh schtasks. Tác vụ không còn bị Windows dừng sau 72 giờ, vẫn chạy khi máy dùng pin, và nếu không tạo được tác vụ thì EasyKey vẫn khởi động cùng Windows (không có quyền admin).
+- Dọn phần đầu các file mã nguồn: ghi công OpenKey (Mai Vũ Tuyên) được giữ, thêm SPDX GPL-3.0-only; bỏ file mã cho macOS không còn dùng.
 
 ## 1.0.3 (Windows 11 x64)
 - Kiểm tra cập nhật chạy ngầm, chuột và phím không còn bị khựng trong lúc kiểm tra hay tải bản mới.

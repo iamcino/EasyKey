@@ -1,18 +1,18 @@
 /*----------------------------------------------------------
-OpenKey - The Cross platform Open source Vietnamese Keyboard application.
+EasyKey - Vietnamese input for Windows 11.
+Copyright (C) 2026 Cino
 
+Based on OpenKey - The Cross platform Open source Vietnamese
+Keyboard application.
 Copyright (C) 2019 Mai Vu Tuyen
 Contact: maivutuyen.91@gmail.com
 Github: https://github.com/tuyenvm/OpenKey
-Fanpage: https://www.facebook.com/OpenKeyVN
 
-EasyKey - Vietnamese input for Windows 11, based on OpenKey.
-Copyright (C) 2026 Cino
+SPDX-License-Identifier: GPL-3.0-only
 
-This file is belong to the OpenKey project, Win32 version
-which is released under GPL license.
-You can fork, modify, improve this program. If you
-redistribute your new version, it MUST be open source.
+This file is part of EasyKey, a modified version of OpenKey,
+released under the GNU General Public License version 3.
+See LICENSE and NOTICE.
 -----------------------------------------------------------*/
 
 // stdafx.h : include file for standard system include files,
