@@ -100,6 +100,7 @@
     <ClInclude Include="..\..\..\engine\Vietnamese.h" />
     <ClInclude Include="AppDelegate.h" />
     <ClInclude Include="EasyKeyHelper.h" />
+    <ClInclude Include="FluentText.h" />
     <ClInclude Include="FlyoutWindow.h" />
     <ClInclude Include="EasyKeyManager.h" />
     <ClInclude Include="Resource.h" />
@@ -133,6 +134,7 @@
     <ClCompile Include="SettingsWindow.cpp" />
     <ClCompile Include="EasyKey.cpp" />
     <ClCompile Include="EasyKeyHelper.cpp" />
+    <ClCompile Include="FluentText.cpp" />
     <ClCompile Include="FlyoutWindow.cpp" />
     <ClCompile Include="Updater.cpp" />
     <ClCompile Include="EasyKeyManager.cpp" />

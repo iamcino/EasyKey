@@ -2,8 +2,9 @@
 
 [Tiếng Việt](CHANGELOG.md) · **English**
 
-## Next version
+## 1.0.8 (Windows 11 x64)
 - The mouse and keyboard no longer stall while updating: EasyKey writes the new file on a separate thread and removes its hooks before it starts the new version (that is when antivirus scans the new file).
+- Text in every window (Settings, About, shortcut list, convert tool, dialogs) is drawn with DirectWrite like the popup: smooth, and unbroken when Windows scales the screen above 100%.
 
 ## 1.0.7 (Windows 11 x64)
 - Fix occasional raw keys in the text (for example "chaats" instead of "chất"), seen most in Discord and other Electron apps: when Windows quietly removes EasyKey's keyboard hook, EasyKey now notices on the next key and puts it back, even while the mouse is in use (it used to take a few seconds, or not notice at all).

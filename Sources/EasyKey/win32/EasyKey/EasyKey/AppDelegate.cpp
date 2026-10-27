@@ -28,12 +28,10 @@ See LICENSE and NOTICE.
 #pragma comment(lib, "comctl32.lib")
 
 //shown once after updating to this version; change it with each release
-#define WHATS_NEW_VI L"• Bấm Alt + Z không còn làm ứng dụng mở thanh menu.\n" \
-	L"• Gõ email (user@gmail.com) và www. không còn bị bỏ dấu sai.\n" \
-	L"• Có sẵn vài từ gõ tắt (ko, dc, vs…), sửa lỗi gõ ra phím thô ở Discord, popup đổi Việt/Anh nét chữ sắc hơn."
-#define WHATS_NEW_EN L"• Alt + Z no longer makes the app open its menu bar.\n" \
-	L"• Email addresses (user@gmail.com) and www. are no longer marked by mistake.\n" \
-	L"• A few starter shortcuts (ko, dc, vs…), a fix for raw keys in Discord, and a sharper switch popup."
+#define WHATS_NEW_VI L"• Chữ trong Cài đặt và các cửa sổ khác mịn hơn, không vỡ khi màn hình phóng to.\n" \
+	L"• Lúc cập nhật, chuột và bàn phím không còn bị khựng."
+#define WHATS_NEW_EN L"• Text in Settings and the other windows is smoother and stays sharp on scaled screens.\n" \
+	L"• The mouse and keyboard no longer stall while EasyKey updates."
 
 //6 hours
 #define UPDATE_CHECK_INTERVAL (6 * 60 * 60 * 1000)

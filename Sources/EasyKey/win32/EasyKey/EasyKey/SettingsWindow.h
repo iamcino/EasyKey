@@ -17,8 +17,9 @@ See LICENSE and NOTICE.
 #pragma once
 #include "stdafx.h"
 #include "FluentUi.h"
+#include "FluentText.h"
 
-namespace Gdiplus { class Graphics; class Font; class StringFormat; }
+namespace Gdiplus { class Graphics; }
 
 /*
  * The settings window. It paints its own Windows 11 style controls with GDI+
@@ -46,8 +47,8 @@ private:
 	UINT dpi = USER_DEFAULT_SCREEN_DPI;
 	FluentPalette pal;
 	bool translucent = false;
-	Gdiplus::Font *fontBody = NULL, *fontCaption = NULL, *fontSmall = NULL, *fontStrong = NULL, *fontTitle = NULL, *fontBadge = NULL;
-	Gdiplus::StringFormat* textFormat = NULL;
+	FluentFont *fontBody = NULL, *fontCaption = NULL, *fontSmall = NULL, *fontStrong = NULL, *fontTitle = NULL, *fontBadge = NULL;
+	FluentTextBatch textBatch;
 
 	vector<Item> items;
 	RECT heroArea, expandArea;
@@ -75,7 +76,7 @@ private:
 	void applyTheme();
 	void createFonts();
 	void freeFonts();
-	int textWidth(Gdiplus::Font* font, LPCTSTR text) const;
+	int textWidth(FluentFont* font, LPCTSTR text) const;
 
 	void layout();
 	void fitWindow(const bool& center);
@@ -89,7 +90,7 @@ private:
 	void paint(HDC hdc);
 	void paintItem(Gdiplus::Graphics& g, const Item& item, const int& index);
 	void paintSwitch(Gdiplus::Graphics& g, const RECT& rc, const bool& on, const bool& hot, const bool& enabled);
-	void drawText(Gdiplus::Graphics& g, LPCTSTR text, const RECT& rc, Gdiplus::Font* font, const DWORD& color, const int& hAlign, const int& vAlign);
+	void drawText(Gdiplus::Graphics& g, LPCTSTR text, const RECT& rc, FluentFont* font, const DWORD& color, const int& hAlign, const int& vAlign);
 	RECT toView(const RECT& rc) const;
 
 	bool hitTest(const POINT& pt, int& item, int& part) const;

@@ -12,8 +12,9 @@ the MIT license, see LICENSES/MIT.txt.
 #pragma once
 #include "stdafx.h"
 #include "FluentUi.h"
+#include "FluentText.h"
 
-namespace Gdiplus { class Graphics; class Font; class StringFormat; }
+namespace Gdiplus { class Graphics; }
 
 /*
  * Base of the small windows EasyKey paints itself, in the style of the
@@ -45,7 +46,7 @@ protected:
 		wstring text, hint, value;
 		RECT rc = {};            //the whole control or row
 		RECT ctl = {};           //switch, field or link inside a row
-		Gdiplus::Font* font = NULL;
+		FluentFont* font = NULL;
 		DWORD color = 0;         //text color, 0 for the theme's
 		int align = 0;           //0 left, 1 center, 2 right
 		bool wrap = false;
@@ -60,9 +61,9 @@ protected:
 	UINT dpi = USER_DEFAULT_SCREEN_DPI;
 	FluentPalette pal;
 	bool dark = false, translucent = false;
-	Gdiplus::Font *fontBody = NULL, *fontCaption = NULL, *fontSmall = NULL, *fontStrong = NULL;
-	Gdiplus::Font *fontTitle = NULL, *fontDisplay = NULL, *fontBadge = NULL;
-	Gdiplus::StringFormat *textFormat = NULL, *wrapFormat = NULL;
+	FluentFont *fontBody = NULL, *fontCaption = NULL, *fontSmall = NULL, *fontStrong = NULL;
+	FluentFont *fontTitle = NULL, *fontDisplay = NULL, *fontBadge = NULL;
+	FluentTextBatch textBatch;
 	HFONT editFont = NULL;
 	HBRUSH editBrush = NULL;
 	COLORREF editBack = 0, editText = 0;
@@ -103,16 +104,16 @@ protected:
 	int s(const int& value) const;
 	int clientWidth() const;
 	int clientHeight() const;
-	int textWidth(Gdiplus::Font* font, const wstring& text) const;
-	int textHeight(Gdiplus::Font* font, const wstring& text, const int& width) const;
-	void drawText(Gdiplus::Graphics& g, const wstring& text, const RECT& rc, Gdiplus::Font* font, const DWORD& color,
+	int textWidth(FluentFont* font, const wstring& text) const;
+	int textHeight(FluentFont* font, const wstring& text, const int& width) const;
+	void drawText(Gdiplus::Graphics& g, const wstring& text, const RECT& rc, FluentFont* font, const DWORD& color,
 		const int& hAlign, const int& vAlign, const bool& wrap = false);
 	void paintSwitch(Gdiplus::Graphics& g, const RECT& rc, const bool& on, const bool& hot, const bool& enabled);
 	int drawKeys(Gdiplus::Graphics& g, const wstring& hotKey, int x, const int& cy);
 
 	//building blocks for layout(), each returns the control's index
 	int add(const Control& c);
-	int addText(const wstring& text, const RECT& rc, Gdiplus::Font* font, const DWORD& color = 0, const int& align = 0, const bool& wrap = false);
+	int addText(const wstring& text, const RECT& rc, FluentFont* font, const DWORD& color = 0, const int& align = 0, const bool& wrap = false);
 	int addDivider(const int& left, const int& right, const int& y);
 	int addCard(const RECT& rc);
 	int addBadge(const RECT& rc);

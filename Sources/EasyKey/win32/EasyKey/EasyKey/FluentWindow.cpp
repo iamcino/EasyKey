@@ -160,20 +160,13 @@ void FluentWindow::applyTheme() {
 
 void FluentWindow::createFonts() {
 	freeFonts();
-	fontBody = ThemeHelper::createFont(false, (float)s(14), Gdiplus::FontStyleRegular);
-	fontCaption = ThemeHelper::createFont(false, (float)s(12), Gdiplus::FontStyleRegular);
-	fontSmall = ThemeHelper::createFont(false, (float)s(13), Gdiplus::FontStyleRegular);
-	fontStrong = ThemeHelper::createFont(true, (float)s(13), Gdiplus::FontStyleRegular);
-	fontTitle = ThemeHelper::createFont(true, (float)s(15), Gdiplus::FontStyleRegular);
-	fontDisplay = ThemeHelper::createFont(true, (float)s(28), Gdiplus::FontStyleRegular);
-	fontBadge = ThemeHelper::createFont(false, (float)s(22), Gdiplus::FontStyleBold);
-	textFormat = Gdiplus::StringFormat::GenericTypographic()->Clone();
-	textFormat->SetFormatFlags(Gdiplus::StringFormatFlagsNoWrap | Gdiplus::StringFormatFlagsLineLimit |
-		Gdiplus::StringFormatFlagsMeasureTrailingSpaces);
-	textFormat->SetTrimming(Gdiplus::StringTrimmingEllipsisCharacter);
-	wrapFormat = Gdiplus::StringFormat::GenericTypographic()->Clone();
-	wrapFormat->SetFormatFlags(Gdiplus::StringFormatFlagsMeasureTrailingSpaces);
-	wrapFormat->SetTrimming(Gdiplus::StringTrimmingWord);
+	fontBody = createFluentFont(false, (float)s(14));
+	fontCaption = createFluentFont(false, (float)s(12));
+	fontSmall = createFluentFont(false, (float)s(13));
+	fontStrong = createFluentFont(true, (float)s(13));
+	fontTitle = createFluentFont(true, (float)s(15));
+	fontDisplay = createFluentFont(true, (float)s(28));
+	fontBadge = createFluentFont(false, (float)s(22), true);
 
 	editFont = CreateFont(-s(14), 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS,
 		CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_SWISS, ThemeHelper::getFontFace());
@@ -182,14 +175,9 @@ void FluentWindow::createFonts() {
 }
 
 void FluentWindow::freeFonts() {
-	Gdiplus::Font** fonts[] = { &fontBody, &fontCaption, &fontSmall, &fontStrong, &fontTitle, &fontDisplay, &fontBadge };
-	for (Gdiplus::Font** font : fonts) {
-		delete *font;
-		*font = NULL;
-	}
-	delete textFormat;
-	delete wrapFormat;
-	textFormat = wrapFormat = NULL;
+	FluentFont** fonts[] = { &fontBody, &fontCaption, &fontSmall, &fontStrong, &fontTitle, &fontDisplay, &fontBadge };
+	for (FluentFont** font : fonts)
+		freeFluentFont(*font);
 	if (editFont) {
 		//the edits still hold it until they get the new one
 		HFONT old = editFont;
@@ -263,7 +251,7 @@ int FluentWindow::add(const Control& c) {
 	return (int)controls.size() - 1;
 }
 
-int FluentWindow::addText(const wstring& text, const RECT& rc, Gdiplus::Font* font, const DWORD& color, const int& align, const bool& wrap) {
+int FluentWindow::addText(const wstring& text, const RECT& rc, FluentFont* font, const DWORD& color, const int& align, const bool& wrap) {
 	Control c;
 	c.kind = F_TEXT;
 	c.text = text;
@@ -444,46 +432,26 @@ int FluentWindow::showMenu(const RECT& anchor, const vector<wstring>& items, con
 
 /*-------------------------------- painting --------------------------------*/
 
-int FluentWindow::textWidth(Gdiplus::Font* font, const wstring& text) const {
-	if (text.empty())
-		return 0;
-	HDC hdc = GetDC(NULL);
-	Gdiplus::RectF box;
-	{
-		Gdiplus::Graphics g(hdc);
-		g.SetTextRenderingHint(Gdiplus::TextRenderingHintAntiAliasGridFit);
-		g.MeasureString(text.c_str(), -1, font, Gdiplus::PointF(0, 0), textFormat, &box);
-	}
-	ReleaseDC(NULL, hdc);
-	return (int)ceil(box.Width);
+//GDI+ clip of the moment, so the text stays inside a scrolled list like the shapes do
+static RECT clipOf(Gdiplus::Graphics& g) {
+	Gdiplus::RectF bounds;
+	g.GetClipBounds(&bounds);
+	RECT clip = { (LONG)floor(max(bounds.X, -100000.0f)), (LONG)floor(max(bounds.Y, -100000.0f)),
+		(LONG)ceil(min(bounds.GetRight(), 100000.0f)), (LONG)ceil(min(bounds.GetBottom(), 100000.0f)) };
+	return clip;
 }
 
-int FluentWindow::textHeight(Gdiplus::Font* font, const wstring& text, const int& width) const {
-	HDC hdc = GetDC(NULL);
-	Gdiplus::RectF box;
-	{
-		Gdiplus::Graphics g(hdc);
-		g.SetTextRenderingHint(Gdiplus::TextRenderingHintAntiAliasGridFit);
-		Gdiplus::RectF layoutRect(0, 0, (float)width, 100000.0f);
-		g.MeasureString(text.empty() ? L" " : text.c_str(), -1, font, layoutRect, wrapFormat, &box);
-	}
-	ReleaseDC(NULL, hdc);
-	return (int)ceil(box.Height);
+int FluentWindow::textWidth(FluentFont* font, const wstring& text) const {
+	return fluentTextWidth(font, text);
 }
 
-void FluentWindow::drawText(Gdiplus::Graphics& g, const wstring& text, const RECT& rc, Gdiplus::Font* font, const DWORD& color,
+int FluentWindow::textHeight(FluentFont* font, const wstring& text, const int& width) const {
+	return fluentTextHeight(font, text, width);
+}
+
+void FluentWindow::drawText(Gdiplus::Graphics& g, const wstring& text, const RECT& rc, FluentFont* font, const DWORD& color,
 							const int& hAlign, const int& vAlign, const bool& wrap) {
-	if (text.empty() || rc.right <= rc.left)
-		return;
-	static const Gdiplus::StringAlignment align[] = {
-		Gdiplus::StringAlignmentNear, Gdiplus::StringAlignmentCenter, Gdiplus::StringAlignmentFar
-	};
-	Gdiplus::StringFormat* format = wrap ? wrapFormat : textFormat;
-	format->SetAlignment(align[hAlign]);
-	format->SetLineAlignment(align[vAlign]);
-	Gdiplus::RectF box((float)rc.left, (float)rc.top, (float)(rc.right - rc.left), (float)(rc.bottom - rc.top));
-	Gdiplus::SolidBrush brush((Gdiplus::ARGB)color);
-	g.DrawString(text.c_str(), -1, font, box, format, &brush);
+	textBatch.add(text, rc, font, color, hAlign, vAlign, wrap, clipOf(g));
 }
 
 void FluentWindow::paintSwitch(Gdiplus::Graphics& g, const RECT& rc, const bool& on, const bool& isHot, const bool& enabled) {
@@ -551,8 +519,6 @@ void FluentWindow::paint(HDC hdc) {
 		g.Clear(Gdiplus::Color((Gdiplus::ARGB)pal.bg));
 		g.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
 		g.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf);
-		//ClearType needs an opaque background, grayscale works on Mica too
-		g.SetTextRenderingHint(Gdiplus::TextRenderingHintAntiAliasGridFit);
 		for (int i = 0; i < (int)controls.size(); i++)
 			paintControl(g, controls[i], i);
 
@@ -569,6 +535,7 @@ void FluentWindow::paint(HDC hdc) {
 			g.DrawPath(&pen, &path);
 		}
 	}
+	textBatch.draw(mem, client.right, client.bottom);
 	BitBlt(hdc, 0, 0, client.right, client.bottom, mem, 0, 0, SRCCOPY);
 	SelectObject(mem, oldBitmap);
 	DeleteObject(bitmap);
