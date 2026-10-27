@@ -95,6 +95,7 @@ void EasyKeyFree() {
 
 void EasyKeyInit() {
 	APP_GET_DATA(vLanguage, 1);
+	vLanguage = vLanguage ? 1 : 0; //older versions could save the code table bits here too
 	APP_GET_DATA(vInputType, 0);
 	vFreeMark = 0;
 	APP_GET_DATA(vCodeTable, 0);
@@ -794,7 +795,7 @@ VOID CALLBACK winEventProcCallback(HWINEVENTHOOK hWinEventHook, DWORD dwEvent, H
 		vTempOffEngine(false);
 		if (vUseSmartSwitchKey && (_languageTemp & 0x01) != vLanguage) {
 			if (_languageTemp != -1) {
-				vLanguage = _languageTemp;
+				vLanguage = _languageTemp & 0x01; //the other bits hold the code table
 				AppDelegate::getInstance()->onInputMethodChangedFromHotKey();
 			} else {
 				saveSmartSwitchKeyData();
