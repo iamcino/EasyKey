@@ -2,7 +2,7 @@
 
 [Tiếng Việt](CHANGELOG.md) · **English**
 
-## Next version
+## 1.0.8 (Windows 11 x64)
 - The mouse and keyboard no longer stall while updating: EasyKey writes the new file on a separate thread and removes its hooks before it starts the new version (that is when antivirus scans the new file).
 - Text in every window (Settings, About, shortcut list, convert tool, dialogs) is drawn with DirectWrite like the popup: smooth, and unbroken when Windows scales the screen above 100%.
 
