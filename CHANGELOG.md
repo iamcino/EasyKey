@@ -3,7 +3,8 @@
 **Tiếng Việt** · [English](CHANGELOG.en.md)
 
 ## Bản tiếp theo
-- Chế độ game: bật cho từng game trong menu khay ("Chế độ game cho …"). Trong game, phím đi thẳng vào game nên Q, W, E, R… không bị đổi thành chữ có dấu; bấm Enter mở khung chat thì gõ được tiếng Việt, Enter (gửi) hoặc Esc (đóng) thì trở lại.
+- Báo có bản mới: EasyKey tự kiểm tra khi khởi động và mỗi 6 giờ (bật sẵn, tắt được trong Cài đặt › Hệ thống). Khi có bản mới, biểu tượng khay có mũi tên xanh, menu khay hiện "Cập nhật lên …" và cuối cửa sổ Cài đặt có dòng cập nhật; EasyKey không tự cài khi chưa hỏi.
+- Chế độ game: bật cho từng game trong menu khay ("Chế độ game cho …") hoặc Cài đặt › Ứng dụng › Chế độ game. Trong game, phím đi thẳng vào game nên Q, W, E, R… không bị đổi thành chữ có dấu; bấm Enter mở khung chat thì gõ được tiếng Việt, Enter (gửi) hoặc Esc (đóng) thì trở lại.
 - Phím tắt đổi kiểu gõ chạy được cả khi đang gõ tiếng Anh; popup hiện kiểu gõ mới kèm dòng "dùng khi gõ tiếng Việt".
 
 ## 1.0.5 (Windows 11 x64)

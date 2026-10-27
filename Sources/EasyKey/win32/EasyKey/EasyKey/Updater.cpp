@@ -146,6 +146,7 @@ struct Job {
 	int kind;
 	HWND owner;
 	bool silent;
+	bool quiet = false; //only note the new version, see checkQuietly
 	bool newer = false;
 	string version, exe;
 	int result = DOWNLOAD_OK;
@@ -153,6 +154,7 @@ struct Job {
 
 static HWND messageWindow = NULL;
 static bool busy = false;
+static string available;
 
 static void download(Job* job) {
 	wstring wideVersion = utf8ToWideString(job->version);
@@ -224,6 +226,15 @@ static void finishJob(Job* job) {
 	//the window that asked may have closed meanwhile
 	HWND owner = job->owner && IsWindow(job->owner) ? job->owner : NULL;
 	if (job->kind == JOB_CHECK) {
+		if (job->newer && job->version != available) {
+			available = job->version;
+			AppDelegate::getInstance()->onUpdateAvailable();
+		}
+		if (job->quiet) {
+			busy = false;
+			delete job;
+			return;
+		}
 		if (!job->newer) {
 			busy = false;
 			if (!job->silent)
@@ -272,9 +283,7 @@ static LRESULT CALLBACK messageProc(HWND hWnd, UINT message, WPARAM wParam, LPAR
 	return DefWindowProc(hWnd, message, wParam, lParam);
 }
 
-void Updater::checkAndOffer(const HWND& owner, const bool& silent) {
-	if (busy)
-		return;
+static bool createMessageWindow() {
 	if (!messageWindow) {
 		WNDCLASS wc = {};
 		wc.lpfnWndProc = messageProc;
@@ -282,14 +291,33 @@ void Updater::checkAndOffer(const HWND& owner, const bool& silent) {
 		wc.lpszClassName = _T("EasyKeyUpdater");
 		RegisterClass(&wc);
 		messageWindow = CreateWindow(wc.lpszClassName, NULL, 0, 0, 0, 0, 0, HWND_MESSAGE, NULL, wc.hInstance, NULL);
-		if (!messageWindow)
-			return;
 	}
+	return messageWindow != NULL;
+}
+
+void Updater::checkAndOffer(const HWND& owner, const bool& silent) {
+	if (busy || !createMessageWindow())
+		return;
 	Job* job = new Job();
 	job->kind = JOB_CHECK;
 	job->owner = owner;
 	job->silent = silent;
 	startJob(job);
+}
+
+void Updater::checkQuietly() {
+	if (busy || !createMessageWindow())
+		return;
+	Job* job = new Job();
+	job->kind = JOB_CHECK;
+	job->owner = NULL;
+	job->silent = true;
+	job->quiet = true;
+	startJob(job);
+}
+
+const string& Updater::availableVersion() {
+	return available;
 }
 
 void Updater::finishPreviousUpdate() {

@@ -54,6 +54,8 @@ public: //event
 	void onSettingsChanged();
 	//a short notice in the flyout
 	void showNotice(const wstring& title, const wstring& detail);
+	//a background check found a newer version: mark the tray icon, the tray menu and Settings
+	void onUpdateAvailable();
 	void onUninstall();
 	void onDefaultConfig();
 

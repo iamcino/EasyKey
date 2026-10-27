@@ -67,6 +67,7 @@ extern void saveSmartSwitchKeyData();
 //game mode: in these apps keys go straight to the game, Enter opens the chat for Vietnamese
 extern bool isGameApp(const string& exe);
 extern void setGameApp(const string& exe, const bool& on);
+extern const vector<string>& getGameApps();
 extern void checkHooks();
 
 extern int vLanguage;

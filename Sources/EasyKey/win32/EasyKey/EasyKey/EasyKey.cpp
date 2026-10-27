@@ -132,7 +132,7 @@ void EasyKeyInit() {
 	APP_GET_DATA(vQuickEndConsonant, 0);
 	APP_GET_DATA(vRunAsAdmin, 0);
 	APP_GET_DATA(vCreateDesktopShortcut, 0);
-	APP_GET_DATA(vCheckNewVersion, 0);
+	APP_GET_DATA(vCheckNewVersion, 1);
 	APP_GET_DATA(vRememberCode, 1);
 	APP_GET_DATA(vOtherLanguage, 1);
 	APP_GET_DATA(vRestoreOnEscape, 1);
@@ -237,6 +237,10 @@ static string exeNameOfWindow(const HWND& hWnd) {
 	}
 	CloseHandle(process);
 	return name;
+}
+
+const vector<string>& getGameApps() {
+	return _gameApps;
 }
 
 bool isGameApp(const string& exe) {
