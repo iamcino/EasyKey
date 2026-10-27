@@ -90,9 +90,9 @@ FlyoutWindow::~FlyoutWindow() {
 	freeBitmap();
 }
 
-void FlyoutWindow::notify(const bool& inputType) {
+void FlyoutWindow::notify(const int& what) {
 	if (hWnd && vShowSwitchFlyout)
-		PostMessage(hWnd, WM_FLYOUT_SHOW, inputType ? 1 : 0, 0);
+		PostMessage(hWnd, WM_FLYOUT_SHOW, what, 0);
 }
 
 void FlyoutWindow::showMessage(const wstring& title, const wstring& detail, const bool& warning) {
@@ -144,13 +144,16 @@ void FlyoutWindow::render(const UINT& dpi, const RECT& workArea, const bool& mes
 
 	wstring title = vietnamese ? TR("Tiếng Việt", "Vietnamese") : TR("Tiếng Anh", "English");
 	wstring detail;
+	vector<LPCTSTR>& inputTypes = EasyKeyManager::getInputType();
+	wstring inputType = vInputType >= 0 && vInputType < (int)inputTypes.size() ? inputTypes[vInputType] : _T("");
 	if (message) {
 		title = messageTitle;
 		detail = messageDetail;
+	} else if (shown == FLYOUT_CODE_TABLE) {
+		title = codeTableName(vCodeTable);
+		detail = TR("Bảng mã · ", "Character encoding · ") + inputType;
 	} else if (vietnamese) {
-		vector<LPCTSTR>& inputTypes = EasyKeyManager::getInputType();
-		wstring inputType = vInputType >= 0 && vInputType < (int)inputTypes.size() ? inputTypes[vInputType] : _T("");
-		if (inputTypeShown) {
+		if (shown == FLYOUT_INPUT_TYPE) {
 			title = inputType;
 			detail = TR("Kiểu gõ · ", "Input method · ") + wstring(codeTableName(vCodeTable));
 		} else {
@@ -276,7 +279,7 @@ LRESULT CALLBACK FlyoutWindow::windowProc(HWND hWnd, UINT uMsg, WPARAM wParam, L
 LRESULT FlyoutWindow::handleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	switch (uMsg) {
 	case WM_FLYOUT_SHOW:
-		inputTypeShown = wParam != 0;
+		shown = (int)wParam;
 		showNow(false);
 		return 0;
 	case WM_FLYOUT_MESSAGE:

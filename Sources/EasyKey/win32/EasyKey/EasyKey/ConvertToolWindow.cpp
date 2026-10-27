@@ -69,7 +69,7 @@ void ConvertToolWindow::layout() {
 	};
 
 	//code tables, with a link to swap them on the heading line
-	section(TR("Bảng mã", "Encoding"));
+	section(TR("Bảng mã", "Character encoding"));
 	wstring swap = TR("⇅ Đảo chiều", "⇅ Swap");
 	addLink(ID_SWAP, swap, right - s(2) - textWidth(fontSmall, swap), y - s(26), s(20));
 	addCard(makeRect(left, y, right - left, rowH * 2));

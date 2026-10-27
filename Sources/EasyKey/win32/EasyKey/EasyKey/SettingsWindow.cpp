@@ -47,9 +47,9 @@ enum ItemKind {
 enum Option {
 	OPT_NONE, OPT_LANGUAGE, OPT_CODE_TABLE,
 	OPT_SPELLING, OPT_MODERN, OPT_MACRO, OPT_RUN_WITH_WINDOWS,
-	OPT_ESCAPE, OPT_INPUT_HOTKEY, OPT_ZWJF, OPT_TEMP_OFF_SPELLING,
+	OPT_ESCAPE, OPT_INPUT_HOTKEY, OPT_ZWJF,
 	OPT_QUICK_TELEX, OPT_QUICK_START, OPT_QUICK_END, OPT_CAPS_FIRST, OPT_MACRO_ENGLISH, OPT_MACRO_AUTO_CAPS,
-	OPT_SMART_SWITCH, OPT_REMEMBER_CODE, OPT_TEMP_OFF_EASYKEY,
+	OPT_SMART_SWITCH, OPT_REMEMBER_CODE,
 	OPT_CLIPBOARD, OPT_FLYOUT, OPT_BEEP,
 	OPT_WARN_CONFLICT, OPT_RUN_AS_ADMIN, OPT_DESKTOP_SHORTCUT, OPT_CHECK_UPDATE,
 	OPT_AUTO_DARK
@@ -85,7 +85,6 @@ static const RowInfo advancedRows[] = {
 	{ K_SUBTOGGLE, OPT_REMEMBER_CODE, _T("Nhớ bảng mã theo từng ứng dụng"), _T("Remember the encoding per app") },
 	{ K_GROUP, 4, _T("Chính tả"), _T("Spelling") },
 	{ K_SUBTOGGLE, OPT_ZWJF, _T("Cho phép z, w, j, f làm phụ âm đầu"), _T("Allow z, w, j, f as first consonants") },
-	{ K_SUBTOGGLE, OPT_TEMP_OFF_SPELLING, _T("Tạm tắt chính tả bằng phím Ctrl"), _T("Hold Ctrl to skip spell check") },
 	{ K_SUBBUTTON, ACT_SPELLING_GUIDE, _T("Windows gạch đỏ chữ Việt?"), _T("Red underlines under Vietnamese?") },
 	{ K_GROUP, 5, _T("Gõ nhanh và gõ tắt"), _T("Quick typing and shortcuts") },
 	{ K_SUBTOGGLE, OPT_QUICK_TELEX, _T("Gõ nhanh: cc → ch, gg → gi, nn → ng…"), _T("Quick typing: cc → ch, gg → gi, nn → ng…") },
@@ -96,7 +95,6 @@ static const RowInfo advancedRows[] = {
 	{ K_SUBTOGGLE, OPT_MACRO_AUTO_CAPS, _T("Tự viết hoa theo từ gõ tắt"), _T("Match the capitalization of shortcuts") },
 	{ K_GROUP, 6, _T("Ứng dụng"), _T("Apps") },
 	{ K_SUBTOGGLE, OPT_SMART_SWITCH, _T("Nhớ chế độ Việt/Anh theo từng ứng dụng"), _T("Remember Vietnamese/English per app") },
-	{ K_SUBTOGGLE, OPT_TEMP_OFF_EASYKEY, _T("Tạm tắt EasyKey bằng phím Alt"), _T("Hold Alt to pause EasyKey") },
 	{ K_SUBTOGGLE, OPT_CLIPBOARD, _T("Gửi chữ qua Clipboard"), _T("Send text through the clipboard") },
 	{ K_SUBTOGGLE, OPT_FLYOUT, _T("Hiện thông báo khi chuyển Việt/Anh"), _T("Show a notice when switching") },
 	{ K_SUBTOGGLE, OPT_BEEP, _T("Kêu bíp khi chuyển Việt/Anh"), _T("Beep when switching") },
@@ -1159,7 +1157,6 @@ bool SettingsWindow::getOption(const int& id) const {
 	case OPT_ESCAPE: return vRestoreOnEscape != 0;
 	case OPT_WARN_CONFLICT: return vWarnOtherKeyboards != 0;
 	case OPT_ZWJF: return vAllowConsonantZFWJ != 0;
-	case OPT_TEMP_OFF_SPELLING: return vTempOffSpelling != 0;
 	case OPT_QUICK_TELEX: return vQuickTelex != 0;
 	case OPT_QUICK_START: return vQuickStartConsonant != 0;
 	case OPT_QUICK_END: return vQuickEndConsonant != 0;
@@ -1168,7 +1165,6 @@ bool SettingsWindow::getOption(const int& id) const {
 	case OPT_MACRO_AUTO_CAPS: return vAutoCapsMacro != 0;
 	case OPT_SMART_SWITCH: return vUseSmartSwitchKey != 0;
 	case OPT_REMEMBER_CODE: return vRememberCode != 0;
-	case OPT_TEMP_OFF_EASYKEY: return vTempOffOpenKey != 0;
 	case OPT_CLIPBOARD: return vSendKeyStepByStep == 0;
 	case OPT_FLYOUT: return vShowSwitchFlyout != 0;
 	case OPT_INPUT_HOTKEY: return vSwitchInputType != 0;
@@ -1184,7 +1180,6 @@ bool SettingsWindow::getOption(const int& id) const {
 bool SettingsWindow::isOptionEnabled(const int& id) const {
 	switch (id) {
 	case OPT_ZWJF:
-	case OPT_TEMP_OFF_SPELLING:
 		return vCheckSpelling != 0;
 	case OPT_MACRO_ENGLISH:
 	case OPT_MACRO_AUTO_CAPS:
@@ -1208,7 +1203,6 @@ void SettingsWindow::setOption(const int& id, const bool& on) {
 		//smart typing: spell check and putting the keys back go together
 		APP_SET_DATA(vCheckSpelling, val);
 		APP_SET_DATA(vRestoreIfWrongSpelling, val);
-		vSetCheckSpelling();
 		break;
 	case OPT_MODERN: APP_SET_DATA(vUseModernOrthography, val); break;
 	case OPT_MACRO: APP_SET_DATA(vUseMacro, val); break;
@@ -1219,7 +1213,6 @@ void SettingsWindow::setOption(const int& id, const bool& on) {
 	case OPT_ESCAPE: APP_SET_DATA(vRestoreOnEscape, val); break;
 	case OPT_WARN_CONFLICT: APP_SET_DATA(vWarnOtherKeyboards, val); break;
 	case OPT_ZWJF: APP_SET_DATA(vAllowConsonantZFWJ, val); break;
-	case OPT_TEMP_OFF_SPELLING: APP_SET_DATA(vTempOffSpelling, val); break;
 	case OPT_QUICK_TELEX: APP_SET_DATA(vQuickTelex, val); break;
 	case OPT_QUICK_START: APP_SET_DATA(vQuickStartConsonant, val); break;
 	case OPT_QUICK_END: APP_SET_DATA(vQuickEndConsonant, val); break;
@@ -1228,7 +1221,6 @@ void SettingsWindow::setOption(const int& id, const bool& on) {
 	case OPT_MACRO_AUTO_CAPS: APP_SET_DATA(vAutoCapsMacro, val); break;
 	case OPT_SMART_SWITCH: APP_SET_DATA(vUseSmartSwitchKey, val); break;
 	case OPT_REMEMBER_CODE: APP_SET_DATA(vRememberCode, val); break;
-	case OPT_TEMP_OFF_EASYKEY: APP_SET_DATA(vTempOffOpenKey, val); break;
 	case OPT_CLIPBOARD: APP_SET_DATA(vSendKeyStepByStep, on ? 0 : 1); break;
 	case OPT_FLYOUT: APP_SET_DATA(vShowSwitchFlyout, val); break;
 	case OPT_INPUT_HOTKEY:
@@ -1292,6 +1284,7 @@ void SettingsWindow::showDropDown(const Item& item) {
 		saveSmartSwitchKeyData();
 	}
 	SystemTrayHelper::updateData();
+	AppDelegate::getInstance()->showCodeTableFlyout();
 	InvalidateRect(hWnd, NULL, FALSE);
 }
 

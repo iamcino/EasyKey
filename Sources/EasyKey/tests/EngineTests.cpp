@@ -28,13 +28,11 @@ int vUseMacroInEnglishMode = 0;
 int vAutoCapsMacro = 0;
 int vUseSmartSwitchKey = 0;
 int vUpperCaseFirstChar = 0;
-int vTempOffSpelling = 0;
 int vAllowConsonantZFWJ = 0;
 int vQuickStartConsonant = 0;
 int vQuickEndConsonant = 0;
 int vRememberCode = 0;
 int vOtherLanguage = 0;
-int vTempOffOpenKey = 0;
 int vRestoreOnEscape = 1;
 
 static vKeyHookState* pData;

@@ -143,13 +143,6 @@ extern int vUseSmartSwitchKey;
 extern int vUpperCaseFirstChar;
 
 /**
- * Temporarily turn off spell checking with Ctrl key
- * 0: No
- * 1: Yes
- */
-extern int vTempOffSpelling;
-
-/**
  * Allow write word with consonant Z, F, W, J
  * 0: No
  * 1: Yes
@@ -183,12 +176,6 @@ extern int vRememberCode;
  * Turn off Vietnamese when typing in another language.
  */
 extern int vOtherLanguage;
-
-/**
- * 0: No; 1: Yes
- * Temporarily turn off OpenKey  by hot key (Command on mac, Alt on Windows and Linux)
- */
-extern int vTempOffOpenKey;
 
 /*
  * Esc while typing a word puts back the keys as typed (EasyKey)
@@ -230,21 +217,6 @@ void startNewSession();
  * do some task in english mode (use for macro)
  */
 void vEnglishMode(const vKeyEventState& state, const Uint16& data, const bool& isCaps, const bool& otherControlKey);
-
-/**
- * temporarily turn off spell checking
- */
-void vTempOffSpellChecking();
-
-/**
- * reset spelling value
- */
-void vSetCheckSpelling();
-
-/**
- * temporarily turn off OpenKey engine
- */
-void vTempOffEngine(const bool& off=true);
 
 /**
  * the next word starts a sentence, e.g. after switching to another window

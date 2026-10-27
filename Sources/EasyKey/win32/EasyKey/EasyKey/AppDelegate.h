@@ -44,6 +44,8 @@ public: //event
 	void showSwitchFlyout();
 	//the popup with the input method, after it changed from the hotkey, the tray menu or Settings
 	void showInputTypeFlyout();
+	//the popup with the code table, after it was picked in the tray menu or Settings
+	void showCodeTableFlyout();
 	//the foreground window runs with more rights than EasyKey, so typing there is not seen
 	void onElevatedWindow(const HWND& hWnd);
 	//display language or accent color changed
@@ -62,7 +64,8 @@ public: //event
 	void onQuickConvert();
 
 	void onInputType(const int& type);
-	void onTableCode(const int& code);
+	//showFlyout is off when EasyKey restores the code table remembered for an app
+	void onTableCode(const int& code, const bool& showFlyout = true);
 
 	void onControlPanel();
 	void onEasyKeyAbout();

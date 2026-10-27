@@ -20,9 +20,9 @@ A lightweight Vietnamese keyboard for Windows 11: one `EasyKey.exe` under 1 MB, 
 - Quit other Vietnamese keyboards (UniKey, EVKey, OpenKey...). EasyKey tells you if it finds one running.
 
 ## Highlights
-- **Telex, VNI, Simple Telex**, Unicode encoding (legacy TCVN3, VNI Windows and Unicode combining under Advanced).
+- **Telex, VNI, Simple Telex**, Unicode character encoding (legacy TCVN3, VNI Windows and Unicode combining under Advanced).
 - **Smart typing:** marks only real Vietnamese words, and Esc gives back the keys you typed (việt → vieejt). Quick typing and shortcuts of any length.
-- **Remembers Vietnamese/English and the encoding per app.**
+- **Remembers Vietnamese/English and the character encoding per app.**
 - **No repeated letters** in the Chrome and Edge address bar or other autocomplete fields.
 - **Windows 11 look:** light/dark, accent colors, Vietnamese or English UI, a small popup when you switch between Vietnamese and English.
 - **No ENG/VIE language indicator** on the taskbar.

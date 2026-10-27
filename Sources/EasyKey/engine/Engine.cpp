@@ -119,9 +119,7 @@ static Byte _upperCaseStatus = 0; //for Write upper case for the first letter; 2
 static bool _sentenceFromWindow = false; //set by vStartSentence, the click that switched windows keeps it
 static bool _isCharKeyCode;
 static vector<Uint32> _specialChar;
-static bool _useSpellCheckingBefore;
 static bool _hasHandleQuickConsonant;
-static bool _willTempOffEngine = false;
 
 //function prototype
 void findAndCalculateVowel(const bool& forGrammar=false);
@@ -139,7 +137,6 @@ string wideStringToUtf8(const wstring& str) {
 void* vKeyInit() {
     _index = 0;
     _stateIndex = 0;
-    _useSpellCheckingBefore = vCheckSpelling;
     _typingStatesData.clear();
     _typingStates.clear();
     _longWordHelper.clear();
@@ -1240,27 +1237,11 @@ bool restoreRawKeys() {
     _specialChar.clear();
     _typingStates.clear();
     hMacroKey.clear();
-    vCheckSpelling = _useSpellCheckingBefore;
-    _willTempOffEngine = false;
     hCode = vWillProcess;
     hBPC = backspaceCount;
     hNCC = keyCount;
     hExt = 0;
     return true;
-}
-
-void vTempOffSpellChecking() {
-    if (_useSpellCheckingBefore) {
-        vCheckSpelling = vCheckSpelling ? 0 : 1;
-    }
-}
-
-void vSetCheckSpelling() {
-    _useSpellCheckingBefore = vCheckSpelling;
-}
-
-void vTempOffEngine(const bool& off) {
-    _willTempOffEngine = off;
 }
 
 void vStartSentence() {
@@ -1321,28 +1302,22 @@ void vEnglishMode(const vKeyEventState& state, const Uint16& data, const bool& i
     hCode = vDoNothing;
     if (state == vKeyEventState::MouseDown || (otherControlKey && !isCaps)) {
         hMacroKey.clear();
-        _willTempOffEngine = false;
     } else if (data == KEY_SPACE) {
         if (!_hasHandledMacro && findMacro(hMacroKey, hMacroData)) {
             hCode = vReplaceMaro;
             hBPC = (Byte)hMacroKey.size();
         }
         hMacroKey.clear();
-        _willTempOffEngine = false;
     } else if (data == KEY_DELETE) {
         if (hMacroKey.size() > 0) {
             hMacroKey.pop_back();
-        } else {
-            _willTempOffEngine = false;
         }
     } else {
         if (isWordBreak(vKeyEvent::Keyboard, state, data) &&
             std::find(_charKeyCode.begin(), _charKeyCode.end(), data) == _charKeyCode.end()) {
             hMacroKey.clear();
-            _willTempOffEngine = false;
         } else {
-            if (!_willTempOffEngine)
-                hMacroKey.push_back(data | (isCaps ? CAPS_MASK : 0));
+            hMacroKey.push_back(data | (isCaps ? CAPS_MASK : 0));
         }
     }
 }
@@ -1396,8 +1371,6 @@ void vKeyHandleEvent(const vKeyEvent& event,
         
         if (hCode == vDoNothing) {
             startNewSession();
-            vCheckSpelling = _useSpellCheckingBefore;
-            _willTempOffEngine = false;
         } else if (hCode == vReplaceMaro || _hasHandleQuickConsonant) {
             _index = 0;
         }
@@ -1454,8 +1427,6 @@ void vKeyHandleEvent(const vKeyEvent& event,
                 saveWord();
             }
         }
-        vCheckSpelling = _useSpellCheckingBefore;
-        _willTempOffEngine = false;
     } else if (data == KEY_DELETE) {
         hCode = vDoNothing;
         hExt = 2; //delete
@@ -1503,11 +1474,6 @@ void vKeyHandleEvent(const vKeyEvent& event,
             }
         }
     } else { //START AND CHECK KEY
-        if (_willTempOffEngine) {
-            hCode = vDoNothing;
-            hExt = 3;
-            return;
-        }
         if (_spaceCount > 0) {
             hBPC = 0;
             hNCC = 0;
