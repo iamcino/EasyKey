@@ -11,6 +11,7 @@
 #include <cstdio>
 #include <string>
 #include "../engine/Engine.h"
+#include "../engine/ConvertTool.h"
 
 //engine settings, normally defined by each platform app (see Engine.h)
 int vLanguage = 1;
@@ -58,6 +59,7 @@ static Uint16 charToKeyCode(char c) {
         case '.': return KEY_DOT;
         case '?': return KEY_SLASH; //with Shift
         case '!': return KEY_1; //with Shift
+        case '@': return KEY_2; //with Shift
     }
     return 0;
 }
@@ -79,6 +81,8 @@ static wchar_t keyCodeToChar(Uint32 data) {
 static void sendKeyCode(wstring& text, Uint32 data) {
     if (data & CHAR_CODE_MASK)
         text += (wchar_t)(Uint16)data;
+    else if (keyCodeToCharacter(data))
+        text += (wchar_t)keyCodeToCharacter(data); //like the Windows hook: punctuation, Shift + digit
     else
         text += keyCodeToChar(data);
 }
@@ -88,8 +92,8 @@ static wstring typeKeys(const string& keys) {
     wstring text;
     for (char c : keys) {
         Uint16 keyCode = charToKeyCode(c);
-        bool isPunctuation = c == '.' || c == '?' || c == '!';
-        bool isCaps = (c >= 'A' && c <= 'Z') || c == '?' || c == '!';
+        bool isPunctuation = c == '.' || c == '?' || c == '!' || c == '@';
+        bool isCaps = (c >= 'A' && c <= 'Z') || c == '?' || c == '!' || c == '@';
         vKeyHandleEvent(vKeyEvent::Keyboard, vKeyEventState::KeyDown, keyCode, isCaps ? 1 : 0, false);
         if (pData->code == vDoNothing) {
             //the key is passed through to the application
@@ -189,6 +193,16 @@ static void testTelex() {
     expectTyping("Telex", "xin chaof~", L"xin chaof");
     expectTyping("Telex", "xin~", L"xin|");
     expectTyping("Telex", "vieejt~ nam", L"vieejt nam");
+    //a word that is not Vietnamese gets its keys back when it ends, also on Shift + digit (@ ! #...)
+    expectTyping("Telex", "user ", L"user ");
+    expectTyping("Telex", "user@", L"user@");
+    expectTyping("Telex", "vieejt@", L"việt@");
+    //www keeps all three letters; a doubled mark key stays undone, that is how English words are typed
+    expectTyping("Telex", "www.", L"www.");
+    expectTyping("Telex", "www.google.com", L"www.google.com");
+    expectTyping("Telex", "ww ", L"w ");
+    expectTyping("Telex", "ass ", L"as ");
+    expectTyping("Telex", "tesst ", L"test ");
     //capitalize the first letter after . ? !
     vUpperCaseFirstChar = 1;
     expectTyping("Telex", "xin. chaof", L"xin. Chào");
@@ -225,10 +239,38 @@ static void testVNI() {
     expectTyping("VNI", "a10", L"a");
 }
 
+static void expectConvert(const char* name, const string& input, const string& expected) {
+    total++;
+    string actual = convertUtil(input);
+    if (actual != expected) {
+        failures++;
+        printf("FAIL [Convert %s] \"%s\": expected \"%s\", got \"%s\"\n", name, input.c_str(), expected.c_str(), actual.c_str());
+    }
+}
+
+static void testConvert() {
+    convertToolFromCode = convertToolToCode = 0;
+    //keep case changes no letter
+    expectConvert("keep", "Tiếng Việt ABC Hà Nội", "Tiếng Việt ABC Hà Nội");
+    convertToolRemoveMark = true;
+    expectConvert("remove marks", "Tiếng Việt ĐƯỜNG", "Tieng Viet DUONG");
+    convertToolRemoveMark = false;
+    convertToolToAllCaps = true;
+    expectConvert("all caps", "Tiếng Việt", "TIẾNG VIỆT");
+    convertToolToAllCaps = false;
+    convertToolToAllNonCaps = true;
+    expectConvert("lower", "Tiếng VIỆT", "tiếng việt");
+    convertToolToAllNonCaps = false;
+    convertToolToCapsEachWord = true;
+    expectConvert("each word", "tiếng VIỆT", "Tiếng Việt");
+    convertToolToCapsEachWord = false;
+}
+
 int main() {
     pData = (vKeyHookState*)vKeyInit();
     testTelex();
     testVNI();
+    testConvert();
     printf("%d/%d engine tests passed\n", total - failures, total);
     return failures == 0 ? 0 : 1;
 }

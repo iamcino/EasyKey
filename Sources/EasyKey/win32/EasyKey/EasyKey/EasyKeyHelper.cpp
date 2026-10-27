@@ -45,7 +45,8 @@ static HWND _tempWnd;
 static TCHAR _exePath[1024] = { 0 };
 static LPCTSTR _exeName = _exePath;
 static HANDLE _proc;
-static string _exeNameUtf8 = "TheEasyKeyProject";
+static const char* _noAppYet = "TheEasyKeyProject"; //until the user switches to an app
+static string _exeNameUtf8 = _noAppYet;
 static string _unknownProgram = "UnknownProgram";
 
 int CF_RTF = RegisterClipboardFormat(_T("Rich Text Format"));
@@ -209,7 +210,8 @@ static void setRunValue(const bool& on) {
 	if (RegOpenKeyEx(HKEY_CURRENT_USER, _runOnStartupKeyPath, NULL, KEY_ALL_ACCESS, &runKey) != ERROR_SUCCESS)
 		return;
 	if (on) {
-		wstring path = EasyKeyHelper::getFullPath();
+		//quoted, or a path with spaces (C:\Users\Nguyen Van A\...) makes Windows try C:\Users\Nguyen.exe first
+		wstring path = L"\"" + EasyKeyHelper::getFullPath() + L"\"";
 		RegSetValueEx(runKey, _T("EasyKey"), 0, REG_SZ, (byte*)path.c_str(), ((DWORD)path.size() + 1) * sizeof(TCHAR));
 	} else {
 		RegDeleteValue(runKey, _T("EasyKey"));
@@ -269,6 +271,10 @@ string& EasyKeyHelper::getFrontMostAppExecuteName() {
 	_exeNameUtf8 = strTo;
 	//LOG(L"%s\n", utf8ToWideString(_exeNameUtf8).c_str());
 	return _exeNameUtf8;
+}
+
+bool EasyKeyHelper::isRealApp(const string& exe) {
+	return !exe.empty() && exe != _unknownProgram && exe != _noAppYet;
 }
 
 string & EasyKeyHelper::getLastAppExecuteName() {
@@ -461,7 +467,13 @@ bool EasyKeyHelper::isEnglishUi() {
 		return false;
 	if (vUiLanguage == 2)
 		return true;
-	return PRIMARYLANGID(GetUserDefaultUILanguage()) != LANG_VIETNAMESE;
+	//Vietnamese Windows, or English Windows set to Vietnam (region or formats) as most PCs in Vietnam are
+	static int windowsVietnamese = -1;
+	if (windowsVietnamese < 0)
+		windowsVietnamese = PRIMARYLANGID(GetUserDefaultUILanguage()) == LANG_VIETNAMESE ||
+			GetUserGeoID(GEOCLASS_NATION) == 251 || //Vietnam
+			PRIMARYLANGID(LANGIDFROMLCID(GetUserDefaultLCID())) == LANG_VIETNAMESE;
+	return !windowsVietnamese;
 }
 
 bool EasyKeyHelper::isWindowElevated(const HWND& hWnd) {

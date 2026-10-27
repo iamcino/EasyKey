@@ -82,7 +82,7 @@ static const RowInfo advancedRows[] = {
 	{ K_GROUP, 2, _T("Giao diện"), _T("Appearance") },
 	{ K_SUBLABEL, 0, NULL, NULL },
 	{ K_GROUP, 3, _T("Bảng mã"), _T("Character encoding") },
-	{ K_SUBCOMBO, OPT_CODE_TABLE, _T("Bảng mã cũ"), _T("Legacy encoding"), _T("Chỉ dùng cho văn bản và font cũ"), _T("Only for old documents and fonts") },
+	{ K_SUBCOMBO, OPT_CODE_TABLE, _T("Bảng mã khi gõ"), _T("Typing encoding"), _T("Bảng mã cũ chỉ dùng cho font cũ"), _T("Legacy ones are for old fonts") },
 	{ K_SUBTOGGLE, OPT_REMEMBER_CODE, _T("Nhớ bảng mã theo từng ứng dụng"), _T("Remember the encoding per app") },
 	{ K_GROUP, 4, _T("Chính tả"), _T("Spelling") },
 	{ K_SUBTOGGLE, OPT_ZWJF, _T("Cho phép z, w, j, f làm phụ âm đầu"), _T("Allow z, w, j, f as first consonants") },
@@ -96,7 +96,7 @@ static const RowInfo advancedRows[] = {
 	{ K_SUBTOGGLE, OPT_MACRO_AUTO_CAPS, _T("Tự viết hoa theo từ gõ tắt"), _T("Match the capitalization of shortcuts") },
 	{ K_GROUP, 6, _T("Ứng dụng"), _T("Apps") },
 	{ K_SUBTOGGLE, OPT_SMART_SWITCH, _T("Nhớ chế độ Việt/Anh theo từng ứng dụng"), _T("Remember Vietnamese/English per app") },
-	{ K_SUBBUTTON, ACT_GAME_APPS, _T("Chế độ game"), _T("Game mode"), _T("Phím đi thẳng vào game, Enter mở chat tiếng Việt"), _T("Keys go to the game, Enter opens the chat in Vietnamese") },
+	{ K_SUBBUTTON, ACT_GAME_APPS, _T("Chế độ game"), _T("Game mode"), _T("Phím vào game, Enter để gõ tiếng Việt"), _T("Keys go to the game, Enter types Vietnamese") },
 	{ K_SUBTOGGLE, OPT_CLIPBOARD, _T("Gửi chữ qua Clipboard"), _T("Send text through the clipboard") },
 	{ K_SUBTOGGLE, OPT_FLYOUT, _T("Hiện thông báo khi chuyển Việt/Anh"), _T("Show a notice when switching") },
 	{ K_SUBTOGGLE, OPT_BEEP, _T("Kêu bíp khi chuyển Việt/Anh"), _T("Beep when switching") },
@@ -1317,7 +1317,7 @@ void SettingsWindow::showDropDown(const Item& item) {
 void SettingsWindow::showGameApps(const Item& item) {
 	vector<string> apps = getGameApps();
 	string last = EasyKeyHelper::getFrontMostAppExecuteName(); //Settings keeps the app the user came from
-	bool canAdd = !last.empty() && last != "UnknownProgram" && !isGameApp(last);
+	bool canAdd = EasyKeyHelper::isRealApp(last) && !isGameApp(last);
 	HMENU menu = CreatePopupMenu();
 	if (canAdd) {
 		wstring add = T(_T("Bật cho "), _T("Turn on for ")) + utf8ToWideString(last);
