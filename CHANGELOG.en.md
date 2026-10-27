@@ -5,6 +5,8 @@
 ## 1.0.4 (Windows 11 x64)
 - Fixed a legacy code table (VNI Windows, TCVN3, Unicode compound…) or the Vietnamese/English choice going back to the previous one, for example Unicode, after picking it in Settings or the tray menu and returning to the app. EasyKey now remembers the choice for the app you are typing in.
 - The input method popup also shows when the input method is changed from the tray menu or the Settings window.
+- With "Run as admin" on, EasyKey now starts through Task Scheduler using the Windows API instead of the schtasks command. The task is no longer stopped by Windows after 72 hours, also runs on battery, and if the task can't be created EasyKey still starts with Windows (without admin rights).
+- Tidied the source file headers: the OpenKey credit (Mai Vu Tuyen) stays, with an SPDX GPL-3.0-only line; removed the unused macOS key code file.
 
 ## 1.0.3 (Windows 11 x64)
 - Update checks run in the background, so the mouse and keyboard no longer stall while EasyKey checks for or downloads an update.
