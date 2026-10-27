@@ -4,7 +4,7 @@
 
 Bộ gõ tiếng Việt gọn nhẹ cho Windows 11: một file `EasyKey.exe` chưa tới 1 MB, không cần cài đặt, giao diện theo phong cách Windows 11.
 
-[**Tải bản mới nhất**](https://github.com/iamcino/EasyKey/releases/latest) · [Nhật ký thay đổi](CHANGELOG.md) · [Báo lỗi](https://github.com/iamcino/EasyKey/issues)
+[**Tải EasyKey.exe mới nhất**](https://github.com/iamcino/EasyKey/releases/latest/download/EasyKey.exe) · [Trang phát hành](https://github.com/iamcino/EasyKey/releases/latest) · [Nhật ký thay đổi](CHANGELOG.md) · [Báo lỗi](https://github.com/iamcino/EasyKey/issues)
 
 <p align="center">
   <img src="docs/screenshots/settings-light.png" alt="Cửa sổ Cài đặt, chế độ sáng" width="400">
@@ -29,8 +29,8 @@ Bộ gõ tiếng Việt gọn nhẹ cho Windows 11: một file `EasyKey.exe` ch�
 - **Tự cập nhật** ngay trong ứng dụng (luôn hỏi trước, kiểm tra SHA-256), gỡ sạch bằng một nút.
 
 ## Cài đặt
-1. Tải `EasyKey<phiên bản>-Windows.zip` ở trang [Releases](https://github.com/iamcino/EasyKey/releases/latest).
-2. Giải nén vào một thư mục cố định, chạy `EasyKey.exe`.
+1. Tải [`EasyKey.exe`](https://github.com/iamcino/EasyKey/releases/latest/download/EasyKey.exe) (hoặc file zip ở [trang phát hành](https://github.com/iamcino/EasyKey/releases/latest)).
+2. Đặt vào một thư mục cố định rồi chạy.
 3. Xong. Mặc định là Telex, Unicode, chạy cùng Windows, bấm **Alt + Z** để chuyển Việt/Anh.
 
 Nếu máy đã có OpenKey, EasyKey tự chép cài đặt và bảng gõ tắt sang ở lần chạy đầu.
