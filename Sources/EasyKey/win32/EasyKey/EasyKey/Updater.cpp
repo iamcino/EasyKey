@@ -221,7 +221,7 @@ static void install(const HWND& owner, const string& exe) {
 		return;
 	}
 
-	restartAs(path);
+	Updater::restartAs(path);
 }
 
 void Updater::restartAs(const wstring& path) {
