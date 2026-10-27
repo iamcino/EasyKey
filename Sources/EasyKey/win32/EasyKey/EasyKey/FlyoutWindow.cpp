@@ -235,10 +235,17 @@ void FlyoutWindow::render(const UINT& dpi, const RECT& workArea, const bool& mes
 		Gdiplus::SolidBrush badgeBrush((Gdiplus::ARGB)(filled ? accentColor : (dark ? 0x14FFFFFF : 0x0D000000)));
 		g.FillEllipse(&badgeBrush, badgeX, badgeY, s(40), s(40));
 		Gdiplus::SolidBrush letterBrush((Gdiplus::ARGB)(filled ? (dark ? 0xFF000000 : 0xFFFFFFFF) : text));
-		Gdiplus::StringFormat centered(format);
-		centered.SetAlignment(Gdiplus::StringAlignmentCenter);
-		centered.SetLineAlignment(Gdiplus::StringAlignmentCenter);
-		g.DrawString(warningBadge ? _T("!") : vietnamese ? _T("V") : _T("E"), -1, badgeFont, Gdiplus::RectF(badgeX, badgeY, s(40), s(40)), &centered, &letterBrush);
+		//center the letter's ink, not its line box: the line box has more room
+		//above the caps than below, which put the letter about a pixel low
+		LPCTSTR letter = warningBadge ? _T("!") : vietnamese ? _T("V") : _T("E");
+		Gdiplus::FontFamily badgeFamily;
+		badgeFont->GetFamily(&badgeFamily);
+		Gdiplus::GraphicsPath letterPath;
+		letterPath.AddString(letter, -1, &badgeFamily, badgeFont->GetStyle(), badgeFont->GetSize(), Gdiplus::PointF(0, 0), format);
+		Gdiplus::RectF ink;
+		letterPath.GetBounds(&ink);
+		Gdiplus::PointF letterOrigin(badgeX + s(20) - (ink.X + ink.Width / 2), badgeY + s(20) - (ink.Y + ink.Height / 2));
+		g.DrawString(letter, -1, badgeFont, letterOrigin, format, &letterBrush);
 
 		float textX = badgeX + s(40) + s(14);
 		float middle = margin + pillHeight / 2;
