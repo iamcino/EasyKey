@@ -4,6 +4,7 @@
 
 ## Bản tiếp theo
 - Popup cũng hiện khi đổi bảng mã từ menu ở khay hệ thống hay trong cửa sổ Cài đặt, với tên bảng mã, ví dụ "TCVN3".
+- Đang gõ tiếng Anh mà đổi kiểu gõ hay bảng mã thì popup hiện đúng lựa chọn mới, kèm dòng "dùng khi gõ tiếng Việt" (trước đây popup chỉ hiện "Tiếng Anh").
 - Bỏ hai tùy chọn "Tạm tắt chính tả bằng phím Ctrl" và "Tạm tắt EasyKey bằng phím Alt". Bấm Esc ngay sau một từ để lấy lại phím vừa gõ vẫn làm được việc này, còn bấm Alt một mình trên Windows lại nhảy vào thanh menu của ứng dụng.
 - Phần tiếng Anh của giao diện, README và nhật ký thay đổi thống nhất dùng "character encoding" thay cho "code table".
 

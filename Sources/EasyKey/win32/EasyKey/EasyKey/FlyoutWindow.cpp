@@ -151,14 +151,14 @@ void FlyoutWindow::render(const UINT& dpi, const RECT& workArea, const bool& mes
 		detail = messageDetail;
 	} else if (shown == FLYOUT_CODE_TABLE) {
 		title = codeTableName(vCodeTable);
-		detail = TR("Bảng mã · ", "Character encoding · ") + inputType;
+		detail = TR("Bảng mã · ", "Character encoding · ") +
+			(vietnamese ? inputType : wstring(TR("dùng khi gõ tiếng Việt", "used when typing Vietnamese")));
+	} else if (shown == FLYOUT_INPUT_TYPE) {
+		title = inputType;
+		detail = TR("Kiểu gõ · ", "Input method · ") +
+			(vietnamese ? wstring(codeTableName(vCodeTable)) : wstring(TR("dùng khi gõ tiếng Việt", "used when typing Vietnamese")));
 	} else if (vietnamese) {
-		if (shown == FLYOUT_INPUT_TYPE) {
-			title = inputType;
-			detail = TR("Kiểu gõ · ", "Input method · ") + wstring(codeTableName(vCodeTable));
-		} else {
-			detail = inputType + wstring(_T(" · ")) + codeTableName(vCodeTable);
-		}
+		detail = inputType + wstring(_T(" · ")) + codeTableName(vCodeTable);
 	} else {
 		detail = TR("Bấm ", "Press ") + EasyKeyHelper::getHotKeyString(vSwitchKeyStatus) + TR(" để gõ tiếng Việt", " to type Vietnamese");
 	}

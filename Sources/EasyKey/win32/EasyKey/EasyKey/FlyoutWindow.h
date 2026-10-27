@@ -43,7 +43,8 @@ public:
 	FlyoutWindow(const HINSTANCE& hInstance);
 	~FlyoutWindow();
 	//safe to call from the keyboard hook, the flyout is drawn later by the message loop.
-	//It names the language, the input method or the code table, see FLYOUT_*
+	//It names the language, the input method or the code table, see FLYOUT_*;
+	//the last two also show while typing English, they apply when going back to Vietnamese
 	void notify(const int& what = FLYOUT_LANGUAGE);
 	//a notice in the same pill, shown a little longer
 	void showMessage(const wstring& title, const wstring& detail, const bool& warning = true);

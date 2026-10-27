@@ -4,6 +4,7 @@
 
 ## Next version
 - A popup also shows when the character encoding is changed from the tray menu or the Settings window.
+- While typing English, changing the input method or character encoding shows the new choice in the popup with "used when typing Vietnamese" (it used to show only "English").
 - Removed the "Hold Ctrl to skip spell check" and "Hold Alt to pause EasyKey" options. Pressing Esc right after a word already gives back the keys you typed, and pressing Alt alone on Windows moves to the app's menu bar.
 - The English UI, README and changelog now say "character encoding" everywhere instead of "code table".
 
