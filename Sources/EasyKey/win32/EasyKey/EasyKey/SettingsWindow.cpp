@@ -239,38 +239,22 @@ void SettingsWindow::applyTheme() {
 
 void SettingsWindow::createFonts() {
 	freeFonts();
-	fontBody = ThemeHelper::createFont(false, (float)s(14), Gdiplus::FontStyleRegular);
-	fontCaption = ThemeHelper::createFont(false, (float)s(12), Gdiplus::FontStyleRegular);
-	fontSmall = ThemeHelper::createFont(false, (float)s(13), Gdiplus::FontStyleRegular);
-	fontStrong = ThemeHelper::createFont(true, (float)s(13), Gdiplus::FontStyleRegular);
-	fontTitle = ThemeHelper::createFont(true, (float)s(15), Gdiplus::FontStyleRegular);
-	fontBadge = ThemeHelper::createFont(false, (float)s(15), Gdiplus::FontStyleBold);
-	textFormat = Gdiplus::StringFormat::GenericTypographic()->Clone();
-	textFormat->SetFormatFlags(Gdiplus::StringFormatFlagsNoWrap | Gdiplus::StringFormatFlagsLineLimit |
-		Gdiplus::StringFormatFlagsMeasureTrailingSpaces);
-	textFormat->SetTrimming(Gdiplus::StringTrimmingEllipsisCharacter);
+	fontBody = createFluentFont(false, (float)s(14));
+	fontCaption = createFluentFont(false, (float)s(12));
+	fontSmall = createFluentFont(false, (float)s(13));
+	fontStrong = createFluentFont(true, (float)s(13));
+	fontTitle = createFluentFont(true, (float)s(15));
+	fontBadge = createFluentFont(false, (float)s(15), true);
 }
 
 void SettingsWindow::freeFonts() {
-	Gdiplus::Font** fonts[] = { &fontBody, &fontCaption, &fontSmall, &fontStrong, &fontTitle, &fontBadge };
-	for (Gdiplus::Font** font : fonts) {
-		delete *font;
-		*font = NULL;
-	}
-	delete textFormat;
-	textFormat = NULL;
+	FluentFont** fonts[] = { &fontBody, &fontCaption, &fontSmall, &fontStrong, &fontTitle, &fontBadge };
+	for (FluentFont** font : fonts)
+		freeFluentFont(*font);
 }
 
-int SettingsWindow::textWidth(Gdiplus::Font* font, LPCTSTR text) const {
-	HDC hdc = GetDC(NULL);
-	Gdiplus::RectF box;
-	{
-		Gdiplus::Graphics g(hdc);
-		g.SetTextRenderingHint(Gdiplus::TextRenderingHintAntiAliasGridFit);
-		g.MeasureString(text, -1, font, Gdiplus::PointF(0, 0), textFormat, &box);
-	}
-	ReleaseDC(NULL, hdc);
-	return (int)ceil(box.Width);
+int SettingsWindow::textWidth(FluentFont* font, LPCTSTR text) const {
+	return fluentTextWidth(font, text ? text : L"");
 }
 
 /*-------------------------------- layout --------------------------------*/
@@ -573,24 +557,26 @@ bool SettingsWindow::getThumb(RECT& track, RECT& thumb) const {
 
 /*-------------------------------- painting --------------------------------*/
 
+//GDI+ clip of the moment, so the text stays inside a scrolled list like the shapes do
+static RECT clipOf(Gdiplus::Graphics& g) {
+	Gdiplus::RectF bounds;
+	g.GetClipBounds(&bounds);
+	RECT clip = { (LONG)floor(max(bounds.X, -100000.0f)), (LONG)floor(max(bounds.Y, -100000.0f)),
+		(LONG)ceil(min(bounds.GetRight(), 100000.0f)), (LONG)ceil(min(bounds.GetBottom(), 100000.0f)) };
+	return clip;
+}
+
 RECT SettingsWindow::toView(const RECT& rc) const {
 	RECT r = rc;
 	OffsetRect(&r, 0, -scrollY);
 	return r;
 }
 
-void SettingsWindow::drawText(Gdiplus::Graphics& g, LPCTSTR text, const RECT& rc, Gdiplus::Font* font, const DWORD& color,
+void SettingsWindow::drawText(Gdiplus::Graphics& g, LPCTSTR text, const RECT& rc, FluentFont* font, const DWORD& color,
 							  const int& hAlign, const int& vAlign) {
 	if (!text || !*text || rc.right <= rc.left)
 		return;
-	static const Gdiplus::StringAlignment align[] = {
-		Gdiplus::StringAlignmentNear, Gdiplus::StringAlignmentCenter, Gdiplus::StringAlignmentFar
-	};
-	textFormat->SetAlignment(align[hAlign]);
-	textFormat->SetLineAlignment(align[vAlign]);
-	Gdiplus::RectF box((float)rc.left, (float)rc.top, (float)(rc.right - rc.left), (float)(rc.bottom - rc.top));
-	Gdiplus::SolidBrush brush((Gdiplus::ARGB)color);
-	g.DrawString(text, -1, font, box, textFormat, &brush);
+	textBatch.add(text, rc, font, color, hAlign, vAlign, false, clipOf(g));
 }
 
 void SettingsWindow::paintSwitch(Gdiplus::Graphics& g, const RECT& rc, const bool& on, const bool& hot, const bool& enabled) {
@@ -621,7 +607,7 @@ void SettingsWindow::paintItem(Gdiplus::Graphics& g, const Item& item, const int
 	DWORD textColor = enabled ? pal.text : pal.disabled;
 
 	//label with an optional hint below it
-	auto drawLabel = [&](Gdiplus::Font* font, const int& left, const DWORD& color, const DWORD& hintColor) {
+	auto drawLabel = [&](FluentFont* font, const int& left, const DWORD& color, const DWORD& hintColor) {
 		RECT label = { left, rc.top, item.textRight, rc.bottom };
 		if (item.hint) {
 			RECT top = label, bottom = label;
@@ -923,8 +909,6 @@ void SettingsWindow::paint(HDC hdc) {
 		g.Clear(Gdiplus::Color((Gdiplus::ARGB)pal.bg));
 		g.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
 		g.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf);
-		//ClearType needs an opaque background, grayscale works on Mica too
-		g.SetTextRenderingHint(Gdiplus::TextRenderingHintAntiAliasGridFit);
 
 		if (IntersectRect(&visible, &heroArea, &view))
 			fillRound(g, toView(heroArea), (float)s(12), pal.card, pal.stroke);
@@ -949,6 +933,7 @@ void SettingsWindow::paint(HDC hdc) {
 		if (getThumb(track, thumb))
 			fillRound(g, thumb, (thumb.right - thumb.left) / 2.0f, fade(pal.sub, hotScrollBar || draggingThumb ? 80 : 50));
 	}
+	textBatch.draw(mem, client.right, client.bottom);
 
 	BitBlt(hdc, 0, 0, client.right, client.bottom, mem, 0, 0, SRCCOPY);
 	SelectObject(mem, oldBitmap);

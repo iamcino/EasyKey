@@ -4,6 +4,7 @@
 
 ## Bản tiếp theo
 - Lúc cập nhật, chuột và bàn phím không còn bị khựng: EasyKey ghi file mới ở luồng riêng và gỡ hook trước khi khởi động bản mới (lúc này phần mềm diệt virus quét file mới).
+- Chữ trong mọi cửa sổ (Cài đặt, Giới thiệu, Bảng gõ tắt, Chuyển mã, hộp thoại) vẽ bằng DirectWrite như popup: nét mịn, không vỡ khi Windows phóng to màn hình trên 100%.
 
 ## 1.0.7 (Windows 11 x64)
 - Sửa lỗi thỉnh thoảng gõ ra phím thô (ví dụ "chaats" thay vì "chất"), hay gặp ở Discord và các app Electron: khi Windows lặng lẽ gỡ hook bàn phím của EasyKey, EasyKey giờ nhận ra ngay ở phím kế tiếp và gắn lại, kể cả khi đang dùng chuột (trước đây phải chờ vài giây và có khi không nhận ra).

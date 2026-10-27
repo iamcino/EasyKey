@@ -12,7 +12,6 @@ the MIT license, see LICENSES/MIT.txt.
 #pragma once
 #include "stdafx.h"
 
-namespace Gdiplus { class Font; }
 
 //posted to a dialog after Windows has rescaled it for a new DPI
 #define WM_EASYKEY_DPI_CHANGED (WM_APP + 101)
@@ -50,8 +49,6 @@ public:
 	static double getContrast(const COLORREF& a, const COLORREF& b);
 	//start GDI+ once for the whole app
 	static void startGdiplus();
-	//Segoe UI Variable for GDI+ text, strong is semibold. The caller deletes the font
-	static Gdiplus::Font* createFont(const bool& strong, const float& pixels, const int& style);
 	//light or dark popup menus for the whole app, call again when the theme changes
 	static void applyMenuTheme();
 };

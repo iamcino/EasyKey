@@ -266,20 +266,6 @@ void ThemeHelper::startGdiplus() {
 	}
 }
 
-Gdiplus::Font* ThemeHelper::createFont(const bool& strong, const float& pixels, const int& style) {
-	//GDI+ only knows regular and bold, semibold comes from the named semibold families
-	static LPCWSTR regular[] = { L"Segoe UI Variable Text", L"Segoe UI" };
-	static LPCWSTR semibold[] = { L"Segoe UI Variable Text Semibold", L"Segoe UI Semibold" };
-	LPCWSTR* faces = strong ? semibold : regular;
-	for (int i = 0; i < 2; i++) {
-		Gdiplus::FontFamily family(faces[i]);
-		if (family.IsAvailable())
-			return new Gdiplus::Font(&family, pixels, style, Gdiplus::UnitPixel);
-	}
-	return new Gdiplus::Font(Gdiplus::FontFamily::GenericSansSerif(), pixels,
-		strong ? Gdiplus::FontStyleBold : style, Gdiplus::UnitPixel);
-}
-
 void ThemeHelper::applyMenuTheme() {
 	HMODULE uxtheme = GetModuleHandle(_T("uxtheme.dll"));
 	if (!uxtheme)
