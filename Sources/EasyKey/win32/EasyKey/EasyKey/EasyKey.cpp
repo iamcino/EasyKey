@@ -123,7 +123,6 @@ void EasyKeyInit() {
 	APP_GET_DATA(vUseSmartSwitchKey, 1);
 	APP_GET_DATA(vUpperCaseFirstChar, 0);
 	APP_GET_DATA(vAllowConsonantZFWJ, 0);
-	APP_GET_DATA(vTempOffSpelling, 0);
 	APP_GET_DATA(vQuickStartConsonant, 0);
 	APP_GET_DATA(vQuickEndConsonant, 0);
 	APP_GET_DATA(vRunAsAdmin, 0);
@@ -131,7 +130,6 @@ void EasyKeyInit() {
 	APP_GET_DATA(vCheckNewVersion, 0);
 	APP_GET_DATA(vRememberCode, 1);
 	APP_GET_DATA(vOtherLanguage, 1);
-	APP_GET_DATA(vTempOffOpenKey, 0);
 	APP_GET_DATA(vRestoreOnEscape, 1);
 	APP_GET_DATA(vWarnOtherKeyboards, 1);
 	APP_GET_DATA(vLastVersion, 0);
@@ -651,13 +649,6 @@ LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 				switchInputType();
 				_hasJustUsedHotKey = true;
 			}
-			//check temporarily turn off spell checking
-			if (vTempOffSpelling && !_hasJustUsedHotKey && _lastFlag & MASK_CONTROL) {
-				vTempOffSpellChecking();
-			}
-			if (vTempOffOpenKey && !_hasJustUsedHotKey && _lastFlag & MASK_ALT) {
-				vTempOffEngine();
-			}
 			_lastFlag = _flag;
 			_hasJustUsedHotKey = false;
 		}
@@ -792,7 +783,6 @@ VOID CALLBACK winEventProcCallback(HWINEVENTHOOK hWinEventHook, DWORD dwEvent, H
 		if (exe.compare("explorer.exe") == 0) //dont apply with windows explorer
 			return;
 		_languageTemp = getAppInputMethodStatus(exe, vLanguage | (vCodeTable << 1));
-		vTempOffEngine(false);
 		if (vUseSmartSwitchKey && (_languageTemp & 0x01) != vLanguage) {
 			if (_languageTemp != -1) {
 				vLanguage = _languageTemp & 0x01; //the other bits hold the code table
@@ -804,7 +794,7 @@ VOID CALLBACK winEventProcCallback(HWINEVENTHOOK hWinEventHook, DWORD dwEvent, H
 		startNewSession();
 		if (vRememberCode && (_languageTemp >> 1) != vCodeTable) { //for remember table code feature
 			if (_languageTemp != -1) {
-				AppDelegate::getInstance()->onTableCode(_languageTemp >> 1);
+				AppDelegate::getInstance()->onTableCode(_languageTemp >> 1, false);
 			} else {
 				saveSmartSwitchKeyData();
 			}

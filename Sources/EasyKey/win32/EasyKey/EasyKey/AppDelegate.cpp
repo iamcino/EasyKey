@@ -30,7 +30,7 @@ See LICENSE and NOTICE.
 #define WHATS_NEW_VI L"• Sửa lỗi bảng mã VNI Windows, TCVN3, Unicode tổ hợp… tự quay về Unicode sau khi chọn trong Cài đặt hay menu khay.\n" \
 	L"• Popup kiểu gõ cũng hiện khi đổi kiểu gõ từ menu khay hay trong Cài đặt.\n" \
 	L"• Chạy với quyền Admin: tác vụ khởi động không còn bị Windows dừng sau 72 giờ và vẫn chạy khi dùng pin."
-#define WHATS_NEW_EN L"• Fixed VNI Windows, TCVN3, Unicode compound… going back to Unicode after picking them in Settings or the tray menu.\n" \
+#define WHATS_NEW_EN L"• Fixed VNI Windows, TCVN3, Unicode combining… going back to Unicode after picking them in Settings or the tray menu.\n" \
 	L"• The input method popup also shows when the input method is changed from the tray menu or Settings.\n" \
 	L"• Run as administrator: the startup task is no longer stopped after 72 hours and also runs on battery."
 
@@ -54,13 +54,11 @@ int vAutoCapsMacro = 0;
 int vSendKeyStepByStep = 1;
 int vUseSmartSwitchKey = 1;
 int vUpperCaseFirstChar = 0;
-int vTempOffSpelling = 0;
 int vAllowConsonantZFWJ = 0;
 int vQuickStartConsonant = 0;
 int vQuickEndConsonant = 0;
 int vOtherLanguage = 1;
 int vRememberCode = 1;
-int vTempOffOpenKey = 0;
 int vRestoreOnEscape = 1;
 int vWarnOtherKeyboards = 1;
 int vLastVersion = 0;
@@ -185,12 +183,17 @@ void AppDelegate::onInputTypeFromHotKey() {
 
 void AppDelegate::showSwitchFlyout() {
 	if (flyout)
-		flyout->notify();
+		flyout->notify(FLYOUT_LANGUAGE);
 }
 
 void AppDelegate::showInputTypeFlyout() {
 	if (flyout)
-		flyout->notify(true);
+		flyout->notify(FLYOUT_INPUT_TYPE);
+}
+
+void AppDelegate::showCodeTableFlyout() {
+	if (flyout)
+		flyout->notify(FLYOUT_CODE_TABLE);
 }
 
 void AppDelegate::onElevatedWindow(const HWND& hWnd) {
@@ -305,7 +308,6 @@ void AppDelegate::onDefaultConfig() {
 	APP_SET_DATA(vUseSmartSwitchKey, 1);
 	APP_SET_DATA(vUpperCaseFirstChar, 0);
 	APP_SET_DATA(vAllowConsonantZFWJ, 0);
-	APP_SET_DATA(vTempOffSpelling, 0);
 
 	APP_SET_DATA(vShowOnStartUp, 0);
 	APP_SET_DATA(vShowSwitchFlyout, 1);
@@ -320,7 +322,6 @@ void AppDelegate::onDefaultConfig() {
 
 	APP_SET_DATA(vRememberCode, 1);
 	APP_SET_DATA(vOtherLanguage, 1);
-	APP_SET_DATA(vTempOffOpenKey, 0);
 	APP_SET_DATA(vRestoreOnEscape, 1);
 	APP_SET_DATA(vWarnOtherKeyboards, 1);
 	APP_SET_DATA(vFixChromiumBrowser, 1);
@@ -384,7 +385,7 @@ void AppDelegate::onInputType(const int & type) {
 	showInputTypeFlyout();
 }
 
-void AppDelegate::onTableCode(const int & code) {
+void AppDelegate::onTableCode(const int & code, const bool& showFlyout) {
 	APP_SET_DATA(vCodeTable, code);
 	if (settingsWindow) {
 		settingsWindow->fillData();
@@ -393,6 +394,8 @@ void AppDelegate::onTableCode(const int & code) {
 		setAppInputMethodStatus(EasyKeyHelper::getFrontMostAppExecuteName(), vLanguage | (vCodeTable << 1));
 		saveSmartSwitchKeyData();
 	}
+	if (showFlyout)
+		showCodeTableFlyout();
 }
 
 void AppDelegate::onControlPanel() {
