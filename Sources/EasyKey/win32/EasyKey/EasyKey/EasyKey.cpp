@@ -153,7 +153,7 @@ void EasyKeyInit() {
 	APP_GET_DATA(convertToolToCapsFirstLetter, 0);
 	APP_GET_DATA(convertToolToCapsEachWord, 0);
 	APP_GET_DATA(convertToolRemoveMark, 0);
-	APP_GET_DATA(convertToolFromCode, 0);
+	APP_GET_DATA(convertToolFromCode, 1); //TCVN3 to Unicode, the usual case
 	APP_GET_DATA(convertToolToCode, 0);
 	APP_GET_DATA(convertToolHotKey, EMPTY_HOTKEY);
 	if (convertToolHotKey == 0) {
@@ -193,6 +193,15 @@ void EasyKeyInit() {
 	DWORD macroDataSize;
 	BYTE* macroData = EasyKeyHelper::getRegBinary(_T("macroData"), macroDataSize);
 	initMacroMap((Byte*)macroData, (int)macroDataSize);
+	if (EasyKeyHelper::isFirstRun() && !macroData) {
+		//a few common shortcuts to start with, so "ko → không" in Settings works out of the box
+		const char* starters[][2] = { { "ko", "không" }, { "dc", "được" }, { "vs", "với" }, { "mn", "mọi người" }, { "ntn", "như thế nào" } };
+		for (auto& starter : starters)
+			addMacro(starter[0], starter[1]);
+		vector<Byte> starterData;
+		getMacroSaveData(starterData);
+		EasyKeyHelper::setRegBinary(_T("macroData"), starterData.data(), (int)starterData.size());
+	}
 
 	//init and load smart switch key data
 	DWORD smartSwitchKeySize;
@@ -280,6 +289,17 @@ static inline void prepareKeyEvent(INPUT& input, const Uint16& keycode, const bo
 	input.ki.wScan = 0;
 	input.ki.time = 0;
 	input.ki.dwExtraInfo = EASYKEY_EXTRA_INFO;
+}
+
+//a hotkey with Alt or Win eats its key, so the app sees Alt or Win pressed alone and opens its menu
+//(or Start) when it is released. A key that does nothing, sent in between, stops that, as AutoHotkey does
+static void maskMenuKey() {
+	if (!(_flag & (MASK_ALT | MASK_WIN)))
+		return;
+	INPUT mask[2];
+	prepareKeyEvent(mask[0], 0xE8, true); //0xE8 is unassigned
+	prepareKeyEvent(mask[1], 0xE8, false);
+	SendInput(2, mask, sizeof(INPUT));
 }
 
 static inline void prepareUnicodeEvent(INPUT& input, const Uint16& unicode, const bool& isPress) {
@@ -719,10 +739,15 @@ LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 	
 	//ignore if IME pad is open when typing Japanese/Chinese...
 	HWND hWnd = GetForegroundWindow();
-	HWND hIME = ImmGetDefaultIMEWnd(hWnd);
 	DWORD_PTR isImeON = 0;
-	//don't block the hook on a hung window, Windows removes hooks that exceed LowLevelHooksTimeout
-	SendMessageTimeout(hIME, WM_IME_CONTROL, IMC_GETOPENSTATUS, 0, SMTO_ABORTIFHUNG, 50, &isImeON);
+	DWORD foregroundProcess = 0;
+	GetWindowThreadProcessId(hWnd, &foregroundProcess);
+	//EasyKey's own windows (the shortcut list) take Vietnamese and never an IME
+	if (foregroundProcess != GetCurrentProcessId()) {
+		HWND hIME = ImmGetDefaultIMEWnd(hWnd);
+		//don't block the hook on a hung window, Windows removes hooks that exceed LowLevelHooksTimeout
+		SendMessageTimeout(hIME, WM_IME_CONTROL, IMC_GETOPENSTATUS, 0, SMTO_ABORTIFHUNG, 50, &isImeON);
+	}
 	if (vDebugKeyLog) {
 		writeDebugKeyLog(wParam, isImeON);
 	}
@@ -755,18 +780,21 @@ LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 		} else {
 			if (GET_SWITCH_KEY(vSwitchKeyStatus) == _keycode && checkHotKey(vSwitchKeyStatus, GET_SWITCH_KEY(vSwitchKeyStatus) != 0xFE)) {
 				switchLanguage();
+				maskMenuKey();
 				_hasJustUsedHotKey = true;
 				_keycode = 0;
 				return -1;
 			}
 			if (GET_SWITCH_KEY(convertToolHotKey) == _keycode && checkHotKey(convertToolHotKey, GET_SWITCH_KEY(convertToolHotKey) != 0xFE)) {
 				AppDelegate::getInstance()->onQuickConvert();
+				maskMenuKey();
 				_hasJustUsedHotKey = true;
 				_keycode = 0;
 				return -1;
 			}
 			if (GET_SWITCH_KEY(vInputTypeHotKey) == _keycode && isInputTypeHotKey(true)) {
 				switchInputType();
+				maskMenuKey();
 				_hasJustUsedHotKey = true;
 				_keycode = 0;
 				return -1;

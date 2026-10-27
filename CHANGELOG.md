@@ -4,6 +4,15 @@
 
 ## Bản tiếp theo
 - Sửa lỗi thỉnh thoảng gõ ra phím thô (ví dụ "chaats" thay vì "chất"), hay gặp ở Discord và các app Electron: khi Windows lặng lẽ gỡ hook bàn phím của EasyKey, EasyKey giờ nhận ra ngay ở phím kế tiếp và gắn lại, kể cả khi đang dùng chuột (trước đây phải chờ vài giây và có khi không nhận ra).
+- Bấm Alt + Z (hay phím tắt có Alt, Win) không còn làm ứng dụng mở thanh menu, nên chữ gõ ngay sau đó không bị "rơi" vào menu.
+- Công cụ chuyển mã giữ nguyên chữ hoa khi Kiểu chữ là "Giữ nguyên", kể cả khi bỏ dấu ("Tiếng Việt" → "Tieng Viet"). Chuyển mã mặc định từ TCVN3 sang Unicode.
+- Gõ email và từ có ký tự như @ ! # không còn bị bỏ dấu (user@gmail.com trước đây thành ủe@gmail.com). Gõ "www." giữ đủ ba chữ w.
+- Gõ tắt có sẵn vài từ ở lần chạy đầu: ko → không, dc → được, vs → với, mn → mọi người, ntn → như thế nào. Gõ được tiếng Việt trong cửa sổ Bảng gõ tắt.
+- Giao diện tự dùng tiếng Việt khi Windows để vùng hoặc định dạng Việt Nam, kể cả Windows tiếng Anh.
+- Lần đầu chạy từ thư mục Tải về hoặc thư mục tạm, EasyKey đề nghị chuyển sang thư mục cố định để không mất khi dọn thư mục.
+- "Kiểm tra cập nhật" báo "Đang kiểm tra…", và báo "Chưa kiểm tra được" khi mất mạng thay vì "đã là bản mới nhất".
+- Nhấp đúp biểu tượng khay chỉ mở Cài đặt, không đổi Việt/Anh hai lần.
+- Chế độ game không còn hiện tên nội bộ "TheEasyKeyProject" khi chưa dùng ứng dụng nào. Đường dẫn chạy cùng Windows có ngoặc kép, đúng cả khi tên người dùng có dấu cách.
 
 ## 1.0.6 (Windows 11 x64)
 - Báo có bản mới: EasyKey tự kiểm tra khi khởi động và mỗi 6 giờ (bật sẵn, tắt được trong Cài đặt › Hệ thống). Khi có bản mới, biểu tượng khay có mũi tên xanh, menu khay hiện "Cập nhật lên …" và cuối cửa sổ Cài đặt có dòng cập nhật; EasyKey không tự cài khi chưa hỏi.

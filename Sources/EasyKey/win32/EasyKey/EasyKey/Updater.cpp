@@ -104,8 +104,9 @@ static bool isVersionName(const string& version) {
 	return true;
 }
 
-bool Updater::check(string& newVersion) {
+bool Updater::check(string& newVersion, bool& failed) {
 	string data;
+	failed = true;
 	if (!httpGet(VERSION_URL, data))
 		return false;
 	//"latestWinVersion": { "versionName": "1.0.1", ... }
@@ -119,6 +120,7 @@ bool Updater::check(string& newVersion) {
 	newVersion = data.substr(pos + 1, end - pos - 1);
 	if (!isVersionName(newVersion))
 		return false;
+	failed = false;
 
 	DWORD current = EasyKeyHelper::getVersionNumber(); //major | minor << 8 | patch << 16
 	DWORD currentNumber = ((current & 0xFF) << 16) | (current & 0xFF00) | ((current >> 16) & 0xFF);
@@ -148,6 +150,7 @@ struct Job {
 	bool silent;
 	bool quiet = false; //only note the new version, see checkQuietly
 	bool newer = false;
+	bool failed = false; //version.json could not be read
 	string version, exe;
 	int result = DOWNLOAD_OK;
 };
@@ -176,7 +179,7 @@ static void download(Job* job) {
 static DWORD WINAPI runJob(LPVOID param) {
 	Job* job = (Job*)param;
 	if (job->kind == JOB_CHECK)
-		job->newer = Updater::check(job->version);
+		job->newer = Updater::check(job->version, job->failed);
 	else
 		download(job);
 	PostMessage(messageWindow, WM_UPDATER_DONE, 0, (LPARAM)job);
@@ -218,7 +221,11 @@ static void install(const HWND& owner, const string& exe) {
 		return;
 	}
 
-	ShellExecute(NULL, NULL, path.c_str(), UPDATED_ARGUMENT, folder.c_str(), SW_SHOWNORMAL);
+	restartAs(path);
+}
+
+void Updater::restartAs(const wstring& path) {
+	ShellExecute(NULL, NULL, path.c_str(), UPDATED_ARGUMENT, folderOf(path).c_str(), SW_SHOWNORMAL);
 	AppDelegate::getInstance()->onEasyKeyExit();
 }
 
@@ -237,7 +244,10 @@ static void finishJob(Job* job) {
 		}
 		if (!job->newer) {
 			busy = false;
-			if (!job->silent)
+			if (!job->silent && job->failed)
+				AppDelegate::getInstance()->showNotice(TR("Chưa kiểm tra được bản mới", "Could not check for updates"),
+					TR("Kiểm tra kết nối mạng rồi thử lại", "Check the network connection and try again"));
+			else if (!job->silent)
 				AppDelegate::getInstance()->showNotice(TR("EasyKey đã là bản mới nhất", "EasyKey is up to date"),
 					TR("Phiên bản ", "Version ") + EasyKeyHelper::getVersionString());
 			delete job;
@@ -302,6 +312,9 @@ void Updater::checkAndOffer(const HWND& owner, const bool& silent) {
 	job->kind = JOB_CHECK;
 	job->owner = owner;
 	job->silent = silent;
+	if (!silent) //the answer can take a few seconds
+		AppDelegate::getInstance()->showNotice(TR("Đang kiểm tra bản mới…", "Checking for updates…"),
+			TR("Phiên bản hiện tại ", "Current version ") + EasyKeyHelper::getVersionString());
 	startJob(job);
 }
 

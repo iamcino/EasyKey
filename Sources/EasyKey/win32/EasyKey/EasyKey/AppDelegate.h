@@ -30,6 +30,8 @@ private:
 	//once at start: a welcome notice, what is new after an update, other Vietnamese keyboards
 	void greet();
 	void warnOtherKeyboard(const wstring& name);
+	//true when EasyKey moved itself and is exiting
+	bool offerToMoveApp();
 	void showWhatsNew();
 public:
 	AppDelegate();

@@ -63,6 +63,8 @@ string convertUtil(const string& sourceString) {
         shouldUpperCase = true;
     if (convertToolToAllNonCaps)
         shouldUpperCase = false;
+    //"keep case" changes no letter; the sentence and word options lower the letters they don't capitalize
+    bool changeCase = convertToolToAllCaps || convertToolToAllNonCaps || convertToolToCapsFirstLetter || convertToolToCapsEachWord;
     
     for (int i = 0; i < data.size(); i++) {
         p = 0;
@@ -93,19 +95,16 @@ string convertUtil(const string& sourceString) {
                 i += p;
                 target = _codeTable[convertToolToCode][j][k];
                 if ((convertToolToAllCaps || shouldUpperCase) && k % 2 != 0) {
-                    target = _codeTable[convertToolToCode][j][k-1];
-                } else if ((convertToolToAllNonCaps || !shouldUpperCase) && k % 2 == 0) {
-                    target = _codeTable[convertToolToCode][j][k+1];
+                    k--;
+                } else if ((convertToolToAllNonCaps || (changeCase && !shouldUpperCase)) && k % 2 == 0) {
+                    k++;
                 }
+                target = _codeTable[convertToolToCode][j][k];
                 
-                //remove mark/tone
+                //remove mark/tone, keeping the letter's case (even columns are capitals)
                 if (convertToolRemoveMark) {
                     target = keyCodeToCharacter((Uint8)j);
-                    if (convertToolToAllCaps) {
-                        target = towupper(target);
-                    } else if (convertToolToAllNonCaps) {
-                        target = towlower(target);
-                    }
+                    target = k % 2 == 0 ? towupper(target) : towlower(target);
                 }
                 
                 if (convertToolToCode == 0 || convertToolToCode == 1) { //Unicode
@@ -136,19 +135,16 @@ string convertUtil(const string& sourceString) {
         if (findKeyCode(t, convertToolFromCode, j, k)) {
             target = _codeTable[convertToolToCode][j][k];
             if ((convertToolToAllCaps || shouldUpperCase) && k % 2 != 0) {
-                target = _codeTable[convertToolToCode][j][k-1];
-            } else if ((convertToolToAllNonCaps || !shouldUpperCase) && k % 2 == 0) {
-                target = _codeTable[convertToolToCode][j][k+1];
+                k--;
+            } else if ((convertToolToAllNonCaps || (changeCase && !shouldUpperCase)) && k % 2 == 0) {
+                k++;
             }
+            target = _codeTable[convertToolToCode][j][k];
             
-            //remove mark/tone
+            //remove mark/tone, keeping the letter's case (even columns are capitals)
             if (convertToolRemoveMark) {
                 target = keyCodeToCharacter((Uint8)j);
-                if (convertToolToAllCaps) {
-                    target = towupper(target);
-                } else if (convertToolToAllNonCaps){
-                    target = towlower(target);
-                }
+                target = k % 2 == 0 ? towupper(target) : towlower(target);
             }
             
             _temp.push_back(target);
@@ -160,7 +156,7 @@ string convertUtil(const string& sourceString) {
         //if dont find => normal char
         if (convertToolToAllCaps || shouldUpperCase)
             _temp.push_back(towupper(data[i]));
-        else if (convertToolToAllNonCaps || !shouldUpperCase)
+        else if (convertToolToAllNonCaps || (changeCase && !shouldUpperCase))
             _temp.push_back(towlower(data[i]));
         else
             _temp.push_back(data[i]);
