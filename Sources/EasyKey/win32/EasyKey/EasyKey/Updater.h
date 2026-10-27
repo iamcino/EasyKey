@@ -27,6 +27,10 @@ public:
 	static bool check(string& newVersion);
 	//check, then ask and install, in the background. With silent, say nothing when already up to date or offline
 	static void checkAndOffer(const HWND& owner, const bool& silent);
+	//check in the background without asking; a newer version shows in the tray and Settings
+	static void checkQuietly();
+	//the newer version a check found, empty while EasyKey is up to date
+	static const string& availableVersion();
 	//on start: remove the previous exe and wait for it to exit after an update
 	static void finishPreviousUpdate();
 };

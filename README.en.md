@@ -4,7 +4,7 @@
 
 A lightweight Vietnamese keyboard for Windows 11: one `EasyKey.exe` under 1 MB, nothing to install, with a Windows 11 style look.
 
-[**Download the latest version**](https://github.com/iamcino/EasyKey/releases/latest) · [Changelog](CHANGELOG.en.md) · [Report a bug](https://github.com/iamcino/EasyKey/issues)
+[**Download the latest EasyKey.exe**](https://github.com/iamcino/EasyKey/releases/latest/download/EasyKey.exe) · [Release page](https://github.com/iamcino/EasyKey/releases/latest) · [Changelog](CHANGELOG.en.md) · [Report a bug](https://github.com/iamcino/EasyKey/issues)
 
 <p align="center">
   <img src="docs/screenshots/settings-light.png" alt="Settings window, light mode" width="400">
@@ -25,12 +25,13 @@ A lightweight Vietnamese keyboard for Windows 11: one `EasyKey.exe` under 1 MB, 
 - **Remembers Vietnamese/English and the character encoding per app.**
 - **No repeated letters** in the Chrome and Edge address bar or other autocomplete fields.
 - **Windows 11 look:** light/dark, accent colors, Vietnamese or English UI, a small popup when you switch between Vietnamese and English.
+- **Game mode:** skill keys (Q, W, E, R…) are never turned into marked letters; press Enter to chat in Vietnamese.
 - **No ENG/VIE language indicator** on the taskbar.
 - **Updates itself** from inside the app (always asks first, checks the SHA-256) and removes itself cleanly with one button.
 
 ## Install
-1. Download `EasyKey<version>-Windows.zip` from the [Releases](https://github.com/iamcino/EasyKey/releases/latest) page.
-2. Unzip it into a folder you will keep and run `EasyKey.exe`.
+1. Download [`EasyKey.exe`](https://github.com/iamcino/EasyKey/releases/latest/download/EasyKey.exe) (or the zip from the [release page](https://github.com/iamcino/EasyKey/releases/latest)).
+2. Put it in a folder you will keep and run it.
 3. Done. The defaults are Telex, Unicode, start with Windows, and **Alt + Z** to switch between Vietnamese and English.
 
 If OpenKey is installed, EasyKey copies its settings and shortcut list on the first run.

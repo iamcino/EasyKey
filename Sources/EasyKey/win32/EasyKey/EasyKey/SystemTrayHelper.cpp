@@ -18,6 +18,7 @@ See LICENSE and NOTICE.
 #include "AppDelegate.h"
 #include "ThemeHelper.h"
 #include "Updater.h"
+#include <cmath>
 
 #define WM_TRAYMESSAGE (WM_USER + 1)
 #ifndef WM_DWMCOLORIZATIONCOLORCHANGED
@@ -37,6 +38,7 @@ See LICENSE and NOTICE.
 #define POPUP_UNICODE_COMPOUND 933
 #define POPUP_VN_LOCALE_1258 934
 
+#define POPUP_GAME_MODE 960
 #define POPUP_MACRO_TABLE 970
 #define POPUP_CONVERT_TOOL 980
 #define POPUP_CHECK_UPDATE 990
@@ -74,6 +76,8 @@ static LPCTSTR menuText(const UINT& command) {
 	return _T("");
 }
 
+static void updateGameItem(const string& exe);
+
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
 	static UINT taskbarCreated;
 
@@ -108,6 +112,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 		} else if (lParam == WM_RBUTTONDOWN) {
 			POINT curPoint;
 			GetCursorPos(&curPoint);
+			string gameApp = EasyKeyHelper::getFrontMostAppExecuteName(); //the app the user came from
+			updateGameItem(gameApp);
 			SetForegroundWindow(hWnd);
 			UINT commandId = TrackPopupMenu(
 				popupMenu,
@@ -122,6 +128,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 			case POPUP_VIET_ON_OFF:
 				AppDelegate::getInstance()->onToggleVietnamese();
 				break;
+			case POPUP_GAME_MODE: {
+				bool on = !isGameApp(gameApp);
+				setGameApp(gameApp, on);
+				wstring app = utf8ToWideString(gameApp);
+				if (on)
+					AppDelegate::getInstance()->showNotice(TR("Đã bật chế độ game", "Game mode on"),
+						app + TR(": bấm Enter để chat tiếng Việt", ": press Enter to chat in Vietnamese"));
+				else
+					AppDelegate::getInstance()->showNotice(TR("Đã tắt chế độ game", "Game mode off"), app);
+				break;
+			}
 			case POPUP_MACRO_TABLE:
 				AppDelegate::getInstance()->onMacroTable();
 				break;
@@ -222,6 +239,7 @@ void SystemTrayHelper::createPopupMenu() {
 	AppendMenu(menuCodeTable, MF_UNCHECKED, POPUP_TCVN3, menuText(POPUP_TCVN3));
 	AppendMenu(menuCodeTable, MF_UNCHECKED, POPUP_VNI_WINDOWS, menuText(POPUP_VNI_WINDOWS));
 	AppendMenu(popupMenu, MF_POPUP, (UINT_PTR)menuCodeTable, TR("Bảng mã", "Character encoding"));
+	AppendMenu(popupMenu, MF_STRING, POPUP_GAME_MODE, TR("Chế độ game", "Game mode")); //named after the app by updateGameItem
 
 	//text only, checkmarks show what is in use
 	AppendMenu(popupMenu, MF_STRING, POPUP_MACRO_TABLE, menuText(POPUP_MACRO_TABLE));
@@ -272,8 +290,118 @@ static HICON tintIcon(const HICON& source, const COLORREF& color) {
 	return result;
 }
 
+//the green "update available" arrow, in a unit square: a head on top of a stem
+static bool insideUpArrow(const float& x, const float& y) {
+	if (y >= 0.08f && y <= 0.56f) //head, widest at its base
+		return fabsf(x - 0.5f) <= (y - 0.08f) / 0.48f * 0.46f;
+	return y > 0.56f && y <= 0.96f && x >= 0.32f && x <= 0.68f; //stem
+}
+
+//how much of a pixel the arrow covers, 0..1, sampled 4x4; grow widens the shape (for the halo around it)
+static float upArrowCoverage(const int& px, const int& py, const int& size, const float& grow = 0) {
+	int hits = 0;
+	for (int sy = 0; sy < 4; sy++) {
+		for (int sx = 0; sx < 4; sx++) {
+			float x = (px + (sx + 0.5f) / 4) / size, y = (py + (sy + 0.5f) / 4) / size;
+			bool in = insideUpArrow(x, y);
+			for (int d = 0; !in && grow > 0 && d < 8; d++) {
+				float a = d * 3.14159265f / 4;
+				in = insideUpArrow(x + grow * cosf(a), y + grow * sinf(a));
+			}
+			hits += in ? 1 : 0;
+		}
+	}
+	return hits / 16.0f;
+}
+
+static COLORREF updateGreen() {
+	return ThemeHelper::isTaskbarDarkMode() ? RGB(0x4A, 0xDE, 0x80) : RGB(0x16, 0xA3, 0x4A);
+}
+
+//source with a small green up arrow in its lower right corner; the caller destroys it
+static HICON withUpdateArrow(const HICON& source) {
+	ICONINFO info;
+	if (!GetIconInfo(source, &info))
+		return NULL;
+	BITMAP bm = {};
+	GetObject(info.hbmColor, sizeof(bm), &bm);
+	BITMAPINFO bmi = {};
+	bmi.bmiHeader.biSize = sizeof(bmi.bmiHeader);
+	bmi.bmiHeader.biWidth = bm.bmWidth;
+	bmi.bmiHeader.biHeight = -bm.bmHeight;
+	bmi.bmiHeader.biPlanes = 1;
+	bmi.bmiHeader.biBitCount = 32;
+	bmi.bmiHeader.biCompression = BI_RGB;
+	vector<DWORD> pixels(bm.bmWidth * bm.bmHeight);
+	HDC dc = GetDC(NULL);
+	HICON result = NULL;
+	if (GetDIBits(dc, info.hbmColor, 0, bm.bmHeight, pixels.data(), &bmi, DIB_RGB_COLORS)) {
+		COLORREF green = updateGreen();
+		int size = bm.bmWidth * 5 / 8, ox = bm.bmWidth - size, oy = bm.bmHeight - size;
+		for (int y = 0; y < size; y++) {
+			for (int x = 0; x < size; x++) {
+				DWORD& pixel = pixels[(oy + y) * bm.bmWidth + ox + x];
+				//clear a thin halo so the arrow stands apart from the glyph, then lay the arrow over it
+				float halo = upArrowCoverage(x, y, size, 1.5f / size);
+				float base = (pixel >> 24) / 255.0f * (1 - halo);
+				float arrow = upArrowCoverage(x, y, size);
+				float alpha = arrow + base * (1 - arrow);
+				if (alpha <= 0) {
+					pixel = 0;
+					continue;
+				}
+				//icons take straight, not premultiplied, alpha
+				auto mix = [&](const int& a, const int& b) { return (DWORD)((a * arrow + b * base * (1 - arrow)) / alpha + 0.5f); };
+				pixel = ((DWORD)(alpha * 255 + 0.5f) << 24) | (mix(GetRValue(green), (pixel >> 16) & 0xFF) << 16) |
+					(mix(GetGValue(green), (pixel >> 8) & 0xFF) << 8) | mix(GetBValue(green), pixel & 0xFF);
+			}
+		}
+		ICONINFO badged = {};
+		badged.fIcon = TRUE;
+		badged.hbmColor = CreateDIBitmap(dc, &bmi.bmiHeader, CBM_INIT, pixels.data(), &bmi, DIB_RGB_COLORS);
+		badged.hbmMask = CreateBitmap(bm.bmWidth, bm.bmHeight, 1, 1, NULL);
+		if (badged.hbmColor && badged.hbmMask)
+			result = CreateIconIndirect(&badged);
+		if (badged.hbmColor) DeleteObject(badged.hbmColor);
+		if (badged.hbmMask) DeleteObject(badged.hbmMask);
+	}
+	ReleaseDC(NULL, dc);
+	DeleteObject(info.hbmColor);
+	DeleteObject(info.hbmMask);
+	return result;
+}
+
+//the green arrow for the update item of the tray menu, premultiplied as menus want
+static HBITMAP updateArrowBitmap() {
+	int size = GetSystemMetrics(SM_CXMENUCHECK);
+	BITMAPINFO bmi = {};
+	bmi.bmiHeader.biSize = sizeof(bmi.bmiHeader);
+	bmi.bmiHeader.biWidth = size;
+	bmi.bmiHeader.biHeight = -size;
+	bmi.bmiHeader.biPlanes = 1;
+	bmi.bmiHeader.biBitCount = 32;
+	bmi.bmiHeader.biCompression = BI_RGB;
+	void* bits = NULL;
+	HBITMAP bitmap = CreateDIBSection(NULL, &bmi, DIB_RGB_COLORS, &bits, NULL, 0);
+	if (!bitmap)
+		return NULL;
+	//the menu follows the app theme, not the taskbar: the darker green reads on both
+	COLORREF green = RGB(0x16, 0xA3, 0x4A);
+	DWORD* pixels = (DWORD*)bits;
+	int inset = size / 8, arrowSize = size - 2 * inset;
+	for (int y = 0; y < size; y++) {
+		for (int x = 0; x < size; x++) {
+			float a = (x < inset || y < inset || x >= inset + arrowSize || y >= inset + arrowSize) ? 0 :
+				upArrowCoverage(x - inset, y - inset, arrowSize);
+			pixels[y * size + x] = ((DWORD)(a * 255 + 0.5f) << 24) | ((DWORD)(GetRValue(green) * a) << 16) |
+				((DWORD)(GetGValue(green) * a) << 8) | (DWORD)(GetBValue(green) * a);
+		}
+	}
+	return bitmap;
+}
+
 static void loadTrayIcon() {
-	static HICON tinted = NULL;
+	static HICON tinted = NULL, badged = NULL;
 	int icon = 0;
 	//tray icon is a monochrome glyph, white on a dark taskbar and black on a light one;
 	//in Vietnamese mode it takes the accent color so the mode shows at a glance
@@ -289,12 +417,33 @@ static void loadTrayIcon() {
 	//load the small icon size directly so the tray does not downscale the 32px one
 	HICON glyph = (HICON)LoadImage(GetModuleHandle(0), MAKEINTRESOURCE(icon), IMAGE_ICON,
 		GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), LR_SHARED);
-	HICON previous = tinted;
+	HICON previous = tinted, previousBadged = badged;
 	tinted = vLanguage ? tintIcon(glyph, ThemeHelper::getAccentColor(darkTaskbar, false)) : NULL;
 	nid.hIcon = tinted ? tinted : glyph;
+	//a newer version is out: a small green arrow on the icon
+	const string& update = Updater::availableVersion();
+	badged = update.empty() ? NULL : withUpdateArrow(nid.hIcon);
+	if (badged) {
+		nid.hIcon = badged;
+		wstring tip = wstring(nid.szTip) + TR(" · có bản ", " · version ") + utf8ToWideString(update) + TR("", " is out");
+		lstrcpyn(nid.szTip, tip.c_str(), 128);
+	}
 	//the tray copies the icon, so the old one can go once the new one is set
 	if (previous)
 		PostMessage(nid.hWnd, WM_APP + 7, 0, (LPARAM)previous);
+	if (previousBadged)
+		PostMessage(nid.hWnd, WM_APP + 7, 0, (LPARAM)previousBadged);
+}
+
+//"Game mode for <app>", checked when the app is in game mode; grayed when there is no app to name
+static void updateGameItem(const string& exe) {
+	bool known = !exe.empty() && exe != "UnknownProgram";
+	wstring text = TR("Chế độ game", "Game mode");
+	if (known)
+		text += TR(" cho ", " for ") + utf8ToWideString(exe);
+	ModifyMenu(popupMenu, POPUP_GAME_MODE, MF_BYCOMMAND | MF_STRING |
+		(known && isGameApp(exe) ? MF_CHECKED : MF_UNCHECKED) | (known ? MF_ENABLED : MF_GRAYED),
+		POPUP_GAME_MODE, text.c_str());
 }
 
 void SystemTrayHelper::rebuildMenu() {
@@ -321,6 +470,19 @@ void SystemTrayHelper::updateData() {
 	MODIFY_MENU(menuCodeTable, POPUP_TCVN3, vCodeTable == 1);
 	MODIFY_MENU(menuCodeTable, POPUP_VNI_WINDOWS, vCodeTable == 2);
 	MODIFY_MENU(menuCodeTable, POPUP_UNICODE_COMPOUND, vCodeTable == 3);
+	//"Update to 1.0.6" with a green arrow once a newer version is out
+	static HBITMAP arrow = NULL;
+	const string& update = Updater::availableVersion();
+	wstring updateText = update.empty() ? wstring(menuText(POPUP_CHECK_UPDATE)) :
+		TR("Cập nhật lên ", "Update to ") + utf8ToWideString(update);
+	if (!update.empty() && !arrow)
+		arrow = updateArrowBitmap();
+	MENUITEMINFO updateItem = {};
+	updateItem.cbSize = sizeof(updateItem);
+	updateItem.fMask = MIIM_STRING | MIIM_BITMAP;
+	updateItem.dwTypeData = (LPTSTR)updateText.c_str();
+	updateItem.hbmpItem = update.empty() ? NULL : arrow;
+	SetMenuItemInfo(popupMenu, POPUP_CHECK_UPDATE, FALSE, &updateItem);
 	DeleteMenu(menuCodeTable, POPUP_VN_LOCALE_1258, MF_BYCOMMAND);
 	if (vCodeTable == 4)
 		AppendMenu(menuCodeTable, MF_CHECKED, POPUP_VN_LOCALE_1258, menuText(POPUP_VN_LOCALE_1258));

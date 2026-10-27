@@ -32,6 +32,9 @@ See LICENSE and NOTICE.
 #define WHATS_NEW_EN L"• A popup shows whenever the character encoding changes, and names the new input method or encoding even while typing English.\n" \
 	L"• Removed the Ctrl and Alt temporary off options (press Esc after a word to get back the keys you typed)."
 
+//6 hours
+#define UPDATE_CHECK_INTERVAL (6 * 60 * 60 * 1000)
+
 static AppDelegate* _instance;
 
 //see document in Engine.h
@@ -75,7 +78,7 @@ int vRunWithWindows = 1;
 
 int vCreateDesktopShortcut = 0;
 int vRunAsAdmin = 0;
-int vCheckNewVersion = 0;
+int vCheckNewVersion = 1;
 int vFixChromiumBrowser = 1;
 
 AppDelegate::AppDelegate() {
@@ -123,9 +126,13 @@ int AppDelegate::run(HINSTANCE hInstance) {
 	MessageBeep(MB_OK);
 	greet();
 
-	//check update
+	//check for updates at start and every few hours; a new version only marks the tray and Settings
 	if (vCheckNewVersion)
-		Updater::checkAndOffer(NULL, true);
+		Updater::checkQuietly();
+	SetTimer(NULL, 0, UPDATE_CHECK_INTERVAL, [](HWND, UINT, UINT_PTR, DWORD) {
+		if (vCheckNewVersion)
+			Updater::checkQuietly();
+	});
 
 	MSG msg;
 	// Main message loop:
@@ -274,6 +281,14 @@ void AppDelegate::onSettingsChanged() {
 void AppDelegate::showNotice(const wstring& title, const wstring& detail) {
 	if (flyout)
 		flyout->showMessage(title, detail, false);
+}
+
+void AppDelegate::onUpdateAvailable() {
+	SystemTrayHelper::updateData();
+	if (settingsWindow)
+		settingsWindow->fillData();
+	showNotice(TR("Đã có EasyKey ", "EasyKey ") + utf8ToWideString(Updater::availableVersion()) + TR("", " is available"),
+		TR("Bấm vào biểu tượng ở khay hệ thống để cập nhật", "Update from the tray icon menu"));
 }
 
 void AppDelegate::onUninstall() {

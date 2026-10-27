@@ -103,6 +103,7 @@ private:
 	bool isOptionEnabled(const int& id) const;
 	void setOption(const int& id, const bool& on);
 	void showDropDown(const Item& item);
+	void showGameApps(const Item& item);
 	void requestRestartAsAdmin();
 
 	void startHexEdit(const int& field);

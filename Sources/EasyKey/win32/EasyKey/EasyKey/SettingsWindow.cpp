@@ -24,6 +24,7 @@ See LICENSE and NOTICE.
 #include "SettingsWindow.h"
 #include "AppDelegate.h"
 #include "MessageWindow.h"
+#include "Updater.h"
 #include "ThemeHelper.h"
 
 #ifndef WM_DWMCOLORIZATIONCOLORCHANGED
@@ -57,7 +58,7 @@ enum Option {
 
 enum Action {
 	ACT_EXPAND = 100, ACT_CAPTURE, ACT_ABOUT, ACT_DEFAULT_CONFIG,
-	ACT_SPELLING_GUIDE, ACT_UNINSTALL, ACT_MACRO_TABLE, ACT_CAPTURE_INPUT
+	ACT_SPELLING_GUIDE, ACT_UNINSTALL, ACT_MACRO_TABLE, ACT_CAPTURE_INPUT, ACT_UPDATE, ACT_GAME_APPS
 };
 
 #define CUSTOM_ACCENT (ThemeHelper::ACCENT_PRESETS + 1)
@@ -77,7 +78,7 @@ static const RowInfo advancedRows[] = {
 	{ K_SUBTOGGLE, OPT_MACRO, _T("Gõ tắt: ko → không"), _T("Shortcuts: ko → không") },
 	{ K_SUBBUTTON, ACT_MACRO_TABLE, _T("Bảng gõ tắt"), _T("Shortcut list") },
 	{ K_SUBTOGGLE, OPT_ESCAPE, _T("Esc trả lại phím vừa gõ: việt → vieejt"), _T("Esc puts back the keys typed: việt → vieejt") },
-	{ K_SUBTOGGLE, OPT_INPUT_HOTKEY, _T("Đổi kiểu gõ bằng phím tắt"), _T("Switch input method with keys"), _T("Telex → VNI → Simple Telex, khi đang gõ tiếng Việt"), _T("Telex → VNI → Simple Telex, while typing Vietnamese") },
+	{ K_SUBTOGGLE, OPT_INPUT_HOTKEY, _T("Đổi kiểu gõ bằng phím tắt"), _T("Switch input method with keys"), _T("Telex → VNI → Simple Telex"), _T("Telex → VNI → Simple Telex") },
 	{ K_GROUP, 2, _T("Giao diện"), _T("Appearance") },
 	{ K_SUBLABEL, 0, NULL, NULL },
 	{ K_GROUP, 3, _T("Bảng mã"), _T("Character encoding") },
@@ -95,6 +96,7 @@ static const RowInfo advancedRows[] = {
 	{ K_SUBTOGGLE, OPT_MACRO_AUTO_CAPS, _T("Tự viết hoa theo từ gõ tắt"), _T("Match the capitalization of shortcuts") },
 	{ K_GROUP, 6, _T("Ứng dụng"), _T("Apps") },
 	{ K_SUBTOGGLE, OPT_SMART_SWITCH, _T("Nhớ chế độ Việt/Anh theo từng ứng dụng"), _T("Remember Vietnamese/English per app") },
+	{ K_SUBBUTTON, ACT_GAME_APPS, _T("Chế độ game"), _T("Game mode"), _T("Phím đi thẳng vào game, Enter mở chat tiếng Việt"), _T("Keys go to the game, Enter opens the chat in Vietnamese") },
 	{ K_SUBTOGGLE, OPT_CLIPBOARD, _T("Gửi chữ qua Clipboard"), _T("Send text through the clipboard") },
 	{ K_SUBTOGGLE, OPT_FLYOUT, _T("Hiện thông báo khi chuyển Việt/Anh"), _T("Show a notice when switching") },
 	{ K_SUBTOGGLE, OPT_BEEP, _T("Kêu bíp khi chuyển Việt/Anh"), _T("Beep when switching") },
@@ -103,7 +105,7 @@ static const RowInfo advancedRows[] = {
 	{ K_SUBTOGGLE, OPT_WARN_CONFLICT, _T("Cảnh báo khi bộ gõ khác đang chạy"), _T("Warn when another Vietnamese keyboard runs") },
 	{ K_SUBTOGGLE, OPT_RUN_AS_ADMIN, _T("Chạy với quyền Admin"), _T("Run as administrator"), _T("Để gõ được trong ứng dụng chạy quyền Admin"), _T("To type in apps that run as administrator") },
 	{ K_SUBTOGGLE, OPT_DESKTOP_SHORTCUT, _T("Lối tắt trên màn hình nền"), _T("Desktop shortcut") },
-	{ K_SUBTOGGLE, OPT_CHECK_UPDATE, _T("Tự kiểm tra bản mới khi khởi động"), _T("Check for updates at start") },
+	{ K_SUBTOGGLE, OPT_CHECK_UPDATE, _T("Tự kiểm tra bản mới"), _T("Check for updates automatically") },
 	{ K_SUBBUTTON, ACT_DEFAULT_CONFIG, _T("Đưa mọi cài đặt về mặc định"), _T("Reset all settings") },
 	{ K_SUBBUTTON, ACT_UNINSTALL, _T("Gỡ EasyKey khỏi Windows"), _T("Remove EasyKey from Windows"), _T("Xoá chạy cùng Windows, lối tắt và cài đặt"), _T("Removes startup, shortcut and settings") },
 };
@@ -342,7 +344,7 @@ void SettingsWindow::layout() {
 		bool afterLabel = false;
 		int buttonWidth = s(64);
 		LPCTSTR buttonTexts[] = { T(_T("Mở"), _T("Open")),
-			T(_T("Khôi phục"), _T("Reset")), T(_T("Xem cách sửa"), _T("How to fix")), T(_T("Gỡ"), _T("Remove")) };
+			T(_T("Khôi phục"), _T("Reset")), T(_T("Xem cách sửa"), _T("How to fix")), T(_T("Gỡ"), _T("Remove")), T(_T("Chọn game"), _T("Games")) };
 		for (LPCTSTR text : buttonTexts)
 			buttonWidth = max(buttonWidth, textWidth(fontSmall, text) + s(28));
 		int comboWidth = s(140);
@@ -436,7 +438,16 @@ void SettingsWindow::layout() {
 	//footer; the shortcut list and the converter open from the tray menu
 	LPCTSTR about = T(_T("Giới thiệu"), _T("About"));
 	push(K_LINK, ACT_ABOUT, about, NULL, makeRect(left + s(2), y, textWidth(fontSmall, about), s(28)));
-	add(K_VERSION, 0, NULL, NULL, s(28));
+	if (!Updater::availableVersion().empty()) {
+		//a background check found a newer version: offer it where the version number sits
+		static wstring update;
+		update = T(_T("↑ Cập nhật lên "), _T("↑ Update to ")) + utf8ToWideString(Updater::availableVersion());
+		int w = textWidth(fontSmall, update.c_str());
+		push(K_LINK, ACT_UPDATE, update.c_str(), NULL, makeRect(right - s(2) - w, y, w, s(28)));
+		y += s(28);
+	} else {
+		add(K_VERSION, 0, NULL, NULL, s(28));
+	}
 	y += s(10);
 	contentHeight = y;
 
@@ -768,6 +779,8 @@ void SettingsWindow::paintItem(Gdiplus::Graphics& g, const Item& item, const int
 			text = T(_T("Gỡ"), _T("Remove"));
 		else if (item.id == ACT_MACRO_TABLE)
 			text = T(_T("Mở"), _T("Open"));
+		else if (item.id == ACT_GAME_APPS)
+			text = T(_T("Chọn game"), _T("Games"));
 		drawText(g, text, ctl, fontSmall, active ? pal.text : pal.disabled, 1, 1);
 		break;
 	}
@@ -854,7 +867,10 @@ void SettingsWindow::paintItem(Gdiplus::Graphics& g, const Item& item, const int
 		break;
 	}
 	case K_LINK:
-		drawText(g, item.label, rc, fontSmall, hot ? pal.linkHover : pal.link, 0, 1);
+		if (item.id == ACT_UPDATE)
+			drawText(g, item.label, rc, fontSmall, pal.good, 0, 1); //green like the arrow on the tray icon
+		else
+			drawText(g, item.label, rc, fontSmall, hot ? pal.linkHover : pal.link, 0, 1);
 		break;
 	case K_VERSION: {
 		static wstring version = _T("EasyKey ") + EasyKeyHelper::getVersionString();
@@ -1120,6 +1136,15 @@ void SettingsWindow::doAction(const int& action) {
 	case ACT_ABOUT:
 		AppDelegate::getInstance()->onEasyKeyAbout();
 		break;
+	case ACT_UPDATE:
+		Updater::checkAndOffer(hWnd, false);
+		break;
+	case ACT_GAME_APPS:
+		for (const Item& item : items) {
+			if (item.id == ACT_GAME_APPS && item.kind == K_SUBBUTTON)
+				showGameApps(item);
+		}
+		break;
 	case ACT_SPELLING_GUIDE:
 		ShellExecute(NULL, _T("open"), SPELLING_GUIDE_URL, NULL, NULL, SW_SHOWNORMAL);
 		break;
@@ -1286,6 +1311,42 @@ void SettingsWindow::showDropDown(const Item& item) {
 	SystemTrayHelper::updateData();
 	AppDelegate::getInstance()->showCodeTableFlyout();
 	InvalidateRect(hWnd, NULL, FALSE);
+}
+
+//the apps in game mode, checked; picking one takes it out. The app used before Settings can be added
+void SettingsWindow::showGameApps(const Item& item) {
+	vector<string> apps = getGameApps();
+	string last = EasyKeyHelper::getFrontMostAppExecuteName(); //Settings keeps the app the user came from
+	bool canAdd = !last.empty() && last != "UnknownProgram" && !isGameApp(last);
+	HMENU menu = CreatePopupMenu();
+	if (canAdd) {
+		wstring add = T(_T("Bật cho "), _T("Turn on for ")) + utf8ToWideString(last);
+		AppendMenu(menu, MF_STRING, 1, add.c_str());
+		AppendMenu(menu, MF_SEPARATOR, 0, 0);
+	}
+	if (apps.empty()) {
+		AppendMenu(menu, MF_STRING | MF_GRAYED, 0,
+			T(_T("Chưa có game nào. Bật ở menu khay khi đang chơi"), _T("No games yet. Turn it on from the tray menu while playing")));
+	} else {
+		for (size_t n = 0; n < apps.size(); n++)
+			AppendMenu(menu, MF_STRING | MF_CHECKED, 100 + n, utf8ToWideString(apps[n]).c_str());
+	}
+
+	RECT field = toView(item.ctl);
+	MapWindowPoints(hWnd, NULL, (LPPOINT)&field, 2);
+	TPMPARAMS params = { sizeof(params) };
+	params.rcExclude = field;
+	int command = (int)TrackPopupMenuEx(menu, TPM_RETURNCMD | TPM_RIGHTALIGN | TPM_TOPALIGN | TPM_VERTICAL,
+		field.right, field.bottom, hWnd, &params);
+	DestroyMenu(menu);
+	if (command == 1 && canAdd) {
+		setGameApp(last, true);
+		AppDelegate::getInstance()->showNotice(T(_T("Đã bật chế độ game"), _T("Game mode on")),
+			utf8ToWideString(last) + T(_T(": bấm Enter để chat tiếng Việt"), _T(": press Enter to chat in Vietnamese")));
+	} else if (command >= 100 && command - 100 < (int)apps.size()) {
+		setGameApp(apps[command - 100], false);
+		AppDelegate::getInstance()->showNotice(T(_T("Đã tắt chế độ game"), _T("Game mode off")), utf8ToWideString(apps[command - 100]));
+	}
 }
 
 void SettingsWindow::requestRestartAsAdmin() {
