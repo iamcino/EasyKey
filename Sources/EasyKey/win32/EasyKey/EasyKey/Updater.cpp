@@ -14,6 +14,7 @@ the MIT license, see LICENSES/MIT.txt.
 #include <bcrypt.h>
 #include "Updater.h"
 #include "AppDelegate.h"
+#include "EasyKeyManager.h"
 #include "MessageWindow.h"
 
 #pragma comment(lib, "winhttp.lib")
@@ -137,12 +138,12 @@ static void showError(const HWND& owner, LPCTSTR message) {
 		ShellExecute(NULL, L"open", RELEASES_PAGE, NULL, NULL, SW_SHOWNORMAL);
 }
 
-//downloading and checking run on a worker thread: the keyboard and mouse hooks live
-//on the main thread, and Windows holds every key press and mouse move while it is busy
+//checking, downloading and swapping the exe run on a worker thread: the keyboard and mouse
+//hooks live on the main thread, and Windows holds every key press and mouse move while it is busy
 #define WM_UPDATER_DONE (WM_APP + 1)
 
 enum { JOB_CHECK, JOB_DOWNLOAD };
-enum { DOWNLOAD_OK, DOWNLOAD_FAILED, DOWNLOAD_MISMATCH };
+enum { DOWNLOAD_OK, DOWNLOAD_FAILED, DOWNLOAD_MISMATCH, INSTALL_FAILED };
 
 struct Job {
 	int kind;
@@ -152,12 +153,36 @@ struct Job {
 	bool newer = false;
 	bool failed = false; //version.json could not be read
 	string version, exe;
+	wstring path; //where the new exe went
 	int result = DOWNLOAD_OK;
 };
 
 static HWND messageWindow = NULL;
 static bool busy = false;
 static string available;
+
+//the downloaded exe takes the place of the running one; antivirus scans a new exe as it is
+//written and moved, which can take a while
+static bool install(const string& exe, wstring& path) {
+	path = EasyKeyHelper::getFullPath();
+	wstring folder = folderOf(path);
+	wstring newPath = folder + L"EasyKey.new.exe", oldPath = folder + L"EasyKey.old.exe";
+	HANDLE file = CreateFile(newPath.c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	DWORD written = 0;
+	bool saved = file != INVALID_HANDLE_VALUE && WriteFile(file, exe.data(), (DWORD)exe.size(), &written, NULL) && written == exe.size();
+	if (file != INVALID_HANDLE_VALUE)
+		CloseHandle(file);
+	//Windows lets a running exe be renamed but not overwritten, so the old one steps aside first
+	DeleteFile(oldPath.c_str());
+	bool swapped = saved && MoveFileEx(path.c_str(), oldPath.c_str(), MOVEFILE_REPLACE_EXISTING);
+	if (swapped && !MoveFileEx(newPath.c_str(), path.c_str(), MOVEFILE_REPLACE_EXISTING)) {
+		MoveFileEx(oldPath.c_str(), path.c_str(), MOVEFILE_REPLACE_EXISTING);
+		swapped = false;
+	}
+	if (!swapped)
+		DeleteFile(newPath.c_str());
+	return swapped;
+}
 
 static void download(Job* job) {
 	wstring wideVersion = utf8ToWideString(job->version);
@@ -174,6 +199,8 @@ static void download(Job* job) {
 	const string& exe = job->exe;
 	if (expected.size() != 64 || sha256Hex(exe) != expected || exe.size() < 2 || exe[0] != 'M' || exe[1] != 'Z')
 		job->result = DOWNLOAD_MISMATCH;
+	else if (!install(exe, job->path))
+		job->result = INSTALL_FAILED;
 }
 
 static DWORD WINAPI runJob(LPVOID param) {
@@ -197,35 +224,17 @@ static void startJob(Job* job) {
 	}
 }
 
-//the downloaded exe takes the place of the running one, then starts
-static void install(const HWND& owner, const string& exe) {
-	wstring path = EasyKeyHelper::getFullPath();
-	wstring folder = folderOf(path);
-	wstring newPath = folder + L"EasyKey.new.exe", oldPath = folder + L"EasyKey.old.exe";
-	HANDLE file = CreateFile(newPath.c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-	DWORD written = 0;
-	bool saved = file != INVALID_HANDLE_VALUE && WriteFile(file, exe.data(), (DWORD)exe.size(), &written, NULL) && written == exe.size();
-	if (file != INVALID_HANDLE_VALUE)
-		CloseHandle(file);
-	//Windows lets a running exe be renamed but not overwritten, so the old one steps aside first
-	DeleteFile(oldPath.c_str());
-	bool swapped = saved && MoveFileEx(path.c_str(), oldPath.c_str(), MOVEFILE_REPLACE_EXISTING);
-	if (swapped && !MoveFileEx(newPath.c_str(), path.c_str(), MOVEFILE_REPLACE_EXISTING)) {
-		MoveFileEx(oldPath.c_str(), path.c_str(), MOVEFILE_REPLACE_EXISTING);
-		swapped = false;
-	}
-	if (!swapped) {
-		DeleteFile(newPath.c_str());
-		showError(owner, TR("Không ghi được vào thư mục của EasyKey, có thể cần quyền Admin. Mở trang tải về để tải thủ công?",
-			"Could not write to the EasyKey folder, it may need admin rights. Open the download page to get it yourself?"));
-		return;
-	}
-
-	Updater::restartAs(path);
-}
-
 void Updater::restartAs(const wstring& path) {
-	ShellExecute(NULL, NULL, path.c_str(), UPDATED_ARGUMENT, folderOf(path).c_str(), SW_SHOWNORMAL);
+	//the hooks go first: starting a new exe makes antivirus scan it while this thread waits,
+	//and input would wait with it. CreateProcess, unlike ShellExecute, does not run the shell
+	EasyKeyManager::freeEngine();
+	wstring commandLine = L"\"" + path + L"\" " UPDATED_ARGUMENT;
+	STARTUPINFO startup = { sizeof(startup) };
+	PROCESS_INFORMATION process = {};
+	if (CreateProcess(path.c_str(), &commandLine[0], NULL, NULL, FALSE, 0, NULL, folderOf(path).c_str(), &startup, &process)) {
+		CloseHandle(process.hThread);
+		CloseHandle(process.hProcess);
+	}
 	AppDelegate::getInstance()->onEasyKeyExit();
 }
 
@@ -280,8 +289,11 @@ static void finishJob(Job* job) {
 	else if (job->result == DOWNLOAD_MISMATCH)
 		showError(owner, TR("File tải về không khớp mã kiểm tra nên chưa được cài. Mở trang tải về?",
 			"The download did not match its checksum, so it was not installed. Open the download page?"));
+	else if (job->result == INSTALL_FAILED)
+		showError(owner, TR("Không ghi được vào thư mục của EasyKey, có thể cần quyền Admin. Mở trang tải về để tải thủ công?",
+			"Could not write to the EasyKey folder, it may need admin rights. Open the download page to get it yourself?"));
 	else
-		install(owner, job->exe);
+		Updater::restartAs(job->path);
 	delete job;
 }
 
