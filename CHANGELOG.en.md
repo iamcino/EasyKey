@@ -2,6 +2,9 @@
 
 [Tiếng Việt](CHANGELOG.md) · **English**
 
+## Next version
+- The mouse and keyboard no longer stall while updating: EasyKey writes the new file on a separate thread and removes its hooks before it starts the new version (that is when antivirus scans the new file).
+
 ## 1.0.7 (Windows 11 x64)
 - Fix occasional raw keys in the text (for example "chaats" instead of "chất"), seen most in Discord and other Electron apps: when Windows quietly removes EasyKey's keyboard hook, EasyKey now notices on the next key and puts it back, even while the mouse is in use (it used to take a few seconds, or not notice at all).
 - Alt + Z (or any hotkey with Alt or Win) no longer makes the app open its menu bar, so what you type right after it is not lost to the menu.
