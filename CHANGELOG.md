@@ -2,11 +2,12 @@
 
 **Tiếng Việt** · [English](CHANGELOG.en.md)
 
-## Bản tiếp theo
+## 1.0.5 (Windows 11 x64)
 - Popup cũng hiện khi đổi bảng mã từ menu ở khay hệ thống hay trong cửa sổ Cài đặt, với tên bảng mã, ví dụ "TCVN3".
 - Đang gõ tiếng Anh mà đổi kiểu gõ hay bảng mã thì popup hiện đúng lựa chọn mới, kèm dòng "dùng khi gõ tiếng Việt" (trước đây popup chỉ hiện "Tiếng Anh").
 - Bỏ hai tùy chọn "Tạm tắt chính tả bằng phím Ctrl" và "Tạm tắt EasyKey bằng phím Alt". Bấm Esc ngay sau một từ để lấy lại phím vừa gõ vẫn làm được việc này, còn bấm Alt một mình trên Windows lại nhảy vào thanh menu của ứng dụng.
 - Phần tiếng Anh của giao diện, README và nhật ký thay đổi thống nhất dùng "character encoding" thay cho "code table".
+- README ngắn gọn hơn, có ảnh chụp giao diện; hướng dẫn tự build chuyển sang [docs/BUILD.md](https://github.com/iamcino/EasyKey/blob/master/docs/BUILD.md).
 
 ## 1.0.4 (Windows 11 x64)
 - Sửa lỗi chọn bảng mã cũ (VNI Windows, TCVN3, Unicode tổ hợp…) hoặc Việt/Anh trong cửa sổ Cài đặt hay menu khay rồi quay lại ứng dụng thì bị trả về lựa chọn cũ, ví dụ về Unicode. EasyKey giờ nhớ lựa chọn cho đúng ứng dụng bạn đang gõ.

@@ -2,11 +2,12 @@
 
 [Tiếng Việt](CHANGELOG.md) · **English**
 
-## Next version
+## 1.0.5 (Windows 11 x64)
 - A popup also shows when the character encoding is changed from the tray menu or the Settings window.
 - While typing English, changing the input method or character encoding shows the new choice in the popup with "used when typing Vietnamese" (it used to show only "English").
 - Removed the "Hold Ctrl to skip spell check" and "Hold Alt to pause EasyKey" options. Pressing Esc right after a word already gives back the keys you typed, and pressing Alt alone on Windows moves to the app's menu bar.
 - The English UI, README and changelog now say "character encoding" everywhere instead of "code table".
+- A shorter README with screenshots; the build guide moved to [docs/BUILD.en.md](https://github.com/iamcino/EasyKey/blob/master/docs/BUILD.en.md).
 
 ## 1.0.4 (Windows 11 x64)
 - Fixed a legacy character encoding (VNI Windows, TCVN3, Unicode combining…) or the Vietnamese/English choice going back to the previous one, for example Unicode, after picking it in Settings or the tray menu and returning to the app. EasyKey now remembers the choice for the app you are typing in.
