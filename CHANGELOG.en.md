@@ -2,10 +2,11 @@
 
 [Tiếng Việt](CHANGELOG.md) · **English**
 
-## Next version
+## 1.0.6 (Windows 11 x64)
 - Update notice: EasyKey checks at start and every 6 hours (on by default, can be turned off in Settings › System). When a new version is out, the tray icon gets a green arrow, the tray menu shows "Update to …" and Settings shows an update line at the bottom; nothing is installed without asking.
 - Game mode: turn it on per game from the tray menu ("Game mode for …") or Settings › Apps › Game mode. In the game, keys go straight to the game so Q, W, E, R… are never turned into marked letters; press Enter to open the chat and type Vietnamese, Enter (send) or Esc (close) goes back.
 - The input method hotkey also works while typing English; the popup names the new input method with "used when typing Vietnamese".
+- The README links straight to the latest `EasyKey.exe`.
 
 ## 1.0.5 (Windows 11 x64)
 - A popup also shows when the character encoding is changed from the tray menu or the Settings window.
