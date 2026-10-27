@@ -28,12 +28,12 @@ See LICENSE and NOTICE.
 #pragma comment(lib, "comctl32.lib")
 
 //shown once after updating to this version; change it with each release
-#define WHATS_NEW_VI L"• Chế độ game: bật cho từng game ở menu khay hay Cài đặt › Ứng dụng. Phím kỹ năng không bị bỏ dấu, bấm Enter mở chat là gõ được tiếng Việt.\n" \
-	L"• Báo có bản mới: mũi tên xanh trên biểu tượng khay, trong menu khay và cuối cửa sổ Cài đặt.\n" \
-	L"• Phím tắt đổi kiểu gõ dùng được cả khi đang gõ tiếng Anh."
-#define WHATS_NEW_EN L"• Game mode: turn it on per game from the tray menu or Settings › Apps. Skill keys are never turned into marked letters, and Enter opens the chat in Vietnamese.\n" \
-	L"• Update notice: a green arrow on the tray icon, in the tray menu and at the bottom of Settings.\n" \
-	L"• The input method hotkey also works while typing English."
+#define WHATS_NEW_VI L"• Bấm Alt + Z không còn làm ứng dụng mở thanh menu.\n" \
+	L"• Gõ email (user@gmail.com) và www. không còn bị bỏ dấu sai.\n" \
+	L"• Có sẵn vài từ gõ tắt (ko, dc, vs…), sửa lỗi gõ ra phím thô ở Discord, popup đổi Việt/Anh nét chữ sắc hơn."
+#define WHATS_NEW_EN L"• Alt + Z no longer makes the app open its menu bar.\n" \
+	L"• Email addresses (user@gmail.com) and www. are no longer marked by mistake.\n" \
+	L"• A few starter shortcuts (ko, dc, vs…), a fix for raw keys in Discord, and a sharper switch popup."
 
 //6 hours
 #define UPDATE_CHECK_INTERVAL (6 * 60 * 60 * 1000)

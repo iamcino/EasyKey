@@ -109,8 +109,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,0,6,0
- PRODUCTVERSION 1,0,6,0
+ FILEVERSION 1,0,7,0
+ PRODUCTVERSION 1,0,7,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -127,12 +127,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "EasyKey"
             VALUE "FileDescription", "EasyKey - Bộ gõ Tiếng Việt"
-            VALUE "FileVersion", "1.0.6.0"
+            VALUE "FileVersion", "1.0.7.0"
             VALUE "InternalName", "EasyKey.exe"
             VALUE "LegalCopyright", "Copyright (C) 2026 Cino. Based on OpenKey, Copyright (C) 2019 Mai Vũ Tuyên. GPLv3."
             VALUE "OriginalFilename", "EasyKey.exe"
             VALUE "ProductName", "EasyKey"
-            VALUE "ProductVersion", "1.0.6.0"
+            VALUE "ProductVersion", "1.0.7.0"
         END
     END
     BLOCK "VarFileInfo"
