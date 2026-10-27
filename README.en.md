@@ -2,87 +2,70 @@
 
 [Tiếng Việt](README.md) · **English**
 
-A Vietnamese keyboard for Windows 11 (64-bit).
+A lightweight Vietnamese keyboard for Windows 11: one `EasyKey.exe` under 1 MB, nothing to install, with a Windows 11 style look.
 
-[Download the latest version](https://github.com/iamcino/EasyKey/releases/latest) · [Changelog](CHANGELOG.en.md) · [Report a bug](https://github.com/iamcino/EasyKey/issues)
+[**Download the latest version**](https://github.com/iamcino/EasyKey/releases/latest) · [Changelog](CHANGELOG.en.md) · [Report a bug](https://github.com/iamcino/EasyKey/issues)
+
+<p align="center">
+  <img src="docs/screenshots/settings-light.png" alt="Settings window, light mode" width="400">
+  <img src="docs/screenshots/settings-dark.png" alt="Settings window, dark mode" width="400">
+</p>
+<p align="center">
+  <img src="docs/screenshots/flyout.png" alt="Popup when switching between Vietnamese and English" width="300">
+</p>
 
 ## Requirements
-Windows 11 x64.
+- Windows 11, 64-bit (x64).
+- No admin rights, .NET or extra runtimes needed.
+- Quit other Vietnamese keyboards (UniKey, EVKey, OpenKey...). EasyKey tells you if it finds one running.
+
+## Highlights
+- **Telex, VNI, Simple Telex**, Unicode encoding (legacy TCVN3, VNI Windows and Unicode combining under Advanced).
+- **Smart typing:** marks only real Vietnamese words, and Esc gives back the keys you typed (việt → vieejt). Quick typing and shortcuts of any length.
+- **Remembers Vietnamese/English and the encoding per app.**
+- **No repeated letters** in the Chrome and Edge address bar or other autocomplete fields.
+- **Windows 11 look:** light/dark, accent colors, Vietnamese or English UI, a small popup when you switch between Vietnamese and English.
+- **No ENG/VIE language indicator** on the taskbar.
+- **Updates itself** from inside the app (always asks first, checks the SHA-256) and removes itself cleanly with one button.
 
 ## Install
-1. Download `EasyKey<version>-Windows.zip` from the [Releases](https://github.com/iamcino/EasyKey/releases) page.
-2. Unzip it into a folder you will keep and run `EasyKey.exe`. Nothing to set up: the defaults are Telex, Unicode, start with Windows, and Alt + Z to switch between Vietnamese and English.
-3. Quit other Vietnamese keyboards (UniKey, EVKey, OpenKey...) to avoid conflicts. EasyKey tells you if it finds one running.
+1. Download `EasyKey<version>-Windows.zip` from the [Releases](https://github.com/iamcino/EasyKey/releases/latest) page.
+2. Unzip it into a folder you will keep and run `EasyKey.exe`.
+3. Done. The defaults are Telex, Unicode, start with Windows, and **Alt + Z** to switch between Vietnamese and English.
 
-If OpenKey is installed, EasyKey copies its settings and shortcut list on the first run. Settings are stored in `HKEY_CURRENT_USER\Software\EasyKey`.
+If OpenKey is installed, EasyKey copies its settings and shortcut list on the first run.
 
-## Windows warnings when you run it
-EasyKey is **not code signed** yet. Because of that, when you download or run it:
-- Windows SmartScreen may show "Windows protected your PC". Click **More info** › **Run anyway** to run it.
-- Windows Defender or another antivirus may block, quarantine or delete `EasyKey.exe`.
+## Windows warnings
+EasyKey is **not code signed** yet, so SmartScreen may show "Windows protected your PC" (click **More info** › **Run anyway**), and antivirus software may block `EasyKey.exe`. Every keyboard app has to read keystrokes, so unsigned ones are easily suspected.
 
-This is not a bug, and not a security problem in EasyKey. Every keyboard app has to read keystrokes and send back the marked text, so antivirus software easily suspects unsigned programs that do this. The source code is public, and every release is built on GitHub Actions with build provenance. You can check the zip or `EasyKey.exe` you downloaded with the [GitHub CLI](https://cli.github.com):
+<details>
+<summary>Verify your download</summary>
+
+The source code is public, and every release is built on GitHub Actions with build provenance. Check it with the [GitHub CLI](https://cli.github.com):
 
 ```
 gh attestation verify EasyKey<version>-Windows.zip --repo iamcino/EasyKey
 ```
 
-Please weigh this before using it. If you trust it, you can add the EasyKey folder to your antivirus exclusions. Later versions will be signed once a certificate is available.
+If you trust it, you can add the EasyKey folder to your antivirus exclusions. Later versions will be signed once a certificate is available.
+</details>
 
-## Features
-- Telex, VNI and Simple Telex input methods.
-- Unicode encoding. The legacy encodings Unicode combining, TCVN3 (ABC) and VNI Windows are under Advanced.
-- Modern mark placement (hoà, thuý) or the classic one (hòa, thúy).
-- Smart typing: marks are added only to real Vietnamese words, and misspelled words get their keys back. Press Esc right after a word to get back the keys you typed (việt → vieejt).
-- Quick typing (cc → ch, gg → gi, nn → ng…), shorthand for first and last consonants, and shortcuts (macros) of any length.
-- Remembers Vietnamese/English mode and the character encoding per app.
-- Fixes repeated letters in fields with autocomplete, including the Chrome and Edge address bar.
-- Text converter and shortcut list, opened from the tray menu.
-- A compact one-page Windows 11 settings window in Vietnamese or English, light and dark mode following Windows, your choice of accent color or your own hex color, high DPI support, and a tray icon that matches the taskbar.
-- Checks for and installs updates from inside EasyKey (always asks first, checks the SHA-256).
-- Removes itself cleanly from Windows with one button in Settings.
-- No language indicator on the taskbar.
+<details>
+<summary>Red spell check underlines under Vietnamese</summary>
 
-## Vietnamese spell check
-Red underlines under Vietnamese words come from each app's own spell checker, which checks against English. They are not an EasyKey bug. The quickest fix is to add Vietnamese to that app's spell check:
+They come from each app's own spell checker, which checks against English. They are not an EasyKey bug:
 
-- **Chrome, Edge, Cốc Cốc:** open Settings › Languages, add Vietnamese to your preferred languages, then turn on spell check for Vietnamese. If the browser has no Vietnamese dictionary, turn off spell check for English or turn spell check off entirely.
-- **Word, Outlook, PowerPoint:** select the text, go to Review › Language › Set Proofing Language and pick Vietnamese. If Office has no Vietnamese proofing tools, tick "Do not check spelling or grammar" for that text.
-- **Notepad:** open Settings (the gear icon) and turn off Spell check.
+- **Chrome, Edge, Cốc Cốc:** Settings › Languages, add Vietnamese and turn on spell check for it, or turn off spell check for English.
+- **Word, Outlook, PowerPoint:** select the text, Review › Language › Set Proofing Language › Vietnamese (or tick "Do not check spelling or grammar").
+- **Notepad:** Settings (gear icon) › turn off Spell check.
 
-Adding Vietnamese in Windows Settings › Language also removes the underlines in many apps, but it brings back the language indicator (ENG/VIE) on the taskbar, so EasyKey does not recommend it.
+Adding Vietnamese in Windows Settings › Language also removes them, but brings back the ENG/VIE indicator on the taskbar, so it is not recommended.
+</details>
 
 ## Build it yourself
-You can build EasyKey yourself instead of downloading a release.
-
-**Option 1: build on your PC**
-1. Install [Visual Studio 2022](https://visualstudio.microsoft.com/vs/) (the free Community edition) with the **Desktop development with C++** workload (it includes MSVC v143 and the Windows SDK).
-2. Get the source: `git clone https://github.com/iamcino/EasyKey.git`, or Code › Download ZIP on GitHub.
-3. Open `Sources/EasyKey/win32/EasyKey/EasyKey.sln`, choose the `Release` configuration and the `x64` platform, then Build › Build Solution.
-4. The exe is at `Sources/EasyKey/win32/EasyKey/x64/Release/EasyKey.exe`.
-
-Or build from the command line in "Developer PowerShell for VS 2022":
-
-```
-msbuild Sources\EasyKey\win32\EasyKey\EasyKey.sln -p:Configuration=Release -p:Platform=x64
-```
-
-**Option 2: build on GitHub, nothing to install**
-Fork this repository. Every push or pull request to `master` makes GitHub Actions run the engine tests and build `EasyKey.exe`. Open the Actions tab, open the latest run and download `EasyKey` under Artifacts. Pushing a tag that matches `versionName` in `version.json` (for example `1.0.0`), or running the MSBuild workflow by hand on `master` (Actions › MSBuild › Run workflow), publishes a release.
-
-**Run the engine tests** (needs [CMake](https://cmake.org) and a C++ compiler, works on Windows and Linux):
-
-```
-cmake -S Sources/EasyKey/tests -B build
-cmake --build build --config Release
-ctest --test-dir build -C Release
-```
-
-A build of your own is not signed either, so you may see the warnings described in [Windows warnings when you run it](#windows-warnings-when-you-run-it).
+See [docs/BUILD.en.md](docs/BUILD.en.md).
 
 ## License
 Copyright (C) 2026 Cino. Contact: duongtheson@proton.me
 
-EasyKey is free software, released under the [GNU GPL version 3](LICENSE). EasyKey is based on [OpenKey](https://github.com/tuyenvm/OpenKey), Copyright (C) 2019 Mai Vũ Tuyên, also under GPLv3. See [NOTICE](NOTICE).
-
-Some files were written from scratch for EasyKey and hold no OpenKey code (the window framework, the popup, dialogs, light/dark theming and the updater). They are also offered under the [MIT license](LICENSES/MIT.txt) so they can be reused in other projects. Each one carries `SPDX-License-Identifier: GPL-3.0-only OR MIT` in its header, and [NOTICE](NOTICE) lists them. EasyKey as a whole stays under GPLv3.
+EasyKey is released under the [GNU GPL version 3](LICENSE) and is based on [OpenKey](https://github.com/tuyenvm/OpenKey) by Mai Vũ Tuyên (Copyright (C) 2019, GPLv3). Some files written from scratch for EasyKey are also offered under the [MIT license](LICENSES/MIT.txt). See [NOTICE](NOTICE) for details.
