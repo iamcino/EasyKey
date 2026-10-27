@@ -437,7 +437,7 @@ void switchLanguage() {
 
 //Telex, VNI, Simple Telex in turn; only while typing Vietnamese
 static bool isInputTypeHotKey(const bool& checkKeyCode) {
-	return vSwitchInputType && vLanguage && checkHotKey(vInputTypeHotKey, checkKeyCode && GET_SWITCH_KEY(vInputTypeHotKey) != 0xFE);
+	return vSwitchInputType && checkHotKey(vInputTypeHotKey, checkKeyCode && GET_SWITCH_KEY(vInputTypeHotKey) != 0xFE);
 }
 
 void switchInputType() {

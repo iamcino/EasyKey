@@ -2,6 +2,9 @@
 
 **Tiếng Việt** · [English](CHANGELOG.en.md)
 
+## Bản tiếp theo
+- Phím tắt đổi kiểu gõ chạy được cả khi đang gõ tiếng Anh; popup hiện kiểu gõ mới kèm dòng "dùng khi gõ tiếng Việt".
+
 ## 1.0.5 (Windows 11 x64)
 - Popup cũng hiện khi đổi bảng mã từ menu ở khay hệ thống hay trong cửa sổ Cài đặt, với tên bảng mã, ví dụ "TCVN3".
 - Đang gõ tiếng Anh mà đổi kiểu gõ hay bảng mã thì popup hiện đúng lựa chọn mới, kèm dòng "dùng khi gõ tiếng Việt" (trước đây popup chỉ hiện "Tiếng Anh").

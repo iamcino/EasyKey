@@ -2,6 +2,9 @@
 
 [Tiếng Việt](CHANGELOG.md) · **English**
 
+## Next version
+- The input method hotkey also works while typing English; the popup names the new input method with "used when typing Vietnamese".
+
 ## 1.0.5 (Windows 11 x64)
 - A popup also shows when the character encoding is changed from the tray menu or the Settings window.
 - While typing English, changing the input method or character encoding shows the new choice in the popup with "used when typing Vietnamese" (it used to show only "English").
