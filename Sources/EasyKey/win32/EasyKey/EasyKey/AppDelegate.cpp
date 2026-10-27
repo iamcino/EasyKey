@@ -27,10 +27,12 @@ See LICENSE and NOTICE.
 #pragma comment(lib, "comctl32.lib")
 
 //shown once after updating to this version; change it with each release
-#define WHATS_NEW_VI L"• Popup hiện mỗi khi đổi bảng mã, và hiện đúng kiểu gõ hay bảng mã mới cả khi đang gõ tiếng Anh.\n" \
-	L"• Bỏ hai tùy chọn tạm tắt bằng phím Ctrl và Alt (bấm Esc sau một từ để lấy lại phím vừa gõ)."
-#define WHATS_NEW_EN L"• A popup shows whenever the character encoding changes, and names the new input method or encoding even while typing English.\n" \
-	L"• Removed the Ctrl and Alt temporary off options (press Esc after a word to get back the keys you typed)."
+#define WHATS_NEW_VI L"• Chế độ game: bật cho từng game ở menu khay hay Cài đặt › Ứng dụng. Phím kỹ năng không bị bỏ dấu, bấm Enter mở chat là gõ được tiếng Việt.\n" \
+	L"• Báo có bản mới: mũi tên xanh trên biểu tượng khay, trong menu khay và cuối cửa sổ Cài đặt.\n" \
+	L"• Phím tắt đổi kiểu gõ dùng được cả khi đang gõ tiếng Anh."
+#define WHATS_NEW_EN L"• Game mode: turn it on per game from the tray menu or Settings › Apps. Skill keys are never turned into marked letters, and Enter opens the chat in Vietnamese.\n" \
+	L"• Update notice: a green arrow on the tray icon, in the tray menu and at the bottom of Settings.\n" \
+	L"• The input method hotkey also works while typing English."
 
 //6 hours
 #define UPDATE_CHECK_INTERVAL (6 * 60 * 60 * 1000)
