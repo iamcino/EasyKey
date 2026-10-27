@@ -2,7 +2,7 @@
 
 [Tiếng Việt](CHANGELOG.md) · **English**
 
-## Next version
+## 1.0.4 (Windows 11 x64)
 - Fixed a legacy code table (VNI Windows, TCVN3, Unicode compound…) or the Vietnamese/English choice going back to the previous one, for example Unicode, after picking it in Settings or the tray menu and returning to the app. EasyKey now remembers the choice for the app you are typing in.
 - The input method popup also shows when the input method is changed from the tray menu or the Settings window.
 
