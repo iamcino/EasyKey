@@ -137,6 +137,11 @@ string& EasyKeyHelper::getFrontMostAppExecuteName() {
 	if (_tempProcessId == _cacheProcessId) {
 		return _exeNameUtf8;
 	}
+	//EasyKey's own windows (Settings, the tray menu) keep the app the user came from,
+	//so a language or code table picked there is remembered for that app
+	if (_tempProcessId == GetCurrentProcessId()) {
+		return _exeNameUtf8;
+	}
 	_cacheProcessId = _tempProcessId;
 	_proc = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, _tempProcessId);
 	GetProcessImageFileName((HMODULE)_proc, _exePath, 1024);
@@ -146,9 +151,7 @@ string& EasyKeyHelper::getFrontMostAppExecuteName() {
 		return _unknownProgram;
 	}
 	_exeName = _tcsrchr(_exePath, '\\') + 1;
-	if (wcscmp(_exeName, _T("EasyKey64.exe")) == 0 ||
-		wcscmp(_exeName, _T("EasyKey32.exe")) == 0 || 
-		wcscmp(_exeName, _T("explorer.exe")) == 0) {
+	if (wcscmp(_exeName, _T("explorer.exe")) == 0) {
 		return _exeNameUtf8;
 	}
 	int size_needed = WideCharToMultiByte(CP_UTF8, 0, _exeName, (int)lstrlen(_exeName), NULL, 0, NULL, NULL);
