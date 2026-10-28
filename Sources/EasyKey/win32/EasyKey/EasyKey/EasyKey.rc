@@ -34,13 +34,14 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 // remains consistent on all systems.
 IDI_APP_ICON            ICON                    "icon.ico"
 
-IDI_ICON_STATUS_VIET_DARK ICON                  "StatusVietDark.ico"
+/////////////////////////////////////////////////////////////////////////////
+//
+// Font: Be Vietnam Pro, cut down to Latin and Vietnamese, SIL Open Font License 1.1 (LICENSES/OFL-1.1.txt)
+//
 
-IDI_ICON_STATUS_VIET_LIGHT ICON                 "StatusVietLight.ico"
+IDR_FONT_REGULAR        RCDATA                  "fonts\\BeVietnamPro-Regular.woff2"
 
-IDI_ICON_STATUS_ENG_DARK ICON                   "StatusEngDark.ico"
-
-IDI_ICON_STATUS_ENG_LIGHT ICON                  "StatusEngLight.ico"
+IDR_FONT_SEMIBOLD       RCDATA                  "fonts\\BeVietnamPro-SemiBold.woff2"
 
 /////////////////////////////////////////////////////////////////////////////
 //

@@ -2,6 +2,10 @@
 
 [Tiếng Việt](CHANGELOG.md) · **English**
 
+## Next version
+- New tray icon: a solid tile with V or E, drawn at the exact pixel size the taskbar uses at every scale (100%, 125%, 150%, 200%…), so it stays sharp instead of blurring from a scaled-down image. Vietnamese is a tile in the accent color with a white letter; English is a white tile on a dark taskbar and a black one on a light taskbar.
+- The interface font is now Be Vietnam Pro (OFL license), carried inside EasyKey.exe and not installed into Windows. Windows 10 before 1703 keeps Segoe UI.
+
 ## 1.0.8 (Windows 11 x64)
 - The mouse and keyboard no longer stall while updating: EasyKey writes the new file on a separate thread and removes its hooks before it starts the new version (that is when antivirus scans the new file).
 - Text in every window (Settings, About, shortcut list, convert tool, dialogs) is drawn with DirectWrite like the popup: smooth, and unbroken when Windows scales the screen above 100%.

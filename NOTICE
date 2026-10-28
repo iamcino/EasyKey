@@ -20,8 +20,17 @@ Each of them says so in its header with
   Sources/EasyKey/win32/EasyKey/EasyKey/MessageWindow.*
   Sources/EasyKey/win32/EasyKey/EasyKey/FlyoutWindow.*
   Sources/EasyKey/win32/EasyKey/EasyKey/ThemeHelper.*
+  Sources/EasyKey/win32/EasyKey/EasyKey/TrayGlyph.*
+  Sources/EasyKey/win32/EasyKey/EasyKey/FluentText.*
   Sources/EasyKey/win32/EasyKey/EasyKey/Updater.*
 Every other file, and EasyKey as a whole, is under the GNU GPL version 3.
+
+EasyKey.exe carries the Be Vietnam Pro font (regular and semibold, cut down
+to Latin and Vietnamese, in Sources/EasyKey/win32/EasyKey/EasyKey/fonts):
+  Copyright 2021 The Be Vietnam Pro Project Authors
+  https://github.com/bettergui/BeVietnamPro
+  Licensed under the SIL Open Font License 1.1 (LICENSES/OFL-1.1.txt).
+  The font keeps its own license; the GPL does not apply to it.
 
 Changes from OpenKey are listed in CHANGELOG.md and in the git history.
 The original copyright notices are kept in the source files.

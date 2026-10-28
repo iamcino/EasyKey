@@ -75,6 +75,9 @@
     <ClInclude Include="Updater.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="TrayGlyph.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="FluentText.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -149,6 +152,9 @@
     <ClCompile Include="Updater.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="TrayGlyph.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="FluentText.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -177,20 +183,14 @@
     </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
+    <None Include="fonts\BeVietnamPro-Regular.woff2">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="fonts\BeVietnamPro-SemiBold.woff2">
+      <Filter>Resource Files</Filter>
+    </None>
     <Image Include="icon.ico">
       <Filter>Resource Files</Filter>
-    </Image>
-    <Image Include="StatusVietDark.ico">
-      <Filter>Resource Files</Filter>
-    <Image Include="StatusVietLight.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
-    </Image>
-    <Image Include="StatusEngDark.ico">
-      <Filter>Resource Files</Filter>
-    <Image Include="StatusEngLight.ico">
-      <Filter>Resource Files</Filter>
-    </Image>
     </Image>
   </ItemGroup>
   <ItemGroup>

@@ -101,6 +101,7 @@
     <ClInclude Include="AppDelegate.h" />
     <ClInclude Include="EasyKeyHelper.h" />
     <ClInclude Include="FluentText.h" />
+    <ClInclude Include="TrayGlyph.h" />
     <ClInclude Include="FlyoutWindow.h" />
     <ClInclude Include="EasyKeyManager.h" />
     <ClInclude Include="Resource.h" />
@@ -135,6 +136,7 @@
     <ClCompile Include="EasyKey.cpp" />
     <ClCompile Include="EasyKeyHelper.cpp" />
     <ClCompile Include="FluentText.cpp" />
+    <ClCompile Include="TrayGlyph.cpp" />
     <ClCompile Include="FlyoutWindow.cpp" />
     <ClCompile Include="Updater.cpp" />
     <ClCompile Include="EasyKeyManager.cpp" />
@@ -150,10 +152,10 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="icon.ico" />
-    <Image Include="StatusEngDark.ico" />
-    <Image Include="StatusEngLight.ico" />
-    <Image Include="StatusVietDark.ico" />
-    <Image Include="StatusVietLight.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="fonts\BeVietnamPro-Regular.woff2" />
+    <None Include="fonts\BeVietnamPro-SemiBold.woff2" />
   </ItemGroup>
   <ItemGroup>
     <Manifest Include="DeclareDPIAware.manifest">

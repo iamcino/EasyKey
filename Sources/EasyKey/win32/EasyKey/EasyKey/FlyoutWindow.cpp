@@ -16,6 +16,7 @@ the MIT license, see LICENSES/MIT.txt.
 #include <cmath>
 #include <shellapi.h>
 #include "FlyoutWindow.h"
+#include "FluentText.h"
 #include "ThemeHelper.h"
 
 #pragma comment(lib, "d2d1.lib")
@@ -85,27 +86,10 @@ static IDWriteFactory* writeFactory() {
 	return factory;
 }
 
-//Segoe UI Variable on Windows 11, Segoe UI before it
-static LPCWSTR fontFamily() {
-	static LPCWSTR family = NULL;
-	if (!family) {
-		family = L"Segoe UI";
-		IDWriteFontCollection* fonts = NULL;
-		if (writeFactory() && SUCCEEDED(writeFactory()->GetSystemFontCollection(&fonts))) {
-			UINT32 index = 0;
-			BOOL exists = FALSE;
-			if (SUCCEEDED(fonts->FindFamilyName(L"Segoe UI Variable Text", &index, &exists)) && exists)
-				family = L"Segoe UI Variable Text";
-			fonts->Release();
-		}
-	}
-	return family;
-}
-
 static IDWriteTextFormat* textFormat(const DWRITE_FONT_WEIGHT& weight, const float& pixels) {
 	IDWriteTextFormat* format = NULL;
-	//vi-VN picks Segoe UI's Vietnamese accent shapes
-	if (!writeFactory() || FAILED(writeFactory()->CreateTextFormat(fontFamily(), NULL, weight, DWRITE_FONT_STYLE_NORMAL,
+	//the same font as the other windows; vi-VN picks the Vietnamese accent shapes of Segoe UI when it stands in
+	if (!writeFactory() || FAILED(writeFactory()->CreateTextFormat(fluentFontFamily(), fluentFontCollection(), weight, DWRITE_FONT_STYLE_NORMAL,
 		DWRITE_FONT_STRETCH_NORMAL, pixels, L"vi-VN", &format)))
 		return NULL;
 	format->SetWordWrapping(DWRITE_WORD_WRAPPING_NO_WRAP);
