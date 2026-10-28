@@ -2,7 +2,7 @@
 
 [Tiếng Việt](CHANGELOG.md) · **English**
 
-## Next version
+## 1.0.9 (Windows 11 x64)
 - New tray icon: a solid tile with V or E, drawn at the exact pixel size the taskbar uses at every scale (100%, 125%, 150%, 200%…), so it stays sharp instead of blurring from a scaled-down image. Vietnamese is a tile in the accent color with a white letter; English is a white tile on a dark taskbar and a black one on a light taskbar.
 - The interface font is now Be Vietnam Pro (OFL license), carried inside EasyKey.exe and not installed into Windows. Windows 10 before 1703 keeps Segoe UI.
 

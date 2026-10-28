@@ -28,10 +28,10 @@ See LICENSE and NOTICE.
 #pragma comment(lib, "comctl32.lib")
 
 //shown once after updating to this version; change it with each release
-#define WHATS_NEW_VI L"• Chữ trong Cài đặt và các cửa sổ khác mịn hơn, không vỡ khi màn hình phóng to.\n" \
-	L"• Lúc cập nhật, chuột và bàn phím không còn bị khựng."
-#define WHATS_NEW_EN L"• Text in Settings and the other windows is smoother and stays sharp on scaled screens.\n" \
-	L"• The mouse and keyboard no longer stall while EasyKey updates."
+#define WHATS_NEW_VI L"• Biểu tượng khay mới: ô màu đặc, nét sắc ở mọi mức phóng to màn hình.\n" \
+	L"• Giao diện dùng font Be Vietnam Pro, nhúng sẵn trong EasyKey."
+#define WHATS_NEW_EN L"• New tray icon: a solid tile that stays sharp at every screen scale.\n" \
+	L"• The interface uses the Be Vietnam Pro font, built into EasyKey."
 
 //6 hours
 #define UPDATE_CHECK_INTERVAL (6 * 60 * 60 * 1000)
