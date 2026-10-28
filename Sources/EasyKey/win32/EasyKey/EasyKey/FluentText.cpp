@@ -12,9 +12,10 @@ the MIT license, see LICENSES/MIT.txt.
 //Direct2D needs the full windows.h, include it before stdafx.h trims windows.h down
 #include <windows.h>
 #include <d2d1.h>
-#include <dwrite.h>
+#include <dwrite_3.h>
 #include <cmath>
 #include "FluentText.h"
+#include "resource.h"
 
 #pragma comment(lib, "d2d1.lib")
 #pragma comment(lib, "dwrite.lib")
@@ -44,12 +45,99 @@ static IDWriteFactory* writeFactory() {
 	return factory;
 }
 
+#define APP_FONT_FAMILY L"Be Vietnam Pro"
+
+//the bytes of a font in the resources; WOFF2 is unpacked, a plain font file is taken as it is
+static bool readFontResource(IDWriteFactory5* factory, const int& id, vector<BYTE>& bytes) {
+	HRSRC resource = FindResource(NULL, MAKEINTRESOURCE(id), RT_RCDATA);
+	HGLOBAL loaded = resource ? LoadResource(NULL, resource) : NULL;
+	const BYTE* data = loaded ? (const BYTE*)LockResource(loaded) : NULL;
+	DWORD size = resource ? SizeofResource(NULL, resource) : 0;
+	if (!data || size < 4)
+		return false;
+	if (memcmp(data, "wOF2", 4) != 0) {
+		bytes.assign(data, data + size);
+		return true;
+	}
+	IDWriteFontFileStream* stream = NULL;
+	if (FAILED(factory->UnpackFontFile(DWRITE_CONTAINER_TYPE_WOFF2, data, size, &stream)))
+		return false;
+	UINT64 length = 0;
+	const void* fragment = NULL;
+	void* context = NULL;
+	bool read = SUCCEEDED(stream->GetFileSize(&length)) && length > 0 &&
+		SUCCEEDED(stream->ReadFileFragment(&fragment, 0, length, &context));
+	if (read) {
+		bytes.assign((const BYTE*)fragment, (const BYTE*)fragment + length);
+		stream->ReleaseFileFragment(context);
+	}
+	stream->Release();
+	return read;
+}
+
+static bool gdiHasAppFont = false;
+
+//Be Vietnam Pro, regular and semibold, carried inside the exe so nothing gets installed;
+//NULL where DirectWrite cannot load fonts from memory (before Windows 10 1703)
+static IDWriteFontCollection* appFonts() {
+	static IDWriteFontCollection* fonts = NULL;
+	static bool tried = false;
+	if (tried)
+		return fonts;
+	tried = true;
+	IDWriteFactory5* factory = NULL;
+	if (!writeFactory() || FAILED(writeFactory()->QueryInterface(__uuidof(IDWriteFactory5), (void**)&factory)))
+		return NULL;
+	IDWriteInMemoryFontFileLoader* loader = NULL;
+	IDWriteFontSetBuilder1* builder = NULL;
+	//the loader stays registered for as long as the app runs, the fonts live in it
+	if (SUCCEEDED(factory->CreateInMemoryFontFileLoader(&loader)) && SUCCEEDED(factory->RegisterFontFileLoader(loader)) &&
+		SUCCEEDED(factory->CreateFontSetBuilder(&builder))) {
+		int ids[] = { IDR_FONT_REGULAR, IDR_FONT_SEMIBOLD };
+		int added = 0;
+		for (int id : ids) {
+			vector<BYTE> bytes;
+			IDWriteFontFile* file = NULL;
+			if (!readFontResource(factory, id, bytes) ||
+				FAILED(loader->CreateInMemoryFontFileReference(factory, bytes.data(), (UINT32)bytes.size(), NULL, &file)))
+				continue;
+			if (SUCCEEDED(builder->AddFontFile(file)))
+				added++;
+			file->Release();
+			//the edit boxes draw with GDI, which keeps its own copy for this process only
+			DWORD count = 0;
+			if (AddFontMemResourceEx(bytes.data(), (DWORD)bytes.size(), NULL, &count))
+				gdiHasAppFont = true;
+		}
+		IDWriteFontSet* set = NULL;
+		IDWriteFontCollection1* collection = NULL;
+		if (added == 2 && SUCCEEDED(builder->CreateFontSet(&set)) && SUCCEEDED(factory->CreateFontCollectionFromFontSet(set, &collection))) {
+			UINT32 index = 0;
+			BOOL exists = FALSE;
+			if (SUCCEEDED(collection->FindFamilyName(APP_FONT_FAMILY, &index, &exists)) && exists)
+				fonts = collection;
+			else
+				collection->Release();
+		}
+		if (set)
+			set->Release();
+	}
+	if (builder)
+		builder->Release();
+	if (loader)
+		loader->Release();
+	factory->Release();
+	return fonts;
+}
+
 static LPCWSTR fontFamily() {
 	static LPCWSTR family = NULL;
 	if (!family) {
 		family = L"Segoe UI";
 		IDWriteFontCollection* fonts = NULL;
-		if (writeFactory() && SUCCEEDED(writeFactory()->GetSystemFontCollection(&fonts))) {
+		if (appFonts()) {
+			family = APP_FONT_FAMILY;
+		} else if (writeFactory() && SUCCEEDED(writeFactory()->GetSystemFontCollection(&fonts))) {
 			UINT32 index = 0;
 			BOOL exists = FALSE;
 			if (SUCCEEDED(fonts->FindFamilyName(L"Segoe UI Variable Text", &index, &exists)) && exists)
@@ -60,10 +148,23 @@ static LPCWSTR fontFamily() {
 	return family;
 }
 
+IDWriteFontCollection* fluentFontCollection() {
+	return appFonts();
+}
+
+LPCWSTR fluentFontFamily() {
+	return fontFamily();
+}
+
+LPCWSTR fluentGdiFontFace() {
+	appFonts();
+	return gdiHasAppFont ? APP_FONT_FAMILY : NULL;
+}
+
 static IDWriteTextFormat* createFormat(const DWRITE_FONT_WEIGHT& weight, const float& pixels, const bool& wrap) {
 	IDWriteTextFormat* format = NULL;
-	//vi-VN picks Segoe UI's Vietnamese accent shapes
-	if (!writeFactory() || FAILED(writeFactory()->CreateTextFormat(fontFamily(), NULL, weight, DWRITE_FONT_STYLE_NORMAL,
+	//vi-VN picks the Vietnamese accent shapes of Segoe UI when it stands in
+	if (!writeFactory() || FAILED(writeFactory()->CreateTextFormat(fontFamily(), appFonts(), weight, DWRITE_FONT_STYLE_NORMAL,
 		DWRITE_FONT_STRETCH_NORMAL, pixels, L"vi-VN", &format)))
 		return NULL;
 	if (wrap) {

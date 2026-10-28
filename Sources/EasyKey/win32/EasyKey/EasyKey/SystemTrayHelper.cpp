@@ -18,6 +18,7 @@ See LICENSE and NOTICE.
 #include "AppDelegate.h"
 #include "ThemeHelper.h"
 #include "Updater.h"
+#include "TrayGlyph.h"
 #include <cmath>
 
 #define WM_TRAYMESSAGE (WM_USER + 1)
@@ -94,8 +95,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 		}
 		return DefWindowProc(hWnd, message, wParam, lParam);
 	case WM_APP + 7:
-		DestroyIcon((HICON)lParam); //a tinted icon the tray no longer shows
+		DestroyIcon((HICON)lParam); //an icon the tray no longer shows
 		break;
+	case WM_DPICHANGED:
+	case WM_DISPLAYCHANGE:
+		//the screen scale changed: draw the icon again at the new size
+		SystemTrayHelper::updateData();
+		return DefWindowProc(hWnd, message, wParam, lParam);
 	case WM_DWMCOLORIZATIONCOLORCHANGED:
 		//the Windows accent changed
 		SystemTrayHelper::updateData();
@@ -267,42 +273,52 @@ void SystemTrayHelper::createPopupMenu() {
 	SetMenuDefaultItem(popupMenu, POPUP_CONTROL_PANEL, false);
 }
 
-//the same shape as source, filled with color; the caller destroys it
-static HICON tintIcon(const HICON& source, const COLORREF& color) {
-	ICONINFO info;
-	if (!GetIconInfo(source, &info))
-		return NULL;
-	BITMAP bm = {};
-	GetObject(info.hbmColor, sizeof(bm), &bm);
+typedef UINT(WINAPI *GetDpiForWindowFunc)(HWND);
+typedef int(WINAPI *GetSystemMetricsForDpiFunc)(int, UINT);
+
+//the size the taskbar shows tray icons at, for the DPI of the screen it is on now
+static int trayIconSize() {
+	//both only exist on Windows 10 1607 and later
+	static GetDpiForWindowFunc getDpiForWindow =
+		(GetDpiForWindowFunc)GetProcAddress(GetModuleHandle(_T("user32.dll")), "GetDpiForWindow");
+	static GetSystemMetricsForDpiFunc getSystemMetricsForDpi =
+		(GetSystemMetricsForDpiFunc)GetProcAddress(GetModuleHandle(_T("user32.dll")), "GetSystemMetricsForDpi");
+	HWND taskbar = FindWindow(_T("Shell_TrayWnd"), NULL);
+	UINT dpi = getDpiForWindow && taskbar ? getDpiForWindow(taskbar) : 0;
+	if (dpi > 0 && getSystemMetricsForDpi)
+		return getSystemMetricsForDpi(SM_CXSMICON, dpi);
+	return GetSystemMetrics(SM_CXSMICON);
+}
+
+//the tray glyph drawn for this exact size, a solid tile with the letter in its own color; the caller destroys it
+static HICON createTrayIcon(const int& size, const bool& vietnamese, const COLORREF& tileColor, const COLORREF& letterColor) {
+	vector<BYTE> tile, letter;
+	drawTrayGlyph(size, vietnamese, tile, letter);
 	BITMAPINFO bmi = {};
 	bmi.bmiHeader.biSize = sizeof(bmi.bmiHeader);
-	bmi.bmiHeader.biWidth = bm.bmWidth;
-	bmi.bmiHeader.biHeight = -bm.bmHeight;
+	bmi.bmiHeader.biWidth = size;
+	bmi.bmiHeader.biHeight = -size;
 	bmi.bmiHeader.biPlanes = 1;
 	bmi.bmiHeader.biBitCount = 32;
 	bmi.bmiHeader.biCompression = BI_RGB;
-	vector<DWORD> pixels(bm.bmWidth * bm.bmHeight);
-	HDC dc = GetDC(NULL);
-	bool read = GetDIBits(dc, info.hbmColor, 0, bm.bmHeight, pixels.data(), &bmi, DIB_RGB_COLORS) != 0;
-	HICON result = NULL;
-	if (read) {
-		//keep only the alpha, which is the glyph; icons take straight, not premultiplied, alpha
-		DWORD rgb = (GetRValue(color) << 16) | (GetGValue(color) << 8) | GetBValue(color);
-		for (DWORD& pixel : pixels)
-			pixel = (pixel & 0xFF000000) | rgb;
-		ICONINFO tinted = {};
-		tinted.fIcon = TRUE;
-		tinted.hbmColor = CreateDIBitmap(dc, &bmi.bmiHeader, CBM_INIT, pixels.data(), &bmi, DIB_RGB_COLORS);
-		tinted.hbmMask = CreateBitmap(bm.bmWidth, bm.bmHeight, 1, 1, NULL);
-		if (tinted.hbmColor && tinted.hbmMask)
-			result = CreateIconIndirect(&tinted);
-		if (tinted.hbmColor) DeleteObject(tinted.hbmColor);
-		if (tinted.hbmMask) DeleteObject(tinted.hbmMask);
+	vector<DWORD> pixels(size * size);
+	for (int i = 0; i < size * size; i++) {
+		//icons take straight, not premultiplied, alpha
+		int k = letter[i];
+		auto mix = [&](const int& from, const int& to) { return (DWORD)((from * (255 - k) + to * k + 127) / 255); };
+		pixels[i] = ((DWORD)tile[i] << 24) | (mix(GetRValue(tileColor), GetRValue(letterColor)) << 16) |
+			(mix(GetGValue(tileColor), GetGValue(letterColor)) << 8) | mix(GetBValue(tileColor), GetBValue(letterColor));
 	}
+	HDC dc = GetDC(NULL);
+	ICONINFO info = {};
+	info.fIcon = TRUE;
+	info.hbmColor = CreateDIBitmap(dc, &bmi.bmiHeader, CBM_INIT, pixels.data(), &bmi, DIB_RGB_COLORS);
+	info.hbmMask = CreateBitmap(size, size, 1, 1, NULL);
+	HICON icon = info.hbmColor && info.hbmMask ? CreateIconIndirect(&info) : NULL;
+	if (info.hbmColor) DeleteObject(info.hbmColor);
+	if (info.hbmMask) DeleteObject(info.hbmMask);
 	ReleaseDC(NULL, dc);
-	DeleteObject(info.hbmColor);
-	DeleteObject(info.hbmMask);
-	return result;
+	return icon;
 }
 
 //the green "update available" arrow, in a unit square: a head on top of a stem
@@ -416,25 +432,25 @@ static HBITMAP updateArrowBitmap() {
 }
 
 static void loadTrayIcon() {
-	static HICON tinted = NULL, badged = NULL;
-	int icon = 0;
-	//tray icon is a monochrome glyph, white on a dark taskbar and black on a light one;
-	//in Vietnamese mode it takes the accent color so the mode shows at a glance
+	static HICON glyph = NULL, badged = NULL;
+	//a solid tile drawn for the size the taskbar wants, so no scaling blurs it:
+	//V on the accent color in Vietnamese mode, E in white on a dark taskbar and in black on a light one
 	bool darkTaskbar = ThemeHelper::isTaskbarDarkMode();
+	COLORREF tileColor, letterColor;
 	if (vLanguage) {
-		icon = darkTaskbar ? IDI_ICON_STATUS_VIET_DARK : IDI_ICON_STATUS_VIET_LIGHT;
+		//the accent of light mode is the deep one, white text on it reads on either taskbar
+		tileColor = ThemeHelper::getAccentColor(false, false);
+		letterColor = RGB(0xFF, 0xFF, 0xFF);
 		lstrcpyn(nid.szTip, TR("EasyKey: đang gõ tiếng Việt", "EasyKey: typing Vietnamese"), 128);
 	}
 	else {
-		icon = darkTaskbar ? IDI_ICON_STATUS_ENG_DARK : IDI_ICON_STATUS_ENG_LIGHT;
+		tileColor = darkTaskbar ? RGB(0xFF, 0xFF, 0xFF) : RGB(0x1C, 0x1C, 0x1C);
+		letterColor = darkTaskbar ? RGB(0x1C, 0x1C, 0x1C) : RGB(0xFF, 0xFF, 0xFF);
 		lstrcpyn(nid.szTip, TR("EasyKey: đang gõ tiếng Anh", "EasyKey: typing English"), 128);
 	}
-	//load the small icon size directly so the tray does not downscale the 32px one
-	HICON glyph = (HICON)LoadImage(GetModuleHandle(0), MAKEINTRESOURCE(icon), IMAGE_ICON,
-		GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), LR_SHARED);
-	HICON previous = tinted, previousBadged = badged;
-	tinted = vLanguage ? tintIcon(glyph, ThemeHelper::getAccentColor(darkTaskbar, false)) : NULL;
-	nid.hIcon = tinted ? tinted : glyph;
+	HICON previous = glyph, previousBadged = badged;
+	glyph = createTrayIcon(trayIconSize(), vLanguage != 0, tileColor, letterColor);
+	nid.hIcon = glyph;
 	//a newer version is out: a small green arrow on the icon
 	const string& update = Updater::availableVersion();
 	badged = update.empty() ? NULL : withUpdateArrow(nid.hIcon);

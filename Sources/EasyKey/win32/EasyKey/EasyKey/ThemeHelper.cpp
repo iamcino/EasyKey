@@ -1,4 +1,4 @@
-/*----------------------------------------------------------
+﻿/*----------------------------------------------------------
 EasyKey - Vietnamese input for Windows 11.
 Copyright (C) 2026 Cino
 
@@ -14,6 +14,7 @@ the MIT license, see LICENSES/MIT.txt.
 #include <gdiplus.h>
 #include <cmath>
 #include "ThemeHelper.h"
+#include "FluentText.h"
 
 #pragma comment(lib, "Dwmapi.lib")
 #pragma comment(lib, "gdiplus.lib")
@@ -101,6 +102,9 @@ static int CALLBACK onFontFound(const LOGFONT* lf, const TEXTMETRIC* tm, DWORD f
 }
 
 LPCTSTR ThemeHelper::getFontFace() {
+	//Be Vietnam Pro from inside the exe, like the text EasyKey draws itself
+	if (fluentGdiFontFace())
+		return fluentGdiFontFace();
 	//Segoe UI Variable ships with Windows 11 only
 	static int hasVariableFont = -1;
 	if (hasVariableFont < 0) {

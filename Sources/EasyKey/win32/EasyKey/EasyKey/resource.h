@@ -33,6 +33,8 @@
 #define IDS_STRING_RUN_AS_ADMIN         124
 #define IDS_STRING_CHECK_UPDATE         125
 #define IDS_STRING_REMEMBER_TABLE_CODE  126
+#define IDR_FONT_REGULAR                151
+#define IDR_FONT_SEMIBOLD               152
 #define IDR_MAINFRAME                   128
 #define IDS_STRING_FIX_CHROMIUM         128
 #define IDD_DIALOG_MAIN                 129
@@ -54,10 +56,6 @@
 #define IDD_DIALOG_OLD                  148
 #define IDD_DIALOG_TAB_INFO             149
 #define IDS_STRING_OTHER_LANGUAGES		150
-#define IDI_ICON_STATUS_VIET_DARK       151
-#define IDI_ICON_STATUS_VIET_LIGHT      152
-#define IDI_ICON_STATUS_ENG_DARK        153
-#define IDI_ICON_STATUS_ENG_LIGHT       154
 #define IDC_COMBO1                      1000
 #define IDC_COMBO_INPUT_TYPE            1000
 #define IDC_CHECK1                      1001

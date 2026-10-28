@@ -19,8 +19,14 @@ the MIT license, see LICENSES/MIT.txt.
  */
 
 struct FluentFont;
+struct IDWriteFontCollection;
 
-//Segoe UI Variable on Windows 11, Segoe UI before it; strong is semibold
+//Be Vietnam Pro, which EasyKey carries inside the exe; Segoe UI Variable or Segoe UI where it cannot load
+IDWriteFontCollection* fluentFontCollection(); //NULL means the system fonts
+LPCWSTR fluentFontFamily();
+LPCWSTR fluentGdiFontFace(); //for GDI controls, NULL when GDI could not take it
+
+//strong is semibold, bold asks for more but gets semibold, the heaviest weight EasyKey carries
 FluentFont* createFluentFont(const bool& strong, const float& pixels, const bool& bold = false);
 void freeFluentFont(FluentFont*& font);
 

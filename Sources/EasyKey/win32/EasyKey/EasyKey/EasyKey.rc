@@ -34,13 +34,14 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 // remains consistent on all systems.
 IDI_APP_ICON            ICON                    "icon.ico"
 
-IDI_ICON_STATUS_VIET_DARK ICON                  "StatusVietDark.ico"
+/////////////////////////////////////////////////////////////////////////////
+//
+// Font: Be Vietnam Pro, cut down to Latin and Vietnamese, SIL Open Font License 1.1 (LICENSES/OFL-1.1.txt)
+//
 
-IDI_ICON_STATUS_VIET_LIGHT ICON                 "StatusVietLight.ico"
+IDR_FONT_REGULAR        RCDATA                  "fonts\\BeVietnamPro-Regular.woff2"
 
-IDI_ICON_STATUS_ENG_DARK ICON                   "StatusEngDark.ico"
-
-IDI_ICON_STATUS_ENG_LIGHT ICON                  "StatusEngLight.ico"
+IDR_FONT_SEMIBOLD       RCDATA                  "fonts\\BeVietnamPro-SemiBold.woff2"
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -109,8 +110,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,0,8,0
- PRODUCTVERSION 1,0,8,0
+ FILEVERSION 1,0,9,0
+ PRODUCTVERSION 1,0,9,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -127,12 +128,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "EasyKey"
             VALUE "FileDescription", "EasyKey - Bộ gõ Tiếng Việt"
-            VALUE "FileVersion", "1.0.8.0"
+            VALUE "FileVersion", "1.0.9.0"
             VALUE "InternalName", "EasyKey.exe"
             VALUE "LegalCopyright", "Copyright (C) 2026 Cino. Based on OpenKey, Copyright (C) 2019 Mai Vũ Tuyên. GPLv3."
             VALUE "OriginalFilename", "EasyKey.exe"
             VALUE "ProductName", "EasyKey"
-            VALUE "ProductVersion", "1.0.8.0"
+            VALUE "ProductVersion", "1.0.9.0"
         END
     END
     BLOCK "VarFileInfo"

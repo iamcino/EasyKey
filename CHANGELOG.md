@@ -2,6 +2,10 @@
 
 **Tiếng Việt** · [English](CHANGELOG.en.md)
 
+## 1.0.9 (Windows 11 x64)
+- Biểu tượng khay mới: ô vuông màu đặc với chữ V hoặc E, vẽ đúng cỡ pixel mà thanh tác vụ cần ở mọi mức phóng to (100%, 125%, 150%, 200%…) nên nét sắc, không bị mờ do thu nhỏ. Gõ tiếng Việt là ô màu nhấn chữ trắng, gõ tiếng Anh là ô trắng (thanh tác vụ tối) hoặc đen (thanh tác vụ sáng).
+- Font giao diện đổi sang Be Vietnam Pro (giấy phép OFL), nhúng sẵn trong EasyKey.exe, không cài vào Windows. Windows 10 bản cũ hơn 1703 vẫn dùng Segoe UI.
+
 ## 1.0.8 (Windows 11 x64)
 - Lúc cập nhật, chuột và bàn phím không còn bị khựng: EasyKey ghi file mới ở luồng riêng và gỡ hook trước khi khởi động bản mới (lúc này phần mềm diệt virus quét file mới).
 - Chữ trong mọi cửa sổ (Cài đặt, Giới thiệu, Bảng gõ tắt, Chuyển mã, hộp thoại) vẽ bằng DirectWrite như popup: nét mịn, không vỡ khi Windows phóng to màn hình trên 100%.

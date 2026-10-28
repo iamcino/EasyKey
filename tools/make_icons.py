@@ -1,4 +1,5 @@
-# Generates EasyKey app, updater and tray icons from one geometry so they match.
+# Generates the EasyKey app and updater icons from one geometry so they match.
+# The tray icon is drawn at run time for the exact size the taskbar wants, see TrayGlyph.cpp.
 # Usage: python tools/make_icons.py <out_dir>  (needs Pillow); copy the .ico files into Sources/EasyKey/win32/EasyKey.
 import sys
 from PIL import Image, ImageDraw
@@ -55,49 +56,20 @@ def app(n, badge=False):
         d.polygon([(cx - a * 0.75, cy + a * 0.05), (cx + a * 0.75, cy + a * 0.05), (cx, cy + a)], fill=(255, 255, 255, 255))
     return img.resize((n, n), Image.LANCZOS)
 
-def tray_viet(n, color):
-    N = n * SS
-    img = Image.new('RGBA', (N, N), (0, 0, 0, 0))
-    ImageDraw.Draw(img).rounded_rectangle(rect_box(N), radius=px(RADIUS, N), fill=color)
-    hole = Image.new('L', (N, N), 0)
-    draw_v(ImageDraw.Draw(hole), N, 255)
-    img.putalpha(Image.composite(Image.new('L', (N, N), 0), img.getchannel('A'), hole))
-    return img.resize((n, n), Image.LANCZOS)
-
-def tray_eng(n, color):
-    N = n * SS
-    img = Image.new('RGBA', (N, N), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    d.rounded_rectangle(rect_box(N), radius=px(RADIUS, N), outline=color, width=int(px(0.075, N)))
-    draw_e(d, N, color)
-    return img.resize((n, n), Image.LANCZOS)
-
 def save_ico(path, frames):
     frames = sorted(frames, key=lambda f: -f.size[0])
     frames[0].save(path, format='ICO', sizes=[f.size for f in frames], append_images=frames[1:])
 
 APP = [16, 20, 24, 32, 40, 48, 64, 128, 256]
-TRAY = [16, 20, 24, 32, 40, 48, 64]
-WHITE, DARK = (255, 255, 255, 255), (0x1B, 0x1B, 0x1B, 255)
 save_ico(f'{OUT}/icon.ico', [app(n) for n in APP])
 save_ico(f'{OUT}/small.ico', [app(n, True) for n in [16, 20, 24, 32, 48]])
-save_ico(f'{OUT}/StatusVietDark.ico', [tray_viet(n, WHITE) for n in TRAY])
-save_ico(f'{OUT}/StatusVietLight.ico', [tray_viet(n, DARK) for n in TRAY])
-save_ico(f'{OUT}/StatusEngDark.ico', [tray_eng(n, WHITE) for n in TRAY])
-save_ico(f'{OUT}/StatusEngLight.ico', [tray_eng(n, DARK) for n in TRAY])
 
 # preview sheet
 sheet = Image.new('RGBA', (900, 380), (32, 32, 32, 255))
-light = Image.new('RGBA', (450, 120), (243, 243, 243, 255)); sheet.paste(light, (450, 260))
 x = 10
 for n in [256, 64, 32, 16]:
     sheet.paste(app(n), (x, 10), app(n)); x += n + 10
 x = 10
 for n in [128, 32, 16]:
     u = app(n, True); sheet.paste(u, (x, 270 - (n - 32) // 2 if n < 100 else 250), u); x += n + 10
-x = 470
-for f in (tray_viet, tray_eng):
-    for n in (48, 24, 16):
-        i = f(n, WHITE); sheet.paste(i, (x, 200), i)
-        j = f(n, DARK); sheet.paste(j, (x, 290), j); x += n + 12
 sheet.save(f'{OUT}/preview.png')
