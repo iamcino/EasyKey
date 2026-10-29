@@ -2,7 +2,7 @@
 
 **Tiếng Việt** · [English](BUILD.en.md)
 
-Bạn có thể tự build EasyKey thay vì tải bản có sẵn.
+Bạn có thể tự build EasyKey thay vì tải bản có sẵn. Cách EasyKey hoạt động và cấu trúc mã nguồn được giải thích trong [tài liệu thiết kế](DESIGN.md).
 
 **Cách 1: build trên máy**
 1. Cài [Visual Studio 2022](https://visualstudio.microsoft.com/vs/) (bản Community miễn phí), chọn workload **Desktop development with C++** (có sẵn MSVC v143 và Windows SDK).
