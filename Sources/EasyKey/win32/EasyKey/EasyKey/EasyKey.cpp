@@ -94,6 +94,7 @@ LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam);
 LRESULT CALLBACK mouseHookProcess(int nCode, WPARAM wParam, LPARAM lParam);
 VOID CALLBACK winEventProcCallback(HWINEVENTHOOK hWinEventHook, DWORD dwEvent, HWND hwnd, LONG idObject, LONG idChild, DWORD dwEventThread, DWORD dwmsEventTime);
 static void watchRawKeyboard();
+static void syncModifierMask();
 
 void EasyKeyFree() {
 	UnhookWindowsHookEx(hMouseHook);
@@ -181,12 +182,8 @@ void EasyKeyInit() {
 
 	//get key state
 	_flag = 0;
-	if (GetKeyState(VK_LSHIFT) < 0 || GetKeyState(VK_RSHIFT) < 0) _flag |= MASK_SHIFT;
-	if (GetKeyState(VK_LCONTROL) < 0 || GetKeyState(VK_RCONTROL) < 0) _flag |= MASK_CONTROL;
-	if (GetKeyState(VK_LMENU) < 0 || GetKeyState(VK_RMENU) < 0) _flag |= MASK_ALT;
-	if (GetKeyState(VK_LWIN) < 0 || GetKeyState(VK_RWIN) < 0) _flag |= MASK_WIN;
+	syncModifierMask();
 	if (GetKeyState(VK_NUMLOCK) < 0) _flag |= MASK_NUMLOCK;
-	if (GetKeyState(VK_CAPITAL) == 1) _flag |= MASK_CAPITAL;
 	if (GetKeyState(VK_SCROLL) < 0) _flag |= MASK_SCROLL;
 
 	//init and load macro data
@@ -575,12 +572,23 @@ static void handleMacro() {
 	SendKeyCode(_keycode | (_flag & MASK_SHIFT ? CAPS_MASK : 0));
 }
 
-static bool SetModifierMask(const Uint16& vkCode) {
+//Shift, Ctrl, Alt, Win and Caps Lock as they really are now. The hook follows them from their own key
+//events, but it never sees a key up while it is gone (removed by Windows until the watchdog puts it back,
+//an elevated window or the lock screen in front): a Shift left down that way made every rewritten letter
+//upper case, "giÚP tÔi hOÀN thIỆN" in Firefox. The hook runs before the key changes the async state, so
+//this is right for any key but the modifier being pressed.
+static void syncModifierMask() {
+	_flag &= ~(MASK_SHIFT | MASK_CONTROL | MASK_ALT | MASK_WIN | MASK_CAPITAL);
+	if (GetAsyncKeyState(VK_SHIFT) < 0) _flag |= MASK_SHIFT;
+	if (GetAsyncKeyState(VK_CONTROL) < 0) _flag |= MASK_CONTROL;
+	if (GetAsyncKeyState(VK_MENU) < 0) _flag |= MASK_ALT;
+	if (GetAsyncKeyState(VK_LWIN) < 0 || GetAsyncKeyState(VK_RWIN) < 0) _flag |= MASK_WIN;
 	// For caps lock case, toggling the flag isn't enough. We need to check the actual state, which should be done before each key press.
 	// Example: the caps lock state can be changed without the key being pressed, or the key toggle is made with admin privilege, making the app not able to detect the change.
-	if (GetKeyState(VK_CAPITAL) == 1) _flag |= MASK_CAPITAL;
-	else _flag &= ~MASK_CAPITAL;
+	if (GetKeyState(VK_CAPITAL) & 1) _flag |= MASK_CAPITAL;
+}
 
+static bool SetModifierMask(const Uint16& vkCode) {
 	if (vkCode == VK_LSHIFT || vkCode == VK_RSHIFT) _flag |= MASK_SHIFT;
 	else if (vkCode == VK_LCONTROL || vkCode == VK_RCONTROL) _flag |= MASK_CONTROL;
 	else if (vkCode == VK_LMENU || vkCode == VK_RMENU) _flag |= MASK_ALT;
@@ -588,6 +596,7 @@ static bool SetModifierMask(const Uint16& vkCode) {
 	else if (vkCode == VK_NUMLOCK) _flag |= MASK_NUMLOCK;
 	else if (vkCode == VK_SCROLL) _flag |= MASK_SCROLL;
 	else { 
+		syncModifierMask();
 		_isFlagKey = false;
 		return false; 
 	}
@@ -640,10 +649,10 @@ static void writeDebugLine(const char* text) {
 static void writeDebugKeyLog(WPARAM wParam, DWORD_PTR isImeON) {
 	if (!openDebugLog())
 		return;
-	fprintf(_debugLogFile, "t=%lu msg=%04X vk=%02X scan=%02X flags=%02X injected=%d extra=%llX ime=%d lang=%d app=%s\n",
+	fprintf(_debugLogFile, "t=%lu msg=%04X vk=%02X scan=%02X flags=%02X injected=%d extra=%llX ime=%d mods=%X lang=%d app=%s\n",
 		GetTickCount(), (unsigned)wParam, keyboardData->vkCode, keyboardData->scanCode, keyboardData->flags,
 		(keyboardData->flags & LLKHF_INJECTED) ? 1 : 0, (unsigned long long)keyboardData->dwExtraInfo,
-		(int)isImeON, vLanguage, EasyKeyHelper::getLastAppExecuteName().c_str());
+		(int)isImeON, _flag, vLanguage, EasyKeyHelper::getLastAppExecuteName().c_str());
 	fflush(_debugLogFile);
 	_debugLogCount++;
 }
@@ -659,6 +668,7 @@ static void reinstallHooks(const char* reason) {
 		_hookKeyDowns = _rawKeyDowns;
 	//the keys typed while the hook was gone reached the app as they were, start over
 	startNewSession();
+	syncModifierMask();
 	if (vDebugKeyLog)
 		writeDebugLine(reason);
 }
