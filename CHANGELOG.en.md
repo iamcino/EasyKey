@@ -2,6 +2,10 @@
 
 [Tiếng Việt](CHANGELOG.md) · **English**
 
+## 1.0.10 (Windows 11 x64)
+- Fixed letters EasyKey rewrites coming out in capitals, for example "giúp tôi hoàn thiện" turning into "giÚP tÔi hOÀN thIỆN" (seen in Gemini on Firefox). EasyKey had missed a Shift key release, for example while the screen was locked or an administrator window was in front, and kept treating Shift as held. EasyKey now reads the real state of Shift, Ctrl, Alt, Win and Caps Lock before every key.
+- The README is rewritten to be clearer (a table of everyday actions, updating and removing, troubleshooting, how to record a key log for a bug report). New design document for developers (docs/DESIGN.en.md). The "Red underlines under Vietnamese?" button in Settings opens the right guide again.
+
 ## 1.0.9 (Windows 11 x64)
 - New tray icon: a solid tile with V or E, drawn at the exact pixel size the taskbar uses at every scale (100%, 125%, 150%, 200%…), so it stays sharp instead of blurring from a scaled-down image. Vietnamese is a tile in the accent color with a white letter; English is a white tile on a dark taskbar and a black one on a light taskbar.
 - The interface font is now Be Vietnam Pro (OFL license), carried inside EasyKey.exe and not installed into Windows. Windows 10 before 1703 keeps Segoe UI.

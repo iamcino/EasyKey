@@ -2,6 +2,10 @@
 
 **Tiếng Việt** · [English](CHANGELOG.en.md)
 
+## 1.0.10 (Windows 11 x64)
+- Sửa lỗi chữ EasyKey gõ lại bị viết hoa lẫn lộn, ví dụ "giúp tôi hoàn thiện" thành "giÚP tÔi hOÀN thIỆN" (gặp ở Gemini trên Firefox). Nguyên nhân là EasyKey lỡ mất lúc nhả phím Shift, ví dụ khi đang khoá màn hình hay mở cửa sổ quyền Admin, rồi cứ tưởng Shift vẫn đang giữ. Giờ EasyKey đọc lại trạng thái thật của Shift, Ctrl, Alt, Win và Caps Lock trước mỗi phím.
+- README viết lại cho rõ ràng hơn (bảng thao tác, cập nhật và gỡ bỏ, xử lý sự cố, cách ghi nhật ký phím để báo lỗi). Thêm tài liệu thiết kế cho người phát triển (docs/DESIGN.md). Nút "Windows gạch đỏ chữ Việt?" trong Cài đặt lại mở đúng mục hướng dẫn.
+
 ## 1.0.9 (Windows 11 x64)
 - Biểu tượng khay mới: ô vuông màu đặc với chữ V hoặc E, vẽ đúng cỡ pixel mà thanh tác vụ cần ở mọi mức phóng to (100%, 125%, 150%, 200%…) nên nét sắc, không bị mờ do thu nhỏ. Gõ tiếng Việt là ô màu nhấn chữ trắng, gõ tiếng Anh là ô trắng (thanh tác vụ tối) hoặc đen (thanh tác vụ sáng).
 - Font giao diện đổi sang Be Vietnam Pro (giấy phép OFL), nhúng sẵn trong EasyKey.exe, không cài vào Windows. Windows 10 bản cũ hơn 1703 vẫn dùng Segoe UI.

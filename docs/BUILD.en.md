@@ -2,7 +2,7 @@
 
 [Tiếng Việt](BUILD.md) · **English**
 
-You can build EasyKey yourself instead of downloading a release.
+You can build EasyKey yourself instead of downloading a release. How EasyKey works and how the source is organized is explained in the [design document](DESIGN.en.md).
 
 **Option 1: build on your PC**
 1. Install [Visual Studio 2022](https://visualstudio.microsoft.com/vs/) (the free Community edition) with the **Desktop development with C++** workload (it includes MSVC v143 and the Windows SDK).
