@@ -42,12 +42,10 @@ static bool _hasGetPath = false;
 
 static DWORD _cacheProcessId = 0, _tempProcessId = 0;
 static HWND _tempWnd;
-static TCHAR _exePath[1024] = { 0 };
-static LPCTSTR _exeName = _exePath;
-static HANDLE _proc;
 static const char* _noAppYet = "TheEasyKeyProject"; //until the user switches to an app
-static string _exeNameUtf8 = _noAppYet;
+static string _exeNameUtf8 = _noAppYet; //the last app whose name was read
 static string _unknownProgram = "UnknownProgram";
+static string* _frontName = &_exeNameUtf8; //what the window of _cacheProcessId counts as
 
 int CF_RTF = RegisterClipboardFormat(_T("Rich Text Format"));
 int CF_HTML = RegisterClipboardFormat(_T("HTML Format"));
@@ -242,35 +240,52 @@ LPTSTR EasyKeyHelper::getExecutePath() {
 	return _executePath;
 }
 
+//a Store app (Calculator, Settings, Photos...) runs inside a frame of ApplicationFrameHost.exe,
+//the app itself is the process of the core window in that frame
+static DWORD processOfWindow(const HWND& hWnd) {
+	DWORD processId = 0;
+	GetWindowThreadProcessId(hWnd, &processId);
+	TCHAR className[64];
+	if (GetClassName(hWnd, className, 64) && lstrcmp(className, _T("ApplicationFrameWindow")) == 0) {
+		HWND core = FindWindowEx(hWnd, NULL, _T("Windows.UI.Core.CoreWindow"), NULL);
+		DWORD coreProcessId = 0;
+		if (core && GetWindowThreadProcessId(core, &coreProcessId) && coreProcessId)
+			processId = coreProcessId;
+	}
+	return processId;
+}
+
 string& EasyKeyHelper::getFrontMostAppExecuteName() {
 	_tempWnd = GetForegroundWindow();
-	GetWindowThreadProcessId(_tempWnd, &_tempProcessId);
-	if (_tempProcessId == _cacheProcessId) {
-		return _exeNameUtf8;
-	}
+	_tempProcessId = processOfWindow(_tempWnd);
 	//EasyKey's own windows (Settings, the tray menu) keep the app the user came from,
 	//so a language or code table picked there is remembered for that app
-	if (_tempProcessId == GetCurrentProcessId()) {
-		return _exeNameUtf8;
+	if (_tempProcessId == _cacheProcessId || _tempProcessId == GetCurrentProcessId()) {
+		return *_frontName;
 	}
 	_cacheProcessId = _tempProcessId;
-	_proc = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, _tempProcessId);
-	GetProcessImageFileName((HMODULE)_proc, _exePath, 1024);
-	CloseHandle(_proc);
-	
-	if (wcscmp(_exePath, _T("")) == 0) {
-		return _unknownProgram;
+	//the limited right works for every app of the user, PROCESS_VM_READ is refused by some
+	//(and by apps run as admin), which left the name of the previous app in place
+	string name;
+	HANDLE process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, _tempProcessId);
+	if (process) {
+		TCHAR path[MAX_PATH];
+		DWORD size = MAX_PATH;
+		if (QueryFullProcessImageName(process, 0, path, &size)) {
+			LPCTSTR file = _tcsrchr(path, '\\');
+			name = wideStringToUtf8(file ? file + 1 : path);
+		}
+		CloseHandle(process);
 	}
-	_exeName = _tcsrchr(_exePath, '\\') + 1;
-	if (wcscmp(_exeName, _T("explorer.exe")) == 0) {
-		return _exeNameUtf8;
+	if (name.empty()) {
+		_frontName = &_unknownProgram;
+	} else if (name.compare("explorer.exe") != 0) { //the desktop and the taskbar keep the app the user came from
+		_exeNameUtf8 = name;
+		_frontName = &_exeNameUtf8;
+	} else {
+		_frontName = &_exeNameUtf8;
 	}
-	int size_needed = WideCharToMultiByte(CP_UTF8, 0, _exeName, (int)lstrlen(_exeName), NULL, 0, NULL, NULL);
-	std::string strTo(size_needed, 0);
-	WideCharToMultiByte(CP_UTF8, 0, _exeName, (int)lstrlen(_exeName), &strTo[0], size_needed, NULL, NULL);
-	_exeNameUtf8 = strTo;
-	//LOG(L"%s\n", utf8ToWideString(_exeNameUtf8).c_str());
-	return _exeNameUtf8;
+	return *_frontName;
 }
 
 bool EasyKeyHelper::isRealApp(const string& exe) {
