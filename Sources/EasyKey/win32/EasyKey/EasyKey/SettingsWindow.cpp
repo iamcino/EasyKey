@@ -664,7 +664,7 @@ void SettingsWindow::paintItem(Gdiplus::Graphics& g, const Item& item, const int
 		else
 			fillRound(g, badge, (float)s(8), pal.field, pal.stroke);
 		DWORD color = on ? pal.onAccent : pal.text;
-		drawText(g, item.id == 2 ? _T("EV") : item.id ? _T("V") : _T("E"), badge, item.id == 2 ? fontCaption : fontBadge, color, 1, 1);
+		drawText(g, item.id == 2 ? _T("EV") : item.id ? _T("V") : _T("E"), badge, item.id == 2 ? fontCaption : fontBadge, color, 1, 3);
 		RECT title = { badge.right + s(8), rc.top, rc.right - s(4), cy + s(2) };
 		drawText(g, item.label, title, fontTitle, color, 0, 2);
 		RECT state = { title.left, cy + s(2), title.right, rc.bottom };
