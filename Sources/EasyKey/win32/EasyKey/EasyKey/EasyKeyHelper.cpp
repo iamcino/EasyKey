@@ -279,10 +279,9 @@ string& EasyKeyHelper::getFrontMostAppExecuteName() {
 	}
 	if (name.empty()) {
 		_frontName = &_unknownProgram;
-	} else if (name.compare("explorer.exe") != 0) { //the desktop and the taskbar keep the app the user came from
-		_exeNameUtf8 = name;
-		_frontName = &_exeNameUtf8;
 	} else {
+		if (name.compare("explorer.exe") != 0) //the desktop and the taskbar keep the app the user came from
+			_exeNameUtf8 = name;
 		_frontName = &_exeNameUtf8;
 	}
 	return *_frontName;
