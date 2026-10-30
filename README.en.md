@@ -104,8 +104,8 @@ languages (coding, work, study):
 - It reads the context: "tôi sẽ đi" stays Vietnamese, and "There are" does not
   become "Thể are". A clearly English word also fixes the word right before it.
 - Turn it on with the **Mixed** button (EV badge) in Settings or **Type English
-  and Vietnamese** in the tray menu. **Alt + Z** goes through the three modes in
-  turn: Vietnamese, Mixed, English.
+  and Vietnamese** in the tray menu. **Alt + Z** or a click on the tray icon goes
+  through the three modes in turn: Vietnamese, Mixed, English.
 
 ### Per app
 
@@ -193,7 +193,7 @@ restarts. Right-click › **Check for updates…** to check right away.
 
 | To do this | Do this |
 |---|---|
-| Switch Vietnamese/English | Press **Alt + Z**, or click the tray icon |
+| Switch Vietnamese → Mixed → English | Press **Alt + Z**, or click the tray icon |
 | Mix English words into Vietnamese | Right-click the tray icon › Type English and Vietnamese, or pick Mixed in Settings |
 | Open Settings | Double-click the tray icon, or right-click › Settings… |
 | Change input method or encoding | Right-click the tray icon › Input method / Character encoding, or use Settings |

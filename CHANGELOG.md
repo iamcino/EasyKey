@@ -3,7 +3,7 @@
 **Tiếng Việt** · [English](CHANGELOG.en.md)
 
 ## 1.0.12 (Windows 11 x64)
-- Phím chuyển chế độ (mặc định Alt + Z) giờ lần lượt qua cả ba chế độ: Tiếng Việt → Anh–Việt → Tiếng Anh → Tiếng Việt.
+- Phím chuyển chế độ (mặc định Alt + Z) và bấm vào biểu tượng khay giờ lần lượt qua cả ba chế độ: Tiếng Việt → Anh–Việt → Tiếng Anh → Tiếng Việt.
 - Biểu tượng khay hiện **EV** khi gõ Anh–Việt, thay vì chữ V như khi gõ tiếng Việt.
 - Phím trên biểu tượng khay lại theo màu nhấn: màu nhấn của Windows, hoặc màu bạn chọn trong Cài đặt. Vẫn giữ hình phím bo góc như biểu tượng ứng dụng.
 - Mũi tên báo có bản mới đổi thành mũi tên xanh lá có quầng sáng, đặt ở góc trên bên phải biểu tượng khay; mục cập nhật trong menu khay dùng cùng mũi tên.

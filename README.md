@@ -102,8 +102,8 @@ tiếng (lập trình, công việc, học tập):
 - Xét theo ngữ cảnh: "tôi sẽ đi" vẫn là tiếng Việt, còn "There are" không
   thành "Thể are". Một từ tiếng Anh rõ ràng còn sửa lại từ ngay trước nó.
 - Bật bằng nút **Anh–Việt** (badge EV) trong Cài đặt hoặc mục **Gõ Anh–Việt**
-  ở menu khay. **Alt + Z** lần lượt chuyển qua cả ba chế độ:
-  Việt, Anh–Việt, Anh.
+  ở menu khay. **Alt + Z** hay bấm vào biểu tượng khay lần lượt
+  chuyển qua cả ba chế độ: Việt, Anh–Việt, Anh.
 
 ### Theo từng ứng dụng
 
@@ -183,7 +183,7 @@ tra cập nhật…** để kiểm tra ngay.
 
 | Muốn làm gì | Cách làm |
 |---|---|
-| Chuyển Việt/Anh | Bấm **Alt + Z**, hoặc bấm vào biểu tượng ở khay |
+| Chuyển Việt → Anh–Việt → Anh | Bấm **Alt + Z**, hoặc bấm vào biểu tượng ở khay |
 | Gõ lẫn tiếng Anh trong câu tiếng Việt | Bấm phải vào biểu tượng ở khay › Gõ Anh–Việt, hoặc chọn Anh–Việt trong Cài đặt |
 | Mở Cài đặt | Bấm đúp vào biểu tượng ở khay, hoặc bấm phải › Cài đặt… |
 | Đổi kiểu gõ, bảng mã | Bấm phải vào biểu tượng ở khay › Kiểu gõ / Bảng mã, hoặc trong Cài đặt |

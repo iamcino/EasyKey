@@ -112,10 +112,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 		AppDelegate::getInstance()->onControlPanel();
 		break;
 	case WM_TIMER:
-		//a single click: no second one came, switch Vietnamese/English
+		//a single click: no second one came, go to the next typing mode
 		if (wParam == TIMER_TRAY_CLICK) {
 			KillTimer(hWnd, TIMER_TRAY_CLICK);
-			AppDelegate::getInstance()->onToggleVietnamese();
+			AppDelegate::getInstance()->onNextTypingMode();
 			SystemTrayHelper::updateData();
 		}
 		break;

@@ -394,8 +394,13 @@ void AppDelegate::onDefaultConfig() {
 	}
 }
 
-void AppDelegate::onToggleVietnamese() {
-	APP_SET_DATA(vLanguage, vLanguage ? 0 : 1);
+void AppDelegate::onNextTypingMode() {
+	//Vietnamese, English and Vietnamese mixed, English in turn, like the switch key
+	int mode = TYPING_MODE == 1 ? 2 : TYPING_MODE == 2 ? 0 : 1;
+	APP_SET_DATA(vLanguage, mode != 0 ? 1 : 0);
+	if (mode != 0)
+		APP_SET_DATA(vMixedEnglish, mode == 2 ? 1 : 0);
+	startNewSession();
 	if (settingsWindow) {
 		settingsWindow->fillData();
 	}

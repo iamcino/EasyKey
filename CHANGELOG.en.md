@@ -3,7 +3,7 @@
 [Tiếng Việt](CHANGELOG.md) · **English**
 
 ## 1.0.12 (Windows 11 x64)
-- The mode switch key (Alt + Z by default) now goes through all three modes in turn: Vietnamese → Mixed → English → Vietnamese.
+- The mode switch key (Alt + Z by default) and a click on the tray icon now go through all three modes in turn: Vietnamese → Mixed → English → Vietnamese.
 - The tray icon shows **EV** while typing Mixed, instead of the V used for Vietnamese.
 - The key on the tray icon follows the accent color again: the Windows accent, or the color picked in Settings. It keeps the rounded key shape of the app icon.
 - The update-available arrow is now a glowing green arrow in the top right corner of the tray icon; the update item of the tray menu uses the same arrow.
