@@ -14,11 +14,13 @@ the MIT license, see LICENSES/MIT.txt.
 
 /*
  * The tray icon, drawn for the exact pixel size the taskbar asks for instead of
- * scaled from a fixed set of sizes: a solid rounded tile with V or E on it.
- * Bars and stems sit on whole pixels at every size, so the letter stays sharp.
+ * scaled from a fixed set of sizes: the rounded key cap of the app icon with V or E on it.
+ * The bars and stem of E sit on whole pixels at every size, so the letter stays sharp.
  * Plain C++ with no Windows calls, so it can be checked anywhere.
  */
 
-//coverage of size x size pixels, row by row, 0..255: the tile, and the letter inside it
+//coverage of size x size pixels, row by row, 0..255: the tile, and the letter inside it;
+//the rows the tile spans, for its gradient
 void drawTrayGlyph(const int& size, const bool& vietnamese,
-				   std::vector<unsigned char>& tile, std::vector<unsigned char>& letter);
+				   std::vector<unsigned char>& tile, std::vector<unsigned char>& letter,
+				   int& tileTop, int& tileBottom);
