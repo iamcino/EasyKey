@@ -25,59 +25,62 @@ static bool insideRoundRect(const float& x, const float& y, const float& left, c
 	return (x - cx) * (x - cx) + (y - cy) * (y - cy) <= radius * radius;
 }
 
-static bool insidePolygon(const float& x, const float& y, const Point* points, const int& count) {
-	bool in = false;
-	for (int i = 0, j = count - 1; i < count; j = i++) {
-		if ((points[i].y > y) != (points[j].y > y) &&
-			x < (points[j].x - points[i].x) * (y - points[i].y) / (points[j].y - points[i].y) + points[i].x)
-			in = !in;
-	}
-	return in;
+//distance from (x, y) to the segment a-b, squared
+static float distanceToSegment2(const float& x, const float& y, const Point& a, const Point& b) {
+	float dx = b.x - a.x, dy = b.y - a.y;
+	float t = ((x - a.x) * dx + (y - a.y) * dy) / (dx * dx + dy * dy);
+	t = t < 0 ? 0 : t > 1 ? 1 : t;
+	float px = a.x + t * dx - x, py = a.y + t * dy - y;
+	return px * px + py * py;
 }
 
 void drawTrayGlyph(const int& size, const bool& vietnamese,
-				   std::vector<unsigned char>& tile, std::vector<unsigned char>& letter) {
+				   std::vector<unsigned char>& tile, std::vector<unsigned char>& letter,
+				   int& tileTop, int& tileBottom) {
 	tile.assign(size * size, 0);
 	letter.assign(size * size, 0);
+	tileTop = tileBottom = 0;
 	if (size <= 0)
 		return;
 
-	//the tile fills the icon at 16 and 20 px, where every pixel counts, and keeps a thin margin above that
+	//the key cap of the app icon: wider than tall, so the tray and the taskbar show the same thing.
+	//It fills the width at 16 and 20 px, where every pixel counts, and keeps a thin margin above that
 	int inset = size < 20 ? 0 : (size + 8) / 24;
 	int side = size - 2 * inset;
-	float radius = side * 0.22f;
+	int capHeight = (int)floorf(side * 0.78f + 0.5f);
+	if ((size - capHeight) % 2)
+		capHeight++;
+	tileTop = (size - capHeight) / 2;
+	tileBottom = tileTop + capHeight;
+	float radius = capHeight * 0.3f;
 
-	//letter height and stroke, in whole pixels: E is three bars and two gaps of about one stroke each,
+	//E: a stem and three arms on whole pixels; E is three bars and two gaps of about one stroke each,
 	//and its middle bar has to land on whole pixels too
-	int height = (int)floorf(side * 0.62f + 0.5f);
+	int height = (int)floorf(capHeight * 0.6f + 0.5f);
 	int stroke = (int)floorf(height / 5.0f + 0.5f);
 	if (stroke < 2)
 		stroke = 2;
 	if ((height - stroke) % 2)
 		height++;
-	int top = inset + (side - height) / 2;
+	int top = tileTop + (capHeight - height) / 2;
 	int bottom = top + height;
-
-	//E: a stem and three arms, all on the grid
 	int eWidth = (int)floorf(height * 0.7f + 0.5f);
 	int eLeft = inset + (side - eWidth + 1) / 2; //half a pixel right: the stem makes E heavy on the left
 	int eMiddle = top + (height - stroke) / 2;
 	int eMiddleRight = eLeft + eWidth - (stroke + 1) / 2;
 
-	//V: two slanted strokes meeting in a flat foot; the top corners and the foot sit on the grid
+	//V: two strokes with round ends meeting at the foot, like the app icon
+	float vHeight = capHeight * 0.64f;
+	float vStroke = capHeight * 0.17f;
+	if (vStroke < 1.6f)
+		vStroke = 1.6f;
 	float center = inset + side / 2.0f;
-	int vWidth = (int)floorf(height * 0.96f + 0.5f);
-	if ((vWidth - side) % 2)
-		vWidth++;
-	int foot = (stroke - side) % 2 ? stroke + 1 : stroke;
-	float vLeft = center - vWidth / 2.0f, vRight = center + vWidth / 2.0f;
-	float thick = stroke * 1.3f; //measured across, the slant makes it look as heavy as the E bars
-	float slope = (center - foot / 2.0f - vLeft) / height;
-	float notch = top + (center - vLeft - thick) / slope;
-	Point v[] = {
-		{ vLeft, (float)top }, { vLeft + thick, (float)top }, { center, notch }, { vRight - thick, (float)top },
-		{ vRight, (float)top }, { center + foot / 2.0f, (float)bottom }, { center - foot / 2.0f, (float)bottom }
-	};
+	float vTop = tileTop + (capHeight - vHeight) / 2.0f;
+	float half = vHeight * 0.5f; //the V is as wide as it is tall
+	Point vLeft = { center - half + vStroke / 2, vTop + vStroke / 2 };
+	Point vRight = { center + half - vStroke / 2, vTop + vStroke / 2 };
+	Point vFoot = { center, vTop + vHeight - vStroke / 2 };
+	float reach = vStroke * vStroke / 4;
 
 	for (int py = 0; py < size; py++) {
 		for (int px = 0; px < size; px++) {
@@ -85,12 +88,12 @@ void drawTrayGlyph(const int& size, const bool& vietnamese,
 			for (int sy = 0; sy < SAMPLES; sy++) {
 				for (int sx = 0; sx < SAMPLES; sx++) {
 					float x = px + (sx + 0.5f) / SAMPLES, y = py + (sy + 0.5f) / SAMPLES;
-					if (!insideRoundRect(x, y, (float)inset, (float)inset, (float)(inset + side), (float)(inset + side), radius))
+					if (!insideRoundRect(x, y, (float)inset, (float)tileTop, (float)(inset + side), (float)tileBottom, radius))
 						continue;
 					inTile++;
 					bool in;
 					if (vietnamese) {
-						in = y >= top && y <= bottom && insidePolygon(x, y, v, 7);
+						in = distanceToSegment2(x, y, vLeft, vFoot) <= reach || distanceToSegment2(x, y, vRight, vFoot) <= reach;
 					} else {
 						in = (x >= eLeft && x < eLeft + stroke && y >= top && y < bottom) ||
 							(x >= eLeft && x < eLeft + eWidth && ((y >= top && y < top + stroke) || (y >= bottom - stroke && y < bottom))) ||
