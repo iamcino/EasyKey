@@ -17,19 +17,12 @@
 
 </div>
 
-<p align="center">
-  <img src="docs/screenshots/settings-light.png" alt="Cửa sổ Cài đặt, chế độ sáng" width="400">
-  <img src="docs/screenshots/settings-dark.png" alt="Cửa sổ Cài đặt, chế độ tối" width="400">
-</p>
-<p align="center">
-  <img src="docs/screenshots/flyout.png" alt="Popup khi chuyển Việt/Anh" width="300">
-</p>
-
 ---
 
 ## Mục lục
 
 - [EasyKey là gì?](#easykey-là-gì)
+  - [Giao diện ứng dụng](#giao-diện-ứng-dụng)
 - [Vì sao chọn EasyKey](#vì-sao-chọn-easykey)
 - [Tính năng](#tính-năng)
 - [Yêu cầu hệ thống](#yêu-cầu-hệ-thống)
@@ -53,6 +46,17 @@ Việt/Anh.
 EasyKey không thêm bàn phím vào Windows, nên thanh tác vụ không hiện ô
 ENG/VIE. Nó chạy ở khay hệ thống, không cần quyền Admin, không cần .NET hay
 thư viện cài thêm, và gỡ sạch bằng một nút.
+
+### Giao diện ứng dụng
+
+| Cửa sổ Cài đặt (chế độ sáng) | Cửa sổ Cài đặt (chế độ tối) |
+|:---:|:---:|
+| <img src="docs/screenshots/settings-light.png" width="390" alt="Cửa sổ Cài đặt, chế độ sáng"> | <img src="docs/screenshots/settings-dark.png" width="390" alt="Cửa sổ Cài đặt, chế độ tối"> |
+
+<p align="center">
+  <strong>Popup khi chuyển Việt/Anh</strong><br><br>
+  <img src="docs/screenshots/flyout.png" width="280" alt="Popup khi chuyển Việt/Anh">
+</p>
 
 ## Vì sao chọn EasyKey
 

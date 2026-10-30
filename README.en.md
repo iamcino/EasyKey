@@ -17,19 +17,12 @@
 
 </div>
 
-<p align="center">
-  <img src="docs/screenshots/settings-light.png" alt="Settings window, light mode" width="400">
-  <img src="docs/screenshots/settings-dark.png" alt="Settings window, dark mode" width="400">
-</p>
-<p align="center">
-  <img src="docs/screenshots/flyout.png" alt="Popup when switching between Vietnamese and English" width="300">
-</p>
-
 ---
 
 ## Contents
 
 - [What is EasyKey?](#what-is-easykey)
+  - [Screenshots](#screenshots)
 - [Why EasyKey](#why-easykey)
 - [Features](#features)
 - [System requirements](#system-requirements)
@@ -53,6 +46,17 @@ switch between Vietnamese and English.
 EasyKey adds no keyboard layout to Windows, so the taskbar shows no ENG/VIE
 indicator. It lives in the notification area, needs no administrator rights,
 no .NET and no extra libraries, and removes itself cleanly with one button.
+
+### Screenshots
+
+| Settings window (light mode) | Settings window (dark mode) |
+|:---:|:---:|
+| <img src="docs/screenshots/settings-light.png" width="390" alt="Settings window, light mode"> | <img src="docs/screenshots/settings-dark.png" width="390" alt="Settings window, dark mode"> |
+
+<p align="center">
+  <strong>Popup when switching between Vietnamese and English</strong><br><br>
+  <img src="docs/screenshots/flyout.png" width="280" alt="Popup when switching between Vietnamese and English">
+</p>
 
 ## Why EasyKey
 
