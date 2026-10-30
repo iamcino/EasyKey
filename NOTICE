@@ -1,0 +1,43 @@
+EasyKey
+Copyright (C) 2026 Cino <duongtheson@proton.me>
+
+EasyKey is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free
+Software Foundation, version 3. See the LICENSE file for the full text.
+
+EasyKey is a modified version of OpenKey:
+  OpenKey - The Cross platform Open source Vietnamese Keyboard application
+  Copyright (C) 2019 Mai Vu Tuyen
+  https://github.com/tuyenvm/OpenKey
+  Released under the GNU General Public License version 3.
+
+Files written for EasyKey that hold no OpenKey code are also offered under
+the MIT license (LICENSES/MIT.txt), so they can be reused outside EasyKey.
+Each of them says so in its header with
+"SPDX-License-Identifier: GPL-3.0-only OR MIT":
+  Sources/EasyKey/win32/EasyKey/EasyKey/FluentUi.*
+  Sources/EasyKey/win32/EasyKey/EasyKey/FluentWindow.*
+  Sources/EasyKey/win32/EasyKey/EasyKey/MessageWindow.*
+  Sources/EasyKey/win32/EasyKey/EasyKey/FlyoutWindow.*
+  Sources/EasyKey/win32/EasyKey/EasyKey/ThemeHelper.*
+  Sources/EasyKey/win32/EasyKey/EasyKey/TrayGlyph.*
+  Sources/EasyKey/win32/EasyKey/EasyKey/FluentText.*
+  Sources/EasyKey/win32/EasyKey/EasyKey/Updater.*
+Every other file, and EasyKey as a whole, is under the GNU GPL version 3.
+
+EasyKey.exe carries the Be Vietnam Pro font (regular and semibold, cut down
+to Latin and Vietnamese, in Sources/EasyKey/win32/EasyKey/EasyKey/fonts):
+  Copyright 2021 The Be Vietnam Pro Project Authors
+  https://github.com/bettergui/BeVietnamPro
+  Licensed under the SIL Open Font License 1.1 (LICENSES/OFL-1.1.txt).
+  The font keeps its own license; the GPL does not apply to it.
+
+The word list of the mixed English and Vietnamese mode
+(Sources/EasyKey/engine/MixedWordsData.h) is made from word frequencies of wordfreq:
+  wordfreq by Robyn Speer, https://github.com/rspeer/wordfreq
+  The data is licensed under CC BY-SA 4.0
+  (https://creativecommons.org/licenses/by-sa/4.0/); the list made from it is
+  shared under the same license as well as the GPL version 3.
+
+Changes from OpenKey are listed in CHANGELOG.md and in the git history.
+The original copyright notices are kept in the source files.

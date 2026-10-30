@@ -1,0 +1,508 @@
+﻿/*----------------------------------------------------------
+EasyKey - Vietnamese input for Windows 11.
+Copyright (C) 2026 Cino
+
+Based on OpenKey - The Cross platform Open source Vietnamese
+Keyboard application.
+Copyright (C) 2019 Mai Vu Tuyen
+Contact: maivutuyen.91@gmail.com
+Github: https://github.com/tuyenvm/OpenKey
+
+SPDX-License-Identifier: GPL-3.0-only
+
+This file is part of EasyKey, a modified version of OpenKey,
+released under the GNU General Public License version 3.
+See LICENSE and NOTICE.
+-----------------------------------------------------------*/
+#include <algorithm>
+#include "AppDelegate.h"
+#include "ThemeHelper.h"
+#include "Updater.h"
+#include "MessageWindow.h"
+#include "AboutWindow.h"
+#include "ConvertToolWindow.h"
+#include "MacroWindow.h"
+#include <commctrl.h>
+#include <Shlobj.h>
+
+#pragma comment(lib, "comctl32.lib")
+
+//shown once after updating to this version; change it with each release
+#define WHATS_NEW_VI L"• Alt + Z và bấm vào biểu tượng khay chuyển lần lượt Việt → Anh–Việt → Anh.\n" \
+	L"• Biểu tượng khay hiện EV khi gõ Anh–Việt và lại theo màu nhấn."
+#define WHATS_NEW_EN L"• Alt + Z and a click on the tray icon go Vietnamese → Mixed → English in turn.\n" \
+	L"• The tray icon shows EV in Mixed mode and follows the accent color again."
+
+//6 hours
+#define UPDATE_CHECK_INTERVAL (6 * 60 * 60 * 1000)
+
+static AppDelegate* _instance;
+
+//see document in Engine.h
+int vLanguage = 1;
+int vMixedEnglish = 0;
+int vInputType = 0;
+int vFreeMark = 0;
+int vCodeTable = 0;
+int vCheckSpelling = 1;
+int vUseModernOrthography = 1;
+int vQuickTelex = 0;
+#define DEFAULT_SWITCH_STATUS 0x5A00025A //default option + z
+int vSwitchKeyStatus = DEFAULT_SWITCH_STATUS;
+int vRestoreIfWrongSpelling = 1;
+int vFixRecommendBrowser = 0;
+int vUseMacro = 1;
+int vUseMacroInEnglishMode = 1;
+int vAutoCapsMacro = 0;
+int vSendKeyStepByStep = 1;
+int vUseSmartSwitchKey = 1;
+int vUpperCaseFirstChar = 0;
+int vAllowConsonantZFWJ = 0;
+int vQuickStartConsonant = 0;
+int vQuickEndConsonant = 0;
+int vOtherLanguage = 1;
+int vRememberCode = 1;
+int vRestoreOnEscape = 1;
+int vWarnOtherKeyboards = 1;
+int vLastVersion = 0;
+
+int vShowOnStartUp = 0;
+int vShowSwitchFlyout = 1;
+int vSwitchInputType = 0;
+int vInputTypeHotKey = 0xFE0000FE; //no key set
+int vUiLanguage = 0;
+int vThemeMode = 0;
+int vAccentColor = 0;
+int vAccentLight = RGB(0x4F, 0x46, 0xE5);
+int vAccentDark = RGB(0xA5, 0xB4, 0xFC);
+int vAccentAutoDark = 1;
+int vRunWithWindows = 1;
+
+int vCreateDesktopShortcut = 0;
+int vRunAsAdmin = 0;
+int vCheckNewVersion = 1;
+int vFixChromiumBrowser = 1;
+
+AppDelegate::AppDelegate() {
+	_instance = this;
+}
+
+AppDelegate * AppDelegate::getInstance() {
+	return _instance;
+}
+
+int AppDelegate::run(HINSTANCE hInstance) {
+	this->hInstance = hInstance;
+
+	//after an update the previous EasyKey is still closing
+	Updater::finishPreviousUpdate();
+
+	//check app has already run or not
+	HWND previousInstance = FindWindow(APP_CLASS, NULL);
+	if (previousInstance) {
+		MessageBeep(MB_OK);
+		SendMessage(previousInstance, WM_USER + 2019, 0, 0);
+		PostQuitMessage(0);
+		return 0;
+	}
+
+	//init EasyKey Engine
+	EasyKeyManager::initEngine();
+
+	//dark or light popup menus, before the tray menu is built
+	ThemeHelper::applyMenuTheme();
+
+	//shown when the switch key is pressed
+	flyout = new FlyoutWindow(hInstance);
+
+	//put the keyboard hooks back if Windows drops them
+	SetTimer(NULL, 0, 2000, [](HWND, UINT, UINT_PTR, DWORD) { checkHooks(); });
+
+	//create system tray
+	SystemTrayHelper::createSystemTrayIcon(hInstance);
+	SystemTrayHelper::updateData();
+
+	//create main control
+	if (vShowOnStartUp)
+		createMainDialog();
+	MessageBeep(MB_OK);
+	greet();
+
+	//check for updates at start and every few hours; a new version only marks the tray and Settings
+	if (vCheckNewVersion)
+		Updater::checkQuietly();
+	SetTimer(NULL, 0, UPDATE_CHECK_INTERVAL, [](HWND, UINT, UINT_PTR, DWORD) {
+		if (vCheckNewVersion)
+			Updater::checkQuietly();
+	});
+
+	MSG msg;
+	// Main message loop:
+	while (GetMessage(&msg, nullptr, 0, 0))	{
+		if (msg.message == WM_KEYDOWN) {
+			EasyKeyManager::_lastKeyCode = (UINT16)msg.wParam;
+		}
+		TranslateMessage(&msg);
+		DispatchMessage(&msg);
+	}
+	return 0;
+}
+
+void AppDelegate::createMainDialog() {
+	if (settingsWindow == NULL) {
+		settingsWindow = new SettingsWindow(hInstance);
+		settingsWindow->show();
+	} else {
+		settingsWindow->bringOnTop();
+	}
+}
+
+void AppDelegate::closeWindow(FluentWindow* window) {
+	window->destroy();
+	if (aboutWindow == window)
+		aboutWindow = NULL;
+	else if (macroWindow == window)
+		macroWindow = NULL;
+	else if (convertWindow == window)
+		convertWindow = NULL;
+	delete window;
+}
+
+void AppDelegate::closeSettingsWindow() {
+	if (settingsWindow) {
+		settingsWindow->destroy();
+		delete settingsWindow;
+		settingsWindow = NULL;
+	}
+}
+
+void AppDelegate::onInputMethodChangedFromHotKey() {
+	APP_SET_DATA(vLanguage, vLanguage);
+	APP_SET_DATA(vMixedEnglish, vMixedEnglish);
+	if (settingsWindow) {
+		settingsWindow->fillData();
+	}
+	SystemTrayHelper::updateData();
+}
+
+void AppDelegate::onInputTypeFromHotKey() {
+	onInputType(vInputType);
+}
+
+void AppDelegate::showSwitchFlyout() {
+	if (flyout)
+		flyout->notify(FLYOUT_LANGUAGE);
+}
+
+void AppDelegate::showInputTypeFlyout() {
+	if (flyout)
+		flyout->notify(FLYOUT_INPUT_TYPE);
+}
+
+void AppDelegate::showCodeTableFlyout() {
+	if (flyout)
+		flyout->notify(FLYOUT_CODE_TABLE);
+}
+
+void AppDelegate::onElevatedWindow(const HWND& hWnd) {
+	//once per app, only while typing Vietnamese
+	static vector<DWORD> warned;
+	DWORD processId = 0;
+	GetWindowThreadProcessId(hWnd, &processId);
+	if (!vLanguage || !flyout || find(warned.begin(), warned.end(), processId) != warned.end())
+		return;
+	warned.push_back(processId);
+	flyout->showMessage(TR("Ứng dụng này chạy với quyền Admin", "This app runs as administrator"),
+		TR("EasyKey không gõ được ở đây. Bật \"Chạy với quyền Admin\" trong Nâng cao.",
+			"EasyKey can't type here. Turn on \"Run as administrator\" in Advanced."));
+}
+
+void AppDelegate::greet() {
+	DWORD version = EasyKeyHelper::getVersionNumber();
+	bool updated = vLastVersion != 0 && (DWORD)vLastVersion != version;
+	if ((DWORD)vLastVersion != version)
+		APP_SET_DATA(vLastVersion, (int)version);
+	if (EasyKeyHelper::isFirstRun()) {
+		//no questions on the first run, the defaults work: just say how to switch
+		flyout->showMessage(TR("EasyKey đang chạy", "EasyKey is running"),
+			TR("Bấm ", "Press ") + EasyKeyHelper::getHotKeyString(vSwitchKeyStatus) + TR(" để chuyển Việt/Anh", " to switch Vietnamese/English"), false);
+		if (offerToMoveApp())
+			return;
+	} else if (updated) {
+		showWhatsNew();
+	}
+
+	if (vWarnOtherKeyboards) {
+		wstring other = EasyKeyHelper::findOtherKeyboard();
+		if (!other.empty())
+			warnOtherKeyboard(other);
+	}
+}
+
+static bool isUnder(const wstring& path, wstring folder) {
+	if (folder.empty())
+		return false;
+	if (folder.back() != L'\\')
+		folder += L'\\';
+	return path.size() > folder.size() && _wcsnicmp(path.c_str(), folder.c_str(), folder.size()) == 0;
+}
+
+//started from Downloads, or from a zip opened in Explorer (a temp folder): the startup entry breaks
+//once that folder is cleaned up, so the first start offers a fixed folder
+bool AppDelegate::offerToMoveApp() {
+	wstring path = EasyKeyHelper::getFullPath();
+	PWSTR downloads = NULL, programs = NULL;
+	TCHAR temp[MAX_PATH] = { 0 };
+	GetTempPath(MAX_PATH, temp);
+	bool passing = isUnder(path, temp);
+	if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_Downloads, 0, NULL, &downloads)))
+		passing = passing || isUnder(path, downloads);
+	CoTaskMemFree(downloads);
+	wstring folder;
+	if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_UserProgramFiles, KF_FLAG_CREATE, NULL, &programs)))
+		folder = wstring(programs) + L"\\EasyKey";
+	CoTaskMemFree(programs);
+	if (!passing || folder.empty())
+		return false;
+
+	if (!MessageWindow::ask(NULL, TR("Chuyển EasyKey vào thư mục cố định?", "Move EasyKey to a permanent folder?"),
+			TR("EasyKey đang chạy từ thư mục Tải về hoặc thư mục tạm. Dọn thư mục đó thì EasyKey không còn chạy cùng Windows. Chuyển sang ",
+				"EasyKey runs from Downloads or a temporary folder. Once that folder is cleaned up, EasyKey no longer starts with Windows. Move it to ")
+				+ folder + TR("? Sau đó có thể xoá file vừa tải về.", "? The downloaded file can be deleted afterwards."),
+			TR("Chuyển", "Move"), TR("Để nguyên", "Keep it here")))
+		return false;
+	wstring target = folder + L"\\EasyKey.exe";
+	CreateDirectory(folder.c_str(), NULL);
+	if (!CopyFile(path.c_str(), target.c_str(), FALSE)) {
+		MessageWindow::notice(NULL, TR("Chưa chuyển được EasyKey", "EasyKey was not moved"),
+			TR("Không chép được vào ", "Could not copy it to ") + folder + TR(". EasyKey vẫn chạy từ chỗ cũ.", ". EasyKey keeps running from where it is."));
+		return false;
+	}
+	Updater::restartAs(target);
+	return true;
+}
+
+void AppDelegate::warnOtherKeyboard(const wstring& name) {
+	//never closes the other keyboard, that is the user's call
+	bool windowsKeyboard = name == TR("Bàn phím tiếng Việt của Windows", "The Windows Vietnamese keyboard");
+	MessageWindow::Options options;
+	options.heading = name + TR(" đang chạy", " is running");
+	options.text = windowsKeyboard
+		? TR("Hai bộ gõ cùng lúc dễ làm chữ bị bỏ dấu hai lần, ví dụ \"vieejt\". Bấm Windows + Space để chuyển về bàn phím tiếng Anh.",
+			"Two Vietnamese keyboards at once can add marks twice, as in \"vieejt\". Press Windows + Space to go back to the English keyboard.")
+		: TR("Hai bộ gõ chạy cùng lúc dễ làm chữ bị bỏ dấu hai lần, ví dụ \"vieejt\". Hãy tắt một trong hai.",
+			"Two Vietnamese keyboards at once can add marks twice, as in \"vieejt\". Please quit one of them.");
+	options.buttons.push_back(TR("OK", "OK"));
+	options.check = TR("Không nhắc lại", "Don't remind me again");
+	MessageWindow::show(NULL, options);
+	if (options.checked) {
+		APP_SET_DATA(vWarnOtherKeyboards, 0);
+		onSettingsChanged();
+	}
+}
+
+void AppDelegate::showWhatsNew() {
+	wstring version = EasyKeyHelper::getVersionString();
+	MessageWindow::Options options;
+	options.heading = TR("Có gì mới trong EasyKey ", "What's new in EasyKey ") + version;
+	options.text = EasyKeyHelper::isEnglishUi() ? WHATS_NEW_EN : WHATS_NEW_VI;
+	options.link = TR("Xem đầy đủ các thay đổi", "See all changes");
+	options.linkUrl = wstring(RELEASE_NOTES_URL) + version;
+	options.buttons.push_back(TR("OK", "OK"));
+	MessageWindow::show(NULL, options);
+}
+
+void AppDelegate::onAppearanceChanged() {
+	SystemTrayHelper::rebuildMenu();
+	onSettingsChanged();
+}
+
+void AppDelegate::onSettingsChanged() {
+	if (settingsWindow)
+		settingsWindow->fillData();
+	FluentWindow* windows[] = { aboutWindow, macroWindow, convertWindow };
+	for (FluentWindow* window : windows)
+		if (window)
+			window->fillData();
+}
+
+void AppDelegate::showNotice(const wstring& title, const wstring& detail) {
+	if (flyout)
+		flyout->showMessage(title, detail, false);
+}
+
+void AppDelegate::onUpdateAvailable() {
+	SystemTrayHelper::updateData();
+	if (settingsWindow)
+		settingsWindow->fillData();
+	showNotice(TR("Đã có EasyKey ", "EasyKey ") + utf8ToWideString(Updater::availableVersion()) + TR("", " is available"),
+		TR("Bấm vào biểu tượng ở khay hệ thống để cập nhật", "Update from the tray icon menu"));
+}
+
+void AppDelegate::onUninstall() {
+	EasyKeyManager::freeEngine();
+	EasyKeyHelper::removeFromSystem();
+	//one literal per language: _T() only widens the first piece of a concatenated string
+	MessageWindow::notice(NULL, TR("Đã gỡ EasyKey khỏi Windows", "EasyKey was removed from Windows"),
+		TR("EasyKey không còn chạy cùng Windows, lối tắt và cài đặt đã xoá. Thư mục chứa EasyKey.exe sẽ mở ra để bạn xoá file nếu muốn.",
+			"It no longer starts with Windows, and its shortcut and settings are gone. The folder with EasyKey.exe opens next, so you can delete the file if you like."));
+	wstring select = L"/select,\"" + EasyKeyHelper::getFullPath() + L"\"";
+	ShellExecute(NULL, L"open", L"explorer.exe", select.c_str(), NULL, SW_SHOWNORMAL);
+	SystemTrayHelper::removeSystemTray();
+	PostQuitMessage(0);
+}
+
+void AppDelegate::onDefaultConfig() {
+	APP_SET_DATA(vLanguage, 1);
+	APP_SET_DATA(vMixedEnglish, 0);
+	APP_SET_DATA(vInputType, 0);
+	vFreeMark = 0;
+	APP_SET_DATA(vCodeTable, 0);
+	APP_SET_DATA(vCheckSpelling, 1);
+	APP_SET_DATA(vUseModernOrthography, 0);
+	APP_SET_DATA(vQuickTelex, 0);
+	APP_SET_DATA(vSwitchKeyStatus, DEFAULT_SWITCH_STATUS);
+	APP_SET_DATA(vRestoreIfWrongSpelling, 1);
+	APP_SET_DATA(vFixRecommendBrowser, 1);
+	APP_SET_DATA(vUseMacro, 1);
+	APP_SET_DATA(vUseMacroInEnglishMode, 0);
+	APP_SET_DATA(vSendKeyStepByStep, 1);
+	APP_SET_DATA(vUseSmartSwitchKey, 1);
+	APP_SET_DATA(vUpperCaseFirstChar, 0);
+	APP_SET_DATA(vAllowConsonantZFWJ, 0);
+
+	APP_SET_DATA(vShowOnStartUp, 0);
+	APP_SET_DATA(vShowSwitchFlyout, 1);
+	APP_SET_DATA(vSwitchInputType, 0);
+	APP_SET_DATA(vInputTypeHotKey, 0xFE0000FE);
+	APP_SET_DATA(vUiLanguage, 0);
+	APP_SET_DATA(vThemeMode, 0);
+	APP_SET_DATA(vAccentColor, 0);
+	APP_SET_DATA(vAccentAutoDark, 1);
+	APP_SET_DATA(vRunWithWindows, 1);
+	EasyKeyHelper::registerRunOnStartup(vRunWithWindows);
+
+	APP_SET_DATA(vRememberCode, 1);
+	APP_SET_DATA(vOtherLanguage, 1);
+	APP_SET_DATA(vRestoreOnEscape, 1);
+	APP_SET_DATA(vWarnOtherKeyboards, 1);
+	APP_SET_DATA(vFixChromiumBrowser, 1);
+
+	SystemTrayHelper::rebuildMenu();
+	if (settingsWindow) {
+		settingsWindow->fillData();
+	}
+}
+
+void AppDelegate::onNextTypingMode() {
+	//Vietnamese, English and Vietnamese mixed, English in turn, like the switch key
+	int mode = TYPING_MODE == 1 ? 2 : TYPING_MODE == 2 ? 0 : 1;
+	APP_SET_DATA(vLanguage, mode != 0 ? 1 : 0);
+	if (mode != 0)
+		APP_SET_DATA(vMixedEnglish, mode == 2 ? 1 : 0);
+	startNewSession();
+	if (settingsWindow) {
+		settingsWindow->fillData();
+	}
+	showSwitchFlyout();
+	
+	if (vUseSmartSwitchKey) {
+		string& exe = EasyKeyHelper::getLastAppExecuteName();
+		setAppInputMethodStatus(exe, vLanguage | (vCodeTable << 1));
+		saveSmartSwitchKeyData();
+	}
+}
+
+void AppDelegate::setTypingMode(const int& mode) {
+	APP_SET_DATA(vLanguage, mode != 0 ? 1 : 0);
+	if (mode != 0) {
+		//English keeps the last Vietnamese mode, the switch key goes back to it
+		APP_SET_DATA(vMixedEnglish, mode == 2 ? 1 : 0);
+	}
+	startNewSession();
+	if (settingsWindow) {
+		settingsWindow->fillData();
+	}
+	SystemTrayHelper::updateData();
+	showSwitchFlyout();
+
+	if (vUseSmartSwitchKey) {
+		setAppInputMethodStatus(EasyKeyHelper::getFrontMostAppExecuteName(), vLanguage | (vCodeTable << 1));
+		saveSmartSwitchKeyData();
+	}
+}
+
+void AppDelegate::onMacroTable() {
+	if (macroWindow == NULL) {
+		MacroWindow* window = new MacroWindow(hInstance);
+		macroWindow = window;
+		window->show();
+	} else {
+		macroWindow->bringOnTop();
+	}
+}
+
+void AppDelegate::onConvertTool() {
+	if (convertWindow == NULL) {
+		ConvertToolWindow* window = new ConvertToolWindow(hInstance);
+		convertWindow = window;
+		window->show();
+	} else {
+		convertWindow->bringOnTop();
+	}
+}
+
+void AppDelegate::onQuickConvert() {
+	if (EasyKeyHelper::quickConvert()) {
+		//alert when complete
+		if (!convertToolDontAlertWhenCompleted) {
+			showNotice(TR("Đã chuyển mã", "Converted"),
+				TR("Kết quả đã nằm trong Clipboard", "The result is in the clipboard"));
+		}
+	}
+}
+
+void AppDelegate::onInputType(const int & type) {
+	APP_SET_DATA(vInputType, type);
+	if (settingsWindow) {
+		settingsWindow->fillData();
+	}
+	SystemTrayHelper::updateData();
+	showInputTypeFlyout();
+}
+
+void AppDelegate::onTableCode(const int & code, const bool& showFlyout) {
+	APP_SET_DATA(vCodeTable, code);
+	if (settingsWindow) {
+		settingsWindow->fillData();
+	}
+	//also when the app switch picks the code table: the tray menu kept the old tick, so the
+	//app looked like it was back on Unicode
+	SystemTrayHelper::updateData();
+	if (vRememberCode) {
+		setAppInputMethodStatus(EasyKeyHelper::getFrontMostAppExecuteName(), vLanguage | (vCodeTable << 1));
+		saveSmartSwitchKeyData();
+	}
+	if (showFlyout)
+		showCodeTableFlyout();
+}
+
+void AppDelegate::onControlPanel() {
+	createMainDialog();
+}
+
+void AppDelegate::onEasyKeyAbout() {
+	if (aboutWindow == NULL) {
+		AboutWindow* window = new AboutWindow(hInstance);
+		aboutWindow = window;
+		window->show();
+	} else {
+		aboutWindow->bringOnTop();
+	}
+}
+
+void AppDelegate::onEasyKeyExit() {
+	EasyKeyManager::freeEngine();
+	SystemTrayHelper::removeSystemTray();
+	PostQuitMessage(0);
+}
