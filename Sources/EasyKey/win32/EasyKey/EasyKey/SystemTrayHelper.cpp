@@ -29,6 +29,7 @@ See LICENSE and NOTICE.
 #define TIMER_TRAY_CLICK 1
 
 #define POPUP_VIET_ON_OFF 900
+#define POPUP_MIXED 901
 
 #define POPUP_TELEX 910
 #define POPUP_VNI 911
@@ -61,6 +62,7 @@ static NOTIFYICONDATA nid;
 static LPCTSTR menuText(const UINT& command) {
 	switch (command) {
 	case POPUP_VIET_ON_OFF: return TR("Gõ tiếng Việt", "Type Vietnamese");
+	case POPUP_MIXED: return TR("Gõ Anh–Việt", "Type English and Vietnamese");
 	case POPUP_TELEX: return _T("Telex");
 	case POPUP_VNI: return _T("VNI");
 	case POPUP_SIMPLE_TELEX: return _T("Simple Telex");
@@ -146,8 +148,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 				NULL
 			);
 			switch (commandId) {
-			case POPUP_VIET_ON_OFF:
-				AppDelegate::getInstance()->onToggleVietnamese();
+			case POPUP_VIET_ON_OFF: //picking the checked mode goes back to English
+				AppDelegate::getInstance()->setTypingMode(TYPING_MODE == 1 ? 0 : 1);
+				break;
+			case POPUP_MIXED:
+				AppDelegate::getInstance()->setTypingMode(TYPING_MODE == 2 ? 0 : 2);
 				break;
 			case POPUP_GAME_MODE: {
 				bool on = !isGameApp(gameApp);
@@ -245,6 +250,7 @@ void SystemTrayHelper::createPopupMenu() {
 		DestroyMenu(popupMenu); //submenus go with it
 	popupMenu = CreatePopupMenu();
 	AppendMenu(popupMenu, MF_CHECKED, POPUP_VIET_ON_OFF, menuText(POPUP_VIET_ON_OFF));
+	AppendMenu(popupMenu, MF_UNCHECKED, POPUP_MIXED, menuText(POPUP_MIXED));
 	AppendMenu(popupMenu, MF_SEPARATOR, 0, 0);
 
 	menuInputType = CreatePopupMenu();
@@ -441,7 +447,8 @@ static void loadTrayIcon() {
 		//the accent of light mode is the deep one, white text on it reads on either taskbar
 		tileColor = ThemeHelper::getAccentColor(false, false);
 		letterColor = RGB(0xFF, 0xFF, 0xFF);
-		lstrcpyn(nid.szTip, TR("EasyKey: đang gõ tiếng Việt", "EasyKey: typing Vietnamese"), 128);
+		lstrcpyn(nid.szTip, vMixedEnglish ? TR("EasyKey: đang gõ Anh–Việt", "EasyKey: typing English and Vietnamese") :
+			TR("EasyKey: đang gõ tiếng Việt", "EasyKey: typing Vietnamese"), 128);
 	}
 	else {
 		tileColor = darkTaskbar ? RGB(0xFF, 0xFF, 0xFF) : RGB(0x1C, 0x1C, 0x1C);
@@ -486,13 +493,15 @@ void SystemTrayHelper::updateData() {
 	loadTrayIcon();
 	Shell_NotifyIcon(NIM_MODIFY, &nid);
 
-	//show the switch key next to the Vietnamese item, like a menu accelerator
-	wstring vietnamese = menuText(POPUP_VIET_ON_OFF);
+	//show the switch key next to the Vietnamese mode it goes back to, like a menu accelerator
 	wstring hotKey = EasyKeyHelper::getHotKeyString(vSwitchKeyStatus);
-	if (!hotKey.empty())
-		vietnamese += _T("\t") + hotKey;
-	ModifyMenu(popupMenu, POPUP_VIET_ON_OFF, MF_BYCOMMAND | (vLanguage ? MF_CHECKED : MF_UNCHECKED),
-		POPUP_VIET_ON_OFF, vietnamese.c_str());
+	for (UINT command : { POPUP_VIET_ON_OFF, POPUP_MIXED }) {
+		wstring text = menuText(command);
+		if (!hotKey.empty() && (command == POPUP_MIXED) == (vMixedEnglish != 0))
+			text += _T("\t") + hotKey;
+		ModifyMenu(popupMenu, command, MF_BYCOMMAND | (TYPING_MODE == (command == POPUP_MIXED ? 2 : 1) ? MF_CHECKED : MF_UNCHECKED),
+			command, text.c_str());
+	}
 
 	MODIFY_MENU(menuInputType, POPUP_TELEX, vInputType == 0);
 	MODIFY_MENU(menuInputType, POPUP_VNI, vInputType == 1);

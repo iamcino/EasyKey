@@ -14,6 +14,7 @@
 #include <string.h>
 #include <list>
 #include "Macro.h"
+#include "MixedWords.h"
 
 static vector<Uint8> _charKeyCode = {
     KEY_BACKQUOTE, KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, KEY_8, KEY_9, KEY_0, KEY_MINUS, KEY_EQUALS,
@@ -94,6 +95,7 @@ vector<Uint32> _typingStatesData;
  */
 static Uint32 KeyStates[MAX_BUFF];
 static Byte _stateIndex = 0;
+static vector<Uint32> _rawKeys; //every key of the word, also a doubled mark key that undid the mark ("diff")
 
 static bool tempDisableKey = false;
 static int capsElem;
@@ -120,6 +122,23 @@ static bool _sentenceFromWindow = false; //set by vStartSentence, the click that
 static bool _isCharKeyCode;
 static vector<Uint32> _specialChar;
 static bool _hasHandleQuickConsonant;
+
+//mixed English and Vietnamese: the language of the last words, from -100 (Vietnamese) to 100 (English)
+static int _mixedContext = 0;
+//Zipf x10 points: a word reads as English when its English value beats its Vietnamese one by this much,
+//the language of the last words moves that by up to MIXED_CONTEXT_WEIGHT,
+//and a word that leads by MIXED_CLEAR or more can settle the word before it
+#define MIXED_VIETNAMESE_LEAN 5
+#define MIXED_CONTEXT_WEIGHT 20
+#define MIXED_CLEAR 20
+//the last word, when it could be read both ways and only one space follows it
+struct MixedWord {
+    vector<Uint32> keys, vietnamese;
+    int score, contextBefore;
+    bool english;
+};
+static MixedWord _mixedLast;
+static bool _hasMixedLast = false;
 
 //function prototype
 void findAndCalculateVowel(const bool& forGrammar=false);
@@ -461,6 +480,7 @@ void startNewSession() {
     hNCC = 0;
     tempDisableKey = false;
     _stateIndex = 0;
+    _rawKeys.clear();
     _hasHandledMacro = false;
     _hasHandleQuickConsonant = false;
     _longWordHelper.clear();
@@ -1234,6 +1254,105 @@ bool checkRestoreIfWrongSpelling(const int& handleCode) {
     return false;
 }
 
+static int mixedBias(const int& context) {
+    return MIXED_CONTEXT_WEIGHT * context / 100;
+}
+
+//mixed mode, at the end of a word: decide if it is English or Vietnamese from how common each reading is
+//and from the language of the last words, then put back every key as typed for an English word ("this", not "thí").
+//A word that is clearly one language also settles the one before it: "Thể are" turns into "There are"
+bool checkMixedEnglish(const int& handleCode, const bool& spaceFollows) {
+    bool hadLast = _hasMixedLast;
+    _hasMixedLast = false;
+    if (_index == 0 || _rawKeys.size() == 0 || _rawKeys.size() > MAX_BUFF || _longWordHelper.size() > 0)
+        return false;
+    if (!tempDisableKey && vCheckSpelling)
+        checkSpelling(true);
+    bool changed = _index != _rawKeys.size();
+    for (ii = 0; !changed && ii < _index; ii++)
+        changed = TypingWord[ii] != _rawKeys[ii];
+    string keys;
+    for (ii = 0; ii < _rawKeys.size(); ii++) {
+        Uint16 c = keyCodeToCharacter(_rawKeys[ii] & CHAR_MASK);
+        if (c < 'a' || c > 'z') {
+            keys.clear();
+            break;
+        }
+        keys += (char)c;
+    }
+    int english, vietnamese, score = 0, language = 0; //1: English, -1: Vietnamese, 0: can't tell
+    bool listed = !keys.empty() && findMixedWord(keys, english, vietnamese), clear = false;
+    if (listed) {
+        score = english - vietnamese - MIXED_VIETNAMESE_LEAN;
+        language = score + mixedBias(_mixedContext) > 0 ? 1 : -1;
+        clear = score >= MIXED_CLEAR || score <= -MIXED_CLEAR;
+    } else if (changed && !tempDisableKey) {
+        language = -1; //a Vietnamese word the list doesn't have
+        clear = true;
+    }
+    int contextBefore = _mixedContext;
+    bool restore = language == 1 && changed;
+    
+    //read the last word again with this one as its context
+    //(not with VNI Windows and compound Unicode, there a letter on screen may take two backspaces)
+    bool fixLast = false;
+    vector<Uint32> lastText; //the last word as it should be now
+    if (hadLast && clear && !IS_DOUBLE_CODE(vCodeTable)) {
+        bool english = _mixedLast.score + mixedBias((_mixedLast.contextBefore + language * 100) / 2) > 0;
+        lastText = english ? _mixedLast.keys : _mixedLast.vietnamese;
+        size_t shown = english ? _mixedLast.vietnamese.size() : _mixedLast.keys.size();
+        if (english != _mixedLast.english && shown + 1 + _index < MAX_BUFF &&
+            lastText.size() + 1 + (restore ? _rawKeys.size() : _index) <= MAX_BUFF) {
+            fixLast = true;
+            _mixedLast.english = english;
+            contextBefore = (_mixedLast.contextBefore + (english ? 100 : -100)) / 2;
+        }
+    }
+    if (language != 0)
+        _mixedContext = (contextBefore + language * 100) / 2;
+    //this word may be the next one's "last word"
+    MixedWord word;
+    if (spaceFollows && listed) {
+        word.keys = _rawKeys;
+        word.vietnamese.assign(TypingWord, TypingWord + _index);
+        word.score = score;
+        word.contextBefore = contextBefore;
+        word.english = language == 1;
+    }
+    
+    if (restore || fixLast) {
+        hCode = handleCode;
+        hBPC = _index;
+        if (restore) {
+            _stateIndex = 0;
+            for (i = 0; i < _rawKeys.size(); i++)
+                TypingWord[i] = KeyStates[_stateIndex++] = _rawKeys[i];
+            _index = _stateIndex;
+        }
+        vector<Uint32> text;
+        if (fixLast) {
+            hBPC += (Byte)(1 + (_mixedLast.english ? _mixedLast.vietnamese.size() : _mixedLast.keys.size())); //and the space
+            for (i = 0; i < lastText.size(); i++)
+                text.push_back(GET(lastText[i]));
+            text.push_back(KEY_SPACE);
+            //the line history keeps the last word, then the space: it is what backspace brings back
+            auto it = _typingStates.end();
+            if (_typingStates.size() >= 2 && (--it)->size() == 1 && (*it)[0] == KEY_SPACE)
+                *(--it) = lastText;
+        }
+        for (i = 0; i < _index; i++)
+            text.push_back(GET(TypingWord[i]));
+        hNCC = (Byte)text.size();
+        for (i = 0; i < hNCC; i++)
+            hData[hNCC - 1 - i] = text[i];
+    }
+    if (spaceFollows && listed) {
+        _mixedLast = word;
+        _hasMixedLast = true;
+    }
+    return restore || fixLast;
+}
+
 //Esc right after a word puts back the keys as typed: "vieejt" instead of "việt"
 bool restoreRawKeys() {
     if (_index == 0 || _stateIndex == 0 || _longWordHelper.size() > 0)
@@ -1358,6 +1477,10 @@ void vKeyHandleEvent(const vKeyEvent& event,
             _hasHandledMacro = true;
         } else if ((vQuickStartConsonant || vQuickEndConsonant) && !tempDisableKey && isMacroBreakCode(data)) {
             checkQuickConsonant();
+        } else if (vMixedEnglish && !_hasHandledMacro && event != vKeyEvent::Mouse &&
+                   (isWordBreak(event, state, data) || (IS_NUMBER_KEY(data) && capsStatus == 1)) &&
+                   checkMixedEnglish(vRestoreAndStartNewSession, false)) {
+            //an English word got its keys back, maybe the word before it changed too
         } else if (vRestoreIfWrongSpelling && (isWordBreak(event, state, data) || (IS_NUMBER_KEY(data) && capsStatus == 1))) { //restore key if wrong spelling with break-key, also @ ! # ...
             if (!tempDisableKey && vCheckSpelling) {
                 checkSpelling(true); //force check spelling
@@ -1366,6 +1489,10 @@ void vKeyHandleEvent(const vKeyEvent& event,
                 hCode = vDoNothing;
             }
         }
+        
+        _hasMixedLast = false; //only a space may come between two words read together
+        if (event == vKeyEvent::Mouse)
+            _mixedContext = 0; //the caret may be somewhere else now
         
         _isCharKeyCode = state == KeyDown && std::find(_charKeyCode.begin(), _charKeyCode.end(), data) != _charKeyCode.end();
         if (!_isCharKeyCode) { //clear all line cache
@@ -1410,12 +1537,16 @@ void vKeyHandleEvent(const vKeyEvent& event,
         if (!tempDisableKey && vCheckSpelling) {
             checkSpelling(true); //force check spelling
         }
+        if (_spaceCount > 0)
+            _hasMixedLast = false;
         if (vUseMacro && !_hasHandledMacro && findMacro(hMacroKey, hMacroData)) { //macro
             hCode = vReplaceMaro;
             hBPC = (Byte)hMacroKey.size();
             _spaceCount++;
             _hasHandledMacro = true;
         } else if ((vQuickStartConsonant || vQuickEndConsonant) && !tempDisableKey && checkQuickConsonant()) {
+            _spaceCount++;
+        } else if (vMixedEnglish && !_hasHandledMacro && _spaceCount == 0 && checkMixedEnglish(vRestore, true)) { //an English word gets its keys back
             _spaceCount++;
         } else if (vRestoreIfWrongSpelling && tempDisableKey && !_hasHandledMacro) { //restore key if wrong spelling
             if (!checkRestoreIfWrongSpelling(vRestore)) {
@@ -1443,6 +1574,7 @@ void vKeyHandleEvent(const vKeyEvent& event,
     } else if (data == KEY_DELETE) {
         hCode = vDoNothing;
         hExt = 2; //delete
+        _hasMixedLast = false;
         if (_specialChar.size() > 0) {
             _specialChar.pop_back();
             if (_specialChar.size() == 0) {
@@ -1456,6 +1588,9 @@ void vKeyHandleEvent(const vKeyEvent& event,
         } else {
             if (_stateIndex > 0) {
                 _stateIndex--;
+            }
+            if (_rawKeys.size() > 0) {
+                _rawKeys.pop_back();
             }
             if (_index > 0){
                 _index--;
@@ -1500,6 +1635,7 @@ void vKeyHandleEvent(const vKeyEvent& event,
         }
 
         insertState(data, _isCaps); //save state
+        _rawKeys.push_back(data | (_isCaps ? CAPS_MASK : 0));
         
         if (!IS_SPECIALKEY(data) || tempDisableKey) { //do nothing
             if (vQuickTelex && IS_QUICK_TELEX_KEY(data)) {
@@ -1565,6 +1701,7 @@ void vKeyHandleEvent(const vKeyEvent& event,
             _index = 0;
             tempDisableKey = false;
             _stateIndex = 0;
+            _rawKeys.clear();
             hExt = 3;
             _specialChar.push_back(data | (_isCaps ? CAPS_MASK : 0));
         }

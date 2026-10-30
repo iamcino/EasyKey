@@ -42,11 +42,12 @@ Defaults: Telex input, Unicode encoding, starts with Windows, **Alt + Z** switch
 If OpenKey was used on this PC, EasyKey copies its settings and shortcut list on the first start.
 
 ## Using EasyKey
-EasyKey lives in the notification area (the right end of the taskbar). Its icon is a small tile with **V** while typing Vietnamese and **E** while typing English.
+EasyKey lives in the notification area (the right end of the taskbar). Its icon is a small tile with **V** while typing Vietnamese (also in mixed mode) and **E** while typing English.
 
 | To do this | Do this |
 |---|---|
 | Switch Vietnamese/English | Press **Alt + Z**, or click the tray icon |
+| Mix English words into Vietnamese | Right-click the tray icon › Type English and Vietnamese, or pick Mixed in Settings |
 | Open Settings | Double-click the tray icon, or right-click › Settings… |
 | Change input method or encoding | Right-click the tray icon › Input method / Character encoding, or use Settings |
 | Undo the marks EasyKey just added | Press **Esc** right after the word (việt → vieejt) |
@@ -54,13 +55,14 @@ EasyKey lives in the notification area (the right end of the taskbar). Its icon 
 | Change the switch keys | Settings › Switch with › Change |
 
 The Settings window has two parts:
-- **Main screen:** Vietnamese or English, the switch keys, the input method (Telex, VNI, Simple Telex).
+- **Main screen:** Vietnamese, Mixed or English, the switch keys, the input method (Telex, VNI, Simple Telex).
 - **Advanced:** the groups Typing, Appearance, Character encoding, Spelling, Quick typing and shortcuts, Apps, System. Every item has a one-line explanation under it.
 
 ## Features
 - **Input methods:** Telex, VNI, Simple Telex.
 - **Character encoding:** Unicode. Legacy encodings (Unicode combining, TCVN3, VNI Windows) are under Advanced › Character encoding, for old fonts only.
 - **Smart typing:** adds marks only to real Vietnamese words and leaves English words as typed.
+- **Mixed mode:** type Vietnamese as usual, and English words get their keys back when the word ends, even words that are also Vietnamese such as "this" (thí), "test" (tét), "mix" (mĩ). EasyKey weighs how common the word is in each language and the language of the words around it: "tôi sẽ đi" stays Vietnamese, "There are" does not turn into "Thể are". Alt + Z switches between English and the Vietnamese mode used last.
 - **Shortcuts** of any length (ko → không), with a few common ones built in. Optional **quick typing** (cc → ch, f → ph...).
 - **Per app memory:** each app keeps its own Vietnamese/English mode and encoding.
 - **No doubled letters** in the Chrome, Edge and Brave address bars and other autocomplete boxes.
