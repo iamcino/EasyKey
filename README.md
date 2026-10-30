@@ -33,6 +33,7 @@
 - [Gỡ cài đặt](#gỡ-cài-đặt)
 - [Build từ mã nguồn](#build-từ-mã-nguồn)
 - [Câu hỏi thường gặp và xử lý sự cố](#câu-hỏi-thường-gặp-và-xử-lý-sự-cố)
+- [Miễn trừ trách nhiệm](#miễn-trừ-trách-nhiệm)
 - [Giấy phép và ghi công](#giấy-phép-và-ghi-công)
 
 ## EasyKey là gì?
@@ -341,6 +342,25 @@ ghi nhật ký phím để gửi kèm báo lỗi:
 Nhật ký ghi mã phím bạn bấm, nên chỉ bật khi cần, đừng gõ mật khẩu trong lúc
 bật, và xem lại trước khi gửi.
 
+## Miễn trừ trách nhiệm
+
+EasyKey là phần mềm miễn phí, được cung cấp **"nguyên trạng", không kèm bất kỳ
+bảo đảm nào**, theo giấy phép GPL v3. Tóm tắt:
+
+- EasyKey đọc phím bấm qua hook bàn phím của Windows để bỏ dấu; phím chỉ được
+  xử lý trên máy bạn.
+- Bạn tự chịu trách nhiệm dùng EasyKey đúng pháp luật và quy định nơi bạn làm
+  việc, học tập hay phần mềm bạn dùng (ví dụ quy định của game).
+- Tác giả không chịu trách nhiệm về mất dữ liệu, chữ gõ sai hay thiệt hại khác
+  khi dùng EasyKey.
+- `EasyKey.exe` chưa có chữ ký số. Chỉ tải từ
+  [trang phát hành chính thức](https://github.com/iamcino/EasyKey/releases).
+- EasyKey là dự án độc lập, không liên kết với Microsoft hay các bộ gõ khác,
+  và không do tác giả OpenKey phát hành.
+
+Toàn văn ở [DISCLAIMER.md](DISCLAIMER.md). Nếu không đồng ý, vui lòng không
+sử dụng EasyKey.
+
 ## Giấy phép và ghi công
 
 Copyright (C) 2026 Cino. Liên hệ: duongtheson@proton.me
@@ -354,7 +374,5 @@ EasyKey phát hành theo [GNU GPL phiên bản 3](LICENSE), phát triển từ
 - Danh sách từ của chế độ Anh–Việt lấy từ dữ liệu
   [wordfreq](https://github.com/rspeer/wordfreq): CC BY-SA 4.0.
 
-Chi tiết trong [NOTICE](NOTICE). Vui lòng đọc
-[tuyên bố miễn trừ trách nhiệm](DISCLAIMER.md) trước khi dùng. Báo lỗi bảo mật
-theo [SECURITY.md](SECURITY.md). Các thay đổi được ghi trong
+Chi tiết trong [NOTICE](NOTICE). Báo lỗi bảo mật theo [SECURITY.md](SECURITY.md). Các thay đổi được ghi trong
 [nhật ký thay đổi](CHANGELOG.md).

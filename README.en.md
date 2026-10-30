@@ -33,6 +33,7 @@
 - [Uninstalling](#uninstalling)
 - [Building from source](#building-from-source)
 - [FAQ and troubleshooting](#faq-and-troubleshooting)
+- [Disclaimer](#disclaimer)
 - [License and credits](#license-and-credits)
 
 ## What is EasyKey?
@@ -351,6 +352,25 @@ can record a key log to attach to a bug report:
 The log holds the key codes you press, so turn it on only when needed, don't
 type passwords while it is on, and look it over before sending it.
 
+## Disclaimer
+
+EasyKey is free software provided **"as is", without warranty of any kind**,
+under the GPL v3. In short:
+
+- EasyKey reads key presses through a Windows keyboard hook to add marks; keys
+  are handled on your computer only.
+- You are responsible for using EasyKey in line with the law and the rules of
+  your workplace, school or the software you use (for example a game's rules).
+- The authors are not liable for lost data, wrong text or any other damage
+  from using EasyKey.
+- `EasyKey.exe` is not code signed. Download it only from the
+  [official release page](https://github.com/iamcino/EasyKey/releases).
+- EasyKey is an independent project, not affiliated with Microsoft or other
+  keyboards, and not published by the OpenKey author.
+
+The full text is in [DISCLAIMER.md](DISCLAIMER.md). If you do not agree, do
+not use EasyKey.
+
 ## License and credits
 
 Copyright (C) 2026 Cino. Contact: duongtheson@proton.me
@@ -364,7 +384,5 @@ the [MIT](LICENSES/MIT.txt) license. Third-party parts:
 - The mixed mode word list, made from
   [wordfreq](https://github.com/rspeer/wordfreq) data: CC BY-SA 4.0.
 
-Details are in [NOTICE](NOTICE). Please read the
-[disclaimer](DISCLAIMER.md) before use. Report security problems as described
-in [SECURITY.md](SECURITY.md). Changes are listed in the
+Details are in [NOTICE](NOTICE). Report security problems as described in [SECURITY.md](SECURITY.md). Changes are listed in the
 [changelog](CHANGELOG.en.md).
