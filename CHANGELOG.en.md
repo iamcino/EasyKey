@@ -2,6 +2,12 @@
 
 [Tiếng Việt](CHANGELOG.md) · **English**
 
+## 1.0.12 (Windows 11 x64)
+- The mode switch key (Alt + Z by default) now goes through all three modes in turn: Vietnamese → Mixed → English → Vietnamese.
+- The tray icon shows **EV** while typing Mixed, instead of the V used for Vietnamese.
+- The key on the tray icon follows the accent color again: the Windows accent, or the color picked in Settings. It keeps the rounded key shape of the app icon.
+- The update-available arrow is now a glowing green arrow in the top right corner of the tray icon; the update item of the tray menu uses the same arrow.
+
 ## 1.0.11 (Windows 11 x64)
 - New **Mixed** mode next to Vietnamese and English: type Vietnamese as usual, and English words get their keys back when the word ends, even words that are also Vietnamese such as "this" (thí) or "test" (tét). EasyKey weighs how common the word is in each language and the words around it, so "tôi sẽ đi" stays Vietnamese and "There are" does not turn into "Thể are". Turn it on with the Mixed button in Settings or "Type English and Vietnamese" in the tray menu; Alt + Z switches between English and the Vietnamese mode used last.
 - Fixed the per-app encoding: switching to an app on VNI Windows or TCVN3 left the tray menu ticked on Unicode, so it looked reset to Unicode. Apps whose name could not be read had the encoding picked there saved for the previous app; Microsoft Store apps are now remembered under their own name instead of sharing ApplicationFrameHost.exe.

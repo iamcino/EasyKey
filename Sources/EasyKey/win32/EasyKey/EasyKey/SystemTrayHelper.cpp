@@ -298,11 +298,11 @@ static int trayIconSize() {
 
 //the tray glyph drawn for this exact size, a tile shading from tileTopColor at its top to tileColor at its
 //bottom, with the letter in its own color; the caller destroys it
-static HICON createTrayIcon(const int& size, const bool& vietnamese, const COLORREF& tileTopColor, const COLORREF& tileColor,
+static HICON createTrayIcon(const int& size, const int& letters, const COLORREF& tileTopColor, const COLORREF& tileColor,
 							const COLORREF& letterColor) {
 	vector<BYTE> tile, letter;
 	int tileTop, tileBottom;
-	drawTrayGlyph(size, vietnamese, tile, letter, tileTop, tileBottom);
+	drawTrayGlyph(size, letters, tile, letter, tileTop, tileBottom);
 	BITMAPINFO bmi = {};
 	bmi.bmiHeader.biSize = sizeof(bmi.bmiHeader);
 	bmi.bmiHeader.biWidth = size;
@@ -342,28 +342,74 @@ static bool insideUpArrow(const float& x, const float& y) {
 	return y > 0.56f && y <= 0.96f && x >= 0.32f && x <= 0.68f; //stem
 }
 
-//how much of a pixel the arrow covers, 0..1, sampled 4x4; grow widens the shape (for the halo around it)
-static float upArrowCoverage(const int& px, const int& py, const int& size, const float& grow = 0) {
+//how much of a pixel the arrow covers, 0..1, sampled 4x4
+static float upArrowCoverage(const int& px, const int& py, const int& size) {
 	int hits = 0;
-	for (int sy = 0; sy < 4; sy++) {
-		for (int sx = 0; sx < 4; sx++) {
-			float x = (px + (sx + 0.5f) / 4) / size, y = (py + (sy + 0.5f) / 4) / size;
-			bool in = insideUpArrow(x, y);
-			for (int d = 0; !in && grow > 0 && d < 8; d++) {
-				float a = d * 3.14159265f / 4;
-				in = insideUpArrow(x + grow * cosf(a), y + grow * sinf(a));
-			}
-			hits += in ? 1 : 0;
-		}
-	}
+	for (int sy = 0; sy < 4; sy++)
+		for (int sx = 0; sx < 4; sx++)
+			hits += insideUpArrow((px + (sx + 0.5f) / 4) / size, (py + (sy + 0.5f) / 4) / size) ? 1 : 0;
 	return hits / 16.0f;
 }
 
-static COLORREF updateGreen() {
-	return ThemeHelper::isTaskbarDarkMode() ? RGB(0x4A, 0xDE, 0x80) : RGB(0x16, 0xA3, 0x4A);
+//lays the glowing green arrow over width x height premultiplied pixels (b, g, r, a as 0..1),
+//the arrow in the arrowSize square at (left, top): a soft green light around it, then the arrow
+//shading from a light green at the tip to a deeper one at the foot
+static void drawGlowingArrow(vector<float>& pixels, const int& width, const int& height, const int& left, const int& top,
+							 const int& arrowSize, const COLORREF& tipColor, const COLORREF& footColor,
+							 const COLORREF& glowColor, const float& glowStrength) {
+	vector<float> arrow(width * height, 0);
+	for (int y = 0; y < arrowSize; y++)
+		for (int x = 0; x < arrowSize; x++)
+			if (left + x >= 0 && left + x < width && top + y >= 0 && top + y < height)
+				arrow[(top + y) * width + left + x] = upArrowCoverage(x, y, arrowSize);
+
+	//the glow: the arrow blurred with a gaussian, stronger so it hugs the edge before it fades
+	float sigma = arrowSize * 0.12f;
+	if (sigma < 0.7f)
+		sigma = 0.7f;
+	int reach = (int)ceilf(sigma * 2.5f);
+	vector<float> kernel(2 * reach + 1);
+	float sum = 0;
+	for (int i = -reach; i <= reach; i++)
+		sum += kernel[i + reach] = expf(-(i * i) / (2 * sigma * sigma));
+	for (float& k : kernel)
+		k /= sum;
+	vector<float> across(width * height, 0), glow(width * height, 0);
+	for (int y = 0; y < height; y++)
+		for (int x = 0; x < width; x++)
+			for (int i = -reach; i <= reach; i++)
+				if (x + i >= 0 && x + i < width)
+					across[y * width + x] += arrow[y * width + x + i] * kernel[i + reach];
+	for (int y = 0; y < height; y++)
+		for (int x = 0; x < width; x++)
+			for (int i = -reach; i <= reach; i++)
+				if (y + i >= 0 && y + i < height)
+					glow[y * width + x] += across[(y + i) * width + x] * kernel[i + reach];
+
+	auto over = [&](float* pixel, const COLORREF& color, const float& alpha) {
+		pixel[0] = GetBValue(color) / 255.0f * alpha + pixel[0] * (1 - alpha);
+		pixel[1] = GetGValue(color) / 255.0f * alpha + pixel[1] * (1 - alpha);
+		pixel[2] = GetRValue(color) / 255.0f * alpha + pixel[2] * (1 - alpha);
+		pixel[3] = alpha + pixel[3] * (1 - alpha);
+	};
+	for (int y = 0; y < height; y++) {
+		for (int x = 0; x < width; x++) {
+			int i = y * width + x;
+			float light = glow[i] * 1.6f > 1 ? 1 : glow[i] * 1.6f;
+			if (light > 0)
+				over(&pixels[i * 4], glowColor, light * glowStrength);
+			if (arrow[i] > 0) {
+				float t = (y - top) / (float)(arrowSize > 1 ? arrowSize - 1 : 1);
+				t = t < 0 ? 0 : t > 1 ? 1 : t;
+				auto shade = [&](const int& a, const int& b) { return (int)(a * (1 - t) + b * t + 0.5f); };
+				over(&pixels[i * 4], RGB(shade(GetRValue(tipColor), GetRValue(footColor)), shade(GetGValue(tipColor), GetGValue(footColor)),
+					shade(GetBValue(tipColor), GetBValue(footColor))), arrow[i]);
+			}
+		}
+	}
 }
 
-//source with a small green up arrow in its lower right corner; the caller destroys it
+//source with a glowing green up arrow in its top right corner; the caller destroys it
 static HICON withUpdateArrow(const HICON& source) {
 	ICONINFO info;
 	if (!GetIconInfo(source, &info))
@@ -377,29 +423,30 @@ static HICON withUpdateArrow(const HICON& source) {
 	bmi.bmiHeader.biPlanes = 1;
 	bmi.bmiHeader.biBitCount = 32;
 	bmi.bmiHeader.biCompression = BI_RGB;
-	vector<DWORD> pixels(bm.bmWidth * bm.bmHeight);
+	int count = bm.bmWidth * bm.bmHeight;
+	vector<DWORD> pixels(count);
 	HDC dc = GetDC(NULL);
 	HICON result = NULL;
 	if (GetDIBits(dc, info.hbmColor, 0, bm.bmHeight, pixels.data(), &bmi, DIB_RGB_COLORS)) {
-		COLORREF green = updateGreen();
-		int size = bm.bmWidth * 5 / 8, ox = bm.bmWidth - size, oy = bm.bmHeight - size;
-		for (int y = 0; y < size; y++) {
-			for (int x = 0; x < size; x++) {
-				DWORD& pixel = pixels[(oy + y) * bm.bmWidth + ox + x];
-				//clear a thin halo so the arrow stands apart from the glyph, then lay the arrow over it
-				float halo = upArrowCoverage(x, y, size, 1.5f / size);
-				float base = (pixel >> 24) / 255.0f * (1 - halo);
-				float arrow = upArrowCoverage(x, y, size);
-				float alpha = arrow + base * (1 - arrow);
-				if (alpha <= 0) {
-					pixel = 0;
-					continue;
-				}
-				//icons take straight, not premultiplied, alpha
-				auto mix = [&](const int& a, const int& b) { return (DWORD)((a * arrow + b * base * (1 - arrow)) / alpha + 0.5f); };
-				pixel = ((DWORD)(alpha * 255 + 0.5f) << 24) | (mix(GetRValue(green), (pixel >> 16) & 0xFF) << 16) |
-					(mix(GetGValue(green), (pixel >> 8) & 0xFF) << 8) | mix(GetBValue(green), pixel & 0xFF);
-			}
+		//icons take straight, not premultiplied, alpha: premultiply, draw, and back
+		vector<float> layer(count * 4);
+		for (int i = 0; i < count; i++) {
+			float a = (pixels[i] >> 24) / 255.0f;
+			layer[i * 4] = (pixels[i] & 0xFF) / 255.0f * a;
+			layer[i * 4 + 1] = ((pixels[i] >> 8) & 0xFF) / 255.0f * a;
+			layer[i * 4 + 2] = ((pixels[i] >> 16) & 0xFF) / 255.0f * a;
+			layer[i * 4 + 3] = a;
+		}
+		//bright on a dark taskbar; a deeper green keeps its edge on a light one, where a glow shows less
+		bool dark = ThemeHelper::isTaskbarDarkMode();
+		int size = bm.bmWidth * 7 / 16 + 1;
+		drawGlowingArrow(layer, bm.bmWidth, bm.bmHeight, bm.bmWidth - size, 0, size,
+			dark ? RGB(0x86, 0xEF, 0xAC) : RGB(0x4A, 0xDE, 0x80), dark ? RGB(0x22, 0xC5, 0x5E) : RGB(0x16, 0xA3, 0x4A),
+			dark ? RGB(0x4A, 0xDE, 0x80) : RGB(0x22, 0xC5, 0x5E), dark ? 0.85f : 0.7f);
+		for (int i = 0; i < count; i++) {
+			float a = layer[i * 4 + 3];
+			auto channel = [&](const int& c) { return a > 0 ? (DWORD)(layer[i * 4 + c] / a * 255 + 0.5f) : 0; };
+			pixels[i] = ((DWORD)(a * 255 + 0.5f) << 24) | (channel(2) << 16) | (channel(1) << 8) | channel(0);
 		}
 		ICONINFO badged = {};
 		badged.fIcon = TRUE;
@@ -416,7 +463,7 @@ static HICON withUpdateArrow(const HICON& source) {
 	return result;
 }
 
-//the green arrow for the update item of the tray menu, premultiplied as menus want
+//the glowing green arrow for the update item of the tray menu, premultiplied as menus want
 static HBITMAP updateArrowBitmap() {
 	int size = GetSystemMetrics(SM_CXMENUCHECK);
 	BITMAPINFO bmi = {};
@@ -430,17 +477,15 @@ static HBITMAP updateArrowBitmap() {
 	HBITMAP bitmap = CreateDIBSection(NULL, &bmi, DIB_RGB_COLORS, &bits, NULL, 0);
 	if (!bitmap)
 		return NULL;
-	//the menu follows the app theme, not the taskbar: the darker green reads on both
-	COLORREF green = RGB(0x16, 0xA3, 0x4A);
+	//the menu follows the app theme, not the taskbar: the middle greens read on both
+	vector<float> layer(size * size * 4, 0);
+	int inset = size / 6, arrowSize = size - 2 * inset;
+	drawGlowingArrow(layer, size, size, inset, inset, arrowSize,
+		RGB(0x4A, 0xDE, 0x80), RGB(0x16, 0xA3, 0x4A), RGB(0x22, 0xC5, 0x5E), 0.75f);
 	DWORD* pixels = (DWORD*)bits;
-	int inset = size / 8, arrowSize = size - 2 * inset;
-	for (int y = 0; y < size; y++) {
-		for (int x = 0; x < size; x++) {
-			float a = (x < inset || y < inset || x >= inset + arrowSize || y >= inset + arrowSize) ? 0 :
-				upArrowCoverage(x - inset, y - inset, arrowSize);
-			pixels[y * size + x] = ((DWORD)(a * 255 + 0.5f) << 24) | ((DWORD)(GetRValue(green) * a) << 16) |
-				((DWORD)(GetGValue(green) * a) << 8) | (DWORD)(GetBValue(green) * a);
-		}
+	for (int i = 0; i < size * size; i++) {
+		auto channel = [&](const int& c) { return (DWORD)(layer[i * 4 + c] * 255 + 0.5f); };
+		pixels[i] = (channel(3) << 24) | (channel(2) << 16) | (channel(1) << 8) | channel(0);
 	}
 	return bitmap;
 }
@@ -448,13 +493,15 @@ static HBITMAP updateArrowBitmap() {
 static void loadTrayIcon() {
 	static HICON glyph = NULL, badged = NULL;
 	//a solid tile drawn for the size the taskbar wants, so no scaling blurs it:
-	//V on the blue key cap of the app icon in Vietnamese mode, E in white on a dark taskbar and in black on a light one
+	//V (EV when mixed) on the key cap of the app icon in the accent color in Vietnamese mode, E in white on a dark taskbar and in black on a light one
 	bool darkTaskbar = ThemeHelper::isTaskbarDarkMode();
 	COLORREF tileTopColor, tileColor, letterColor;
 	if (vLanguage) {
-		//the blue of the app icon, so the tray matches the taskbar button whatever the Windows accent is
-		tileTopColor = RGB(0x2F, 0x8A, 0xE8);
-		tileColor = RGB(0x0A, 0x65, 0xC7);
+		//the accent of light mode is the deep one, white text on it reads on either taskbar;
+		//the top is a little lighter, like the gradient of the app icon
+		tileColor = ThemeHelper::getAccentColor(false, false);
+		auto lighter = [](const int& c) { return c + (255 - c) * 18 / 100; };
+		tileTopColor = RGB(lighter(GetRValue(tileColor)), lighter(GetGValue(tileColor)), lighter(GetBValue(tileColor)));
 		letterColor = RGB(0xFF, 0xFF, 0xFF);
 		lstrcpyn(nid.szTip, vMixedEnglish ? TR("EasyKey: đang gõ Anh–Việt", "EasyKey: typing English and Vietnamese") :
 			TR("EasyKey: đang gõ tiếng Việt", "EasyKey: typing Vietnamese"), 128);
@@ -465,9 +512,9 @@ static void loadTrayIcon() {
 		lstrcpyn(nid.szTip, TR("EasyKey: đang gõ tiếng Anh", "EasyKey: typing English"), 128);
 	}
 	HICON previous = glyph, previousBadged = badged;
-	glyph = createTrayIcon(trayIconSize(), vLanguage != 0, tileTopColor, tileColor, letterColor);
+	glyph = createTrayIcon(trayIconSize(), TYPING_MODE == 2 ? TRAY_GLYPH_EV : vLanguage ? TRAY_GLYPH_V : TRAY_GLYPH_E, tileTopColor, tileColor, letterColor);
 	nid.hIcon = glyph;
-	//a newer version is out: a small green arrow on the icon
+	//a newer version is out: a glowing green arrow on the icon
 	const string& update = Updater::availableVersion();
 	badged = update.empty() ? NULL : withUpdateArrow(nid.hIcon);
 	if (badged) {

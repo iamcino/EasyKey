@@ -34,7 +34,18 @@ static float distanceToSegment2(const float& x, const float& y, const Point& a, 
 	return px * px + py * py;
 }
 
-void drawTrayGlyph(const int& size, const bool& vietnamese,
+//E: a stem and three arms on whole pixels, from left at the rows top to top + height
+static bool insideE(const float& x, const float& y, const int& left, const int& top, const int& height,
+					const int& width, const int& stroke) {
+	int bottom = top + height;
+	int middle = top + (height - stroke) / 2;
+	int middleRight = left + width - (stroke + 1) / 2;
+	return (x >= left && x < left + stroke && y >= top && y < bottom) ||
+		(x >= left && x < left + width && ((y >= top && y < top + stroke) || (y >= bottom - stroke && y < bottom))) ||
+		(x >= left && x < middleRight && y >= middle && y < middle + stroke);
+}
+
+void drawTrayGlyph(const int& size, const int& letters,
 				   std::vector<unsigned char>& tile, std::vector<unsigned char>& letter,
 				   int& tileTop, int& tileBottom) {
 	tile.assign(size * size, 0);
@@ -53,9 +64,10 @@ void drawTrayGlyph(const int& size, const bool& vietnamese,
 	tileTop = (size - capHeight) / 2;
 	tileBottom = tileTop + capHeight;
 	float radius = capHeight * 0.3f;
+	bool two = letters == TRAY_GLYPH_EV;
 
-	//E: a stem and three arms on whole pixels; E is three bars and two gaps of about one stroke each,
-	//and its middle bar has to land on whole pixels too
+	//E: three bars and two gaps of about one stroke each, and its middle bar has to land on whole pixels too.
+	//Next to V it is narrower, so both fit the cap with room around them
 	int height = (int)floorf(capHeight * 0.6f + 0.5f);
 	int stroke = (int)floorf(height / 5.0f + 0.5f);
 	if (stroke < 2)
@@ -63,24 +75,33 @@ void drawTrayGlyph(const int& size, const bool& vietnamese,
 	if ((height - stroke) % 2)
 		height++;
 	int top = tileTop + (capHeight - height) / 2;
-	int bottom = top + height;
-	int eWidth = (int)floorf(height * 0.7f + 0.5f);
-	int eLeft = inset + (side - eWidth + 1) / 2; //half a pixel right: the stem makes E heavy on the left
-	int eMiddle = top + (height - stroke) / 2;
-	int eMiddleRight = eLeft + eWidth - (stroke + 1) / 2;
+	int eWidth = (int)floorf(height * (two ? 0.62f : 0.7f) + 0.5f);
 
 	//V: two strokes with round ends meeting at the foot, like the app icon
-	float vHeight = capHeight * 0.64f;
-	float vStroke = capHeight * 0.17f;
+	float vHeight = two ? (float)height : capHeight * 0.64f;
+	float vStroke = two ? height * 0.24f : capHeight * 0.17f;
 	if (vStroke < 1.6f)
 		vStroke = 1.6f;
-	float center = inset + side / 2.0f;
-	float vTop = tileTop + (capHeight - vHeight) / 2.0f;
-	float half = vHeight * 0.5f; //the V is as wide as it is tall
-	Point vLeft = { center - half + vStroke / 2, vTop + vStroke / 2 };
-	Point vRight = { center + half - vStroke / 2, vTop + vStroke / 2 };
-	Point vFoot = { center, vTop + vHeight - vStroke / 2 };
+	float vWidth = two ? vHeight * 0.8f : vHeight; //alone, the V is as wide as it is tall
+	float vTop = two ? (float)top : tileTop + (capHeight - vHeight) / 2.0f;
+
+	//alone each letter sits in the middle of the cap; EV is centered as a pair, a stroke apart
+	int eLeft;
+	float vCenter;
+	if (two) {
+		float gap = stroke * 0.6f > 1 ? stroke * 0.6f : 1;
+		float pair = eWidth + gap + vWidth;
+		eLeft = (int)floorf(inset + (side - pair) / 2.0f + 0.5f);
+		vCenter = eLeft + eWidth + gap + vWidth / 2;
+	} else {
+		eLeft = inset + (side - eWidth + 1) / 2; //half a pixel right: the stem makes E heavy on the left
+		vCenter = inset + side / 2.0f;
+	}
+	Point vLeft = { vCenter - vWidth / 2 + vStroke / 2, vTop + vStroke / 2 };
+	Point vRight = { vCenter + vWidth / 2 - vStroke / 2, vTop + vStroke / 2 };
+	Point vFoot = { vCenter, vTop + vHeight - vStroke / 2 };
 	float reach = vStroke * vStroke / 4;
+	bool drawE = letters != TRAY_GLYPH_V, drawV = letters != TRAY_GLYPH_E;
 
 	for (int py = 0; py < size; py++) {
 		for (int px = 0; px < size; px++) {
@@ -91,14 +112,8 @@ void drawTrayGlyph(const int& size, const bool& vietnamese,
 					if (!insideRoundRect(x, y, (float)inset, (float)tileTop, (float)(inset + side), (float)tileBottom, radius))
 						continue;
 					inTile++;
-					bool in;
-					if (vietnamese) {
-						in = distanceToSegment2(x, y, vLeft, vFoot) <= reach || distanceToSegment2(x, y, vRight, vFoot) <= reach;
-					} else {
-						in = (x >= eLeft && x < eLeft + stroke && y >= top && y < bottom) ||
-							(x >= eLeft && x < eLeft + eWidth && ((y >= top && y < top + stroke) || (y >= bottom - stroke && y < bottom))) ||
-							(x >= eLeft && x < eMiddleRight && y >= eMiddle && y < eMiddle + stroke);
-					}
+					bool in = (drawV && (distanceToSegment2(x, y, vLeft, vFoot) <= reach || distanceToSegment2(x, y, vRight, vFoot) <= reach)) ||
+						(drawE && insideE(x, y, eLeft, top, height, eWidth, stroke));
 					inLetter += in ? 1 : 0;
 				}
 			}

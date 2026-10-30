@@ -104,8 +104,8 @@ languages (coding, work, study):
 - It reads the context: "tôi sẽ đi" stays Vietnamese, and "There are" does not
   become "Thể are". A clearly English word also fixes the word right before it.
 - Turn it on with the **Mixed** button (EV badge) in Settings or **Type English
-  and Vietnamese** in the tray menu. **Alt + Z** switches between English and
-  the Vietnamese mode you used last.
+  and Vietnamese** in the tray menu. **Alt + Z** goes through the three modes in
+  turn: Vietnamese, Mixed, English.
 
 ### Per app
 
@@ -135,9 +135,9 @@ languages (coding, work, study):
 - Vietnamese or English interface, picked from your Windows region.
 - A small popup when you switch language, input method or encoding (hidden
   while a full-screen game runs). An optional beep on switching.
-- A tray icon drawn at the exact pixel size for every scale: a blue key with
-  **V** for Vietnamese, a neutral tile with **E** for English, a green arrow
-  when an update is out.
+- A tray icon drawn at the exact pixel size for every scale: a key in the accent
+  color with **V** for Vietnamese and **EV** for Mixed, a neutral tile with **E**
+  for English, a glowing green arrow when an update is out.
 
 ### App
 

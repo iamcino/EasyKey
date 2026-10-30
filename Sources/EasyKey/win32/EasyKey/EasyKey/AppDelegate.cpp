@@ -178,6 +178,7 @@ void AppDelegate::closeSettingsWindow() {
 
 void AppDelegate::onInputMethodChangedFromHotKey() {
 	APP_SET_DATA(vLanguage, vLanguage);
+	APP_SET_DATA(vMixedEnglish, vMixedEnglish);
 	if (settingsWindow) {
 		settingsWindow->fillData();
 	}
