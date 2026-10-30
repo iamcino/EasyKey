@@ -306,6 +306,9 @@ void FlyoutWindow::render(const UINT& dpi, const RECT& workArea, const bool& mes
 					dx = (ink.left - ink.right) / 2;
 					dy = (ink.top - ink.bottom) / 2;
 				}
+				//EV: the upright E reads heavier than the slanted V, so the pair looks centered a bit to the right
+				if (twoLetters)
+					dx += s(1);
 				drawLayout(target, badgeLayout, badgeX + dx, badgeY + dy, filled ? (dark ? 0xFF000000 : 0xFFFFFFFF) : text);
 			}
 			float textX = badgeX + s(40) + s(14);
