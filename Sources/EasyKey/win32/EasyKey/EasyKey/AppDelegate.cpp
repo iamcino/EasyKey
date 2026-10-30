@@ -28,10 +28,10 @@ See LICENSE and NOTICE.
 #pragma comment(lib, "comctl32.lib")
 
 //shown once after updating to this version; change it with each release
-#define WHATS_NEW_VI L"• Chế độ Anh–Việt: gõ lẫn từ tiếng Anh trong câu tiếng Việt, không cần chuyển chế độ.\n" \
-	L"• Sửa lỗi bảng mã nhớ theo từng ứng dụng bị hiện sai hoặc ghi nhầm sang ứng dụng khác."
-#define WHATS_NEW_EN L"• Mixed mode: type English words inside Vietnamese sentences without switching.\n" \
-	L"• Fixed the per-app encoding showing wrong or being saved for another app."
+#define WHATS_NEW_VI L"• Alt + Z và bấm vào biểu tượng khay chuyển lần lượt Việt → Anh–Việt → Anh.\n" \
+	L"• Biểu tượng khay hiện EV khi gõ Anh–Việt và lại theo màu nhấn."
+#define WHATS_NEW_EN L"• Alt + Z and a click on the tray icon go Vietnamese → Mixed → English in turn.\n" \
+	L"• The tray icon shows EV in Mixed mode and follows the accent color again."
 
 //6 hours
 #define UPDATE_CHECK_INTERVAL (6 * 60 * 60 * 1000)
