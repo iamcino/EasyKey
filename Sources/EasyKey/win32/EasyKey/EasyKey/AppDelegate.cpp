@@ -28,8 +28,10 @@ See LICENSE and NOTICE.
 #pragma comment(lib, "comctl32.lib")
 
 //shown once after updating to this version; change it with each release
-#define WHATS_NEW_VI L"• Sửa lỗi chữ gõ lại bị viết hoa lẫn lộn (giÚP tÔi) sau khi EasyKey lỡ mất lúc nhả phím Shift."
-#define WHATS_NEW_EN L"• Fixed letters coming out in capitals (giÚP tÔi) after EasyKey missed a Shift key release."
+#define WHATS_NEW_VI L"• Chế độ Anh–Việt: gõ lẫn từ tiếng Anh trong câu tiếng Việt, không cần chuyển chế độ.\n" \
+	L"• Sửa lỗi bảng mã nhớ theo từng ứng dụng bị hiện sai hoặc ghi nhầm sang ứng dụng khác."
+#define WHATS_NEW_EN L"• Mixed mode: type English words inside Vietnamese sentences without switching.\n" \
+	L"• Fixed the per-app encoding showing wrong or being saved for another app."
 
 //6 hours
 #define UPDATE_CHECK_INTERVAL (6 * 60 * 60 * 1000)
