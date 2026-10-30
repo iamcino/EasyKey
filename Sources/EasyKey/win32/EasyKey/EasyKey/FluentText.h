@@ -36,7 +36,7 @@ int fluentTextHeight(FluentFont* font, const wstring& text, const int& width);
 //text is collected while GDI+ paints the shapes, then drawn over them in one go
 class FluentTextBatch {
 public:
-	//align: 0 near, 1 center, 2 far; clip is in canvas pixels
+	//align: 0 near, 1 center, 2 far; vAlign 3 centers the ink of the letters both ways (badges); clip is in canvas pixels
 	void add(const wstring& text, const RECT& rc, FluentFont* font, const DWORD& color,
 			 const int& hAlign, const int& vAlign, const bool& wrap, const RECT& clip);
 	//draws on the 32 bit premultiplied bitmap selected into dc, then forgets the text

@@ -9,12 +9,15 @@
 //
 
 #include <cstdio>
+#include <cstring>
+#include <iostream>
 #include <string>
 #include "../engine/Engine.h"
 #include "../engine/ConvertTool.h"
 
 //engine settings, normally defined by each platform app (see Engine.h)
 int vLanguage = 1;
+int vMixedEnglish = 0;
 int vInputType = 0;
 int vFreeMark = 0;
 int vCodeTable = 0;
@@ -219,6 +222,40 @@ static void testTelex() {
     vUpperCaseFirstChar = 0;
 }
 
+static void testMixed() {
+    vInputType = vTelex;
+    //without the mixed mode an English word that is also a Vietnamese one gets the marks
+    expectTyping("Mixed off", "this is ", L"thí í ");
+    vMixedEnglish = 1;
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0); //no words before
+    expectTyping("Mixed", "this is a test ", L"this is a test ");
+    expectTyping("Mixed", "This is my car.", L"This is my car.");
+    expectTyping("Mixed", "different ", L"different ");
+    expectTyping("Mixed", "off ", L"off ");
+    //a clear word settles the one before it, that could be read both ways
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed", "There are ", L"There are ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed", "Did you see ", L"Did you see ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed", "The car was ", L"The car was ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed", "There  are ", L"Thể  are "); //only across one space
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed", "tooi muoons test cais nayf ", L"tôi muốn test cái này ");
+    expectTyping("Mixed", "tooi review car hai banr ", L"tôi review cả hai bản ");
+    expectTyping("Mixed", "tooi sex ddi ", L"tôi sẽ đi ");
+    expectTyping("Mixed", "taats car ", L"tất cả ");
+    expectTyping("Mixed", "vieetj nam ", L"việt nam ");
+    //a word only Vietnamese reads stays, also on its own
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed", "cos ", L"có ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed", "sex ", L"sẽ ");
+    vMixedEnglish = 0;
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+}
+
 static void testVNI() {
     vInputType = vVNI;
     expectTyping("VNI", "a1", L"á");
@@ -266,9 +303,24 @@ static void testConvert() {
     convertToolToCapsEachWord = false;
 }
 
-int main() {
+//EngineTests --render: for each word read, print it and what Telex makes of it (tools/make_mixed_words.py uses this)
+static int renderWords() {
+    vInputType = vTelex;
+    string word;
+    while (getline(cin, word)) {
+        wstring text = typeKeys(word + " ");
+        text.pop_back();
+        printf("%s\t%s\n", word.c_str(), toUtf8(text).c_str());
+    }
+    return 0;
+}
+
+int main(int argc, char** argv) {
     pData = (vKeyHookState*)vKeyInit();
+    if (argc > 1 && strcmp(argv[1], "--render") == 0)
+        return renderWords();
     testTelex();
+    testMixed();
     testVNI();
     testConvert();
     printf("%d/%d engine tests passed\n", total - failures, total);

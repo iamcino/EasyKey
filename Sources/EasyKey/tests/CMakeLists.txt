@@ -11,6 +11,7 @@ add_executable(EngineTests
     ${ENGINE_DIR}/ConvertTool.cpp
     ${ENGINE_DIR}/Engine.cpp
     ${ENGINE_DIR}/Macro.cpp
+    ${ENGINE_DIR}/MixedWords.cpp
     ${ENGINE_DIR}/SmartSwitchKey.cpp
     ${ENGINE_DIR}/Vietnamese.cpp
 )

@@ -51,6 +51,13 @@
 extern int vLanguage;
 
 /*
+ * Mixed English and Vietnamese, works while vLanguage is 1 (EasyKey)
+ * 0: No
+ * 1: Yes, a word that reads as English gets its keys back when it ends: "this" stays "this", not "thí"
+ */
+extern int vMixedEnglish;
+
+/*
  * 0: Telex
  * 1: VNI
  */

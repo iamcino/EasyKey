@@ -101,10 +101,13 @@ Cả hai bỏ qua khi cửa sổ đang ở trước chạy quyền Admin, vì l�
 | `Vietnamese.cpp/.h` | Bảng nguyên âm, phụ âm, vị trí dấu và bảng ký tự cho từng bảng mã. |
 | `Macro.cpp/.h` | Gõ tắt: lưu, tìm, đọc/ghi dạng nhị phân. |
 | `SmartSwitchKey.cpp/.h` | Bảng nhớ Việt/Anh và bảng mã theo tên ứng dụng. |
+| `MixedWords.cpp/.h`, `MixedWordsData.h` | Danh sách từ cho chế độ Anh–Việt (xem dưới). `MixedWordsData.h` sinh bằng `tools/make_mixed_words.py`. |
 | `ConvertTool.cpp/.h` | Chuyển văn bản giữa các bảng mã, đổi hoa/thường, bỏ dấu. |
 | `DataType.h` | `vKeyHookState` và các hằng số chung. |
 
-Test engine ở `Sources/EasyKey/tests/EngineTests.cpp` (Telex, VNI, chuyển mã). Khi sửa engine, thêm ca test cho lỗi vừa sửa.
+Test engine ở `Sources/EasyKey/tests/EngineTests.cpp` (Telex, VNI, chuyển mã, Anh–Việt). Khi sửa engine, thêm ca test cho lỗi vừa sửa.
+
+**Chế độ Anh–Việt** (`vMixedEnglish`, chỉ có tác dụng khi `vLanguage` = 1). Engine vẫn bỏ dấu như thường trong lúc gõ. Khi từ kết thúc (dấu cách, dấu câu), `checkMixedEnglish` tra các phím đã gõ (cả phím gõ đôi để bỏ dấu, như "ff" trong "different") trong danh sách khoảng 3.300 từ: mỗi từ có độ phổ biến (Zipf × 10) trong tiếng Anh và của chữ Việt mà Telex tạo ra từ cùng các phím. Từ được coi là tiếng Anh khi điểm Anh − điểm Việt − 5 (nghiêng về tiếng Việt) cộng độ lệch ngữ cảnh (tối đa ±20, theo ngôn ngữ các từ vừa gõ) lớn hơn 0; khi đó engine xoá chữ Việt và gửi lại phím gốc. Từ có dấu không nằm trong danh sách được tính là tiếng Việt. Một từ rõ ràng (chênh từ 20 điểm) còn sửa lại từ ngay trước nó nếu hai từ chỉ cách nhau một dấu cách: "Thể are" thành "There are", "The cả was" thành "The car was" (không làm với VNI Windows và Unicode tổ hợp vì số phím xoá không chắc chắn). Danh sách lấy từ dữ liệu [wordfreq](https://github.com/rspeer/wordfreq) (CC BY-SA 4.0); muốn đổi ngưỡng thì sửa đồng thời `Engine.cpp` và `tools/make_mixed_words.py`, rồi chạy lại script.
 
 ## 8. Giao diện
 Giao diện không dùng hộp thoại Win32 cổ điển mà tự vẽ để giống Windows 11:
@@ -161,7 +164,7 @@ Sources/EasyKey/
         ├── *Window, Fluent*    giao diện (mục 8)
         └── fonts/              Be Vietnam Pro (nhúng vào exe)
 docs/                       tài liệu và ảnh chụp
-tools/                      script tạo biểu tượng và font
+tools/                      script tạo biểu tượng, font và danh sách từ Anh–Việt
 version.json                phiên bản mới nhất, bản đang chạy đọc để biết có cập nhật
 ```
 

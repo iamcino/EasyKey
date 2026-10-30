@@ -296,11 +296,18 @@ void FluentTextBatch::draw(const HDC& dc, const int& width, const int& height) {
 				continue;
 			}
 			layout->SetTextAlignment(hAligns[item.hAlign]);
-			layout->SetParagraphAlignment(vAligns[item.vAlign]);
+			layout->SetParagraphAlignment(vAligns[item.vAlign == 3 ? 1 : item.vAlign]);
+			//center the ink, not the line box: the line box has more room above the caps than below
+			float dx = 0, dy = 0;
+			DWRITE_OVERHANG_METRICS ink;
+			if (item.vAlign == 3 && SUCCEEDED(layout->GetOverhangMetrics(&ink))) {
+				dx = (ink.left - ink.right) / 2;
+				dy = (ink.top - ink.bottom) / 2;
+			}
 			brush->SetColor(colorOf(item.color));
 			target->PushAxisAlignedClip(D2D1::RectF((float)item.clip.left, (float)item.clip.top, (float)item.clip.right, (float)item.clip.bottom),
 				D2D1_ANTIALIAS_MODE_ALIASED);
-			target->DrawTextLayout(D2D1::Point2F((float)item.rc.left, (float)item.rc.top), layout, brush);
+			target->DrawTextLayout(D2D1::Point2F(item.rc.left + dx, item.rc.top + dy), layout, brush);
 			target->PopAxisAlignedClip();
 			layout->Release();
 		}
