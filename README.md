@@ -42,11 +42,12 @@ Cài đặt mặc định: kiểu gõ Telex, bảng mã Unicode, chạy cùng Wi
 Nếu máy đã dùng OpenKey, lần đầu chạy EasyKey tự chép cài đặt và bảng gõ tắt của OpenKey sang.
 
 ## Sử dụng
-EasyKey chạy dưới khay hệ thống (góc phải thanh tác vụ). Biểu tượng là ô vuông có chữ **V** khi gõ tiếng Việt và chữ **E** khi gõ tiếng Anh.
+EasyKey chạy dưới khay hệ thống (góc phải thanh tác vụ). Biểu tượng là ô vuông có chữ **V** khi gõ tiếng Việt (cả chế độ Anh–Việt) và chữ **E** khi gõ tiếng Anh.
 
 | Muốn làm gì | Cách làm |
 |---|---|
 | Chuyển Việt/Anh | Bấm **Alt + Z**, hoặc bấm vào biểu tượng ở khay |
+| Gõ lẫn tiếng Anh trong câu tiếng Việt | Bấm phải vào biểu tượng ở khay › Gõ Anh–Việt, hoặc chọn Anh–Việt trong Cài đặt |
 | Mở Cài đặt | Bấm đúp vào biểu tượng ở khay, hoặc bấm phải › Cài đặt… |
 | Đổi kiểu gõ, bảng mã | Bấm phải vào biểu tượng ở khay › Kiểu gõ / Bảng mã, hoặc trong Cài đặt |
 | Lấy lại phím vừa gõ khi bị bỏ dấu nhầm | Bấm **Esc** ngay sau từ đó (việt → vieejt) |
@@ -54,13 +55,14 @@ EasyKey chạy dưới khay hệ thống (góc phải thanh tác vụ). Biểu t
 | Đổi phím tắt chuyển Việt/Anh | Cài đặt › Chuyển nhanh › Đổi phím |
 
 Cửa sổ Cài đặt có hai phần:
-- **Màn hình chính:** chọn Việt/Anh, phím tắt chuyển, kiểu gõ (Telex, VNI, Simple Telex).
+- **Màn hình chính:** chọn Tiếng Việt, Anh–Việt hoặc Tiếng Anh, phím tắt chuyển, kiểu gõ (Telex, VNI, Simple Telex).
 - **Nâng cao:** các nhóm Gõ, Giao diện, Bảng mã, Chính tả, Gõ nhanh và gõ tắt, Ứng dụng, Hệ thống. Mỗi mục có một dòng giải thích ngay bên dưới.
 
 ## Tính năng
 - **Kiểu gõ:** Telex, VNI, Simple Telex.
 - **Bảng mã:** Unicode. Bảng mã cũ (Unicode tổ hợp, TCVN3, VNI Windows) nằm trong Nâng cao › Bảng mã, chỉ cần khi dùng font cũ.
 - **Gõ thông minh:** chỉ bỏ dấu khi từ đúng chính tả tiếng Việt, gõ từ tiếng Anh thì giữ nguyên phím.
+- **Chế độ Anh–Việt:** gõ tiếng Việt như thường, từ tiếng Anh tự trả lại phím khi gõ xong từ, kể cả từ trùng với chữ Việt như "this" (thí), "test" (tét), "mix" (mĩ). EasyKey xét độ phổ biến của từ trong mỗi thứ tiếng và ngôn ngữ của các từ xung quanh: "tôi sẽ đi" vẫn là tiếng Việt, "There are" không thành "Thể are". Alt + Z chuyển giữa tiếng Anh và chế độ Việt dùng lần cuối.
 - **Gõ tắt** không giới hạn độ dài (ko → không), có sẵn vài từ thông dụng. **Gõ nhanh** (cc → ch, f → ph...) tuỳ chọn.
 - **Nhớ theo từng ứng dụng:** Việt/Anh và bảng mã của mỗi ứng dụng được nhớ riêng.
 - **Không lặp chữ** ở thanh địa chỉ Chrome, Edge, Brave và các ô có gợi ý tự động.

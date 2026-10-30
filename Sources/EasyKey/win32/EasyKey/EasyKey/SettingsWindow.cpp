@@ -291,13 +291,14 @@ void SettingsWindow::layout() {
 		item.textRight = item.ctl.left - s(12);
 	};
 
-	//Vietnamese or English, two big buttons and the hotkey below them
+	//Vietnamese, mixed or English (TYPING_MODE 1, 2, 0), three big buttons and the hotkey below them
 	int pad = s(4), gap = s(4);
 	int inner = right - left - pad * 2;
-	int half = (inner - gap) / 2;
+	int third = (inner - gap * 2) / 3;
 	heroArea = makeRect(left, y, right - left, pad + s(56) + gap + s(32) + pad);
-	push(K_LANG, 1, T(_T("Tiếng Việt"), _T("Vietnamese")), NULL, makeRect(left + pad, y + pad, half, s(56)));
-	push(K_LANG, 0, T(_T("Tiếng Anh"), _T("English")), NULL, makeRect(left + pad + half + gap, y + pad, inner - half - gap, s(56)));
+	push(K_LANG, 1, T(_T("Tiếng Việt"), _T("Vietnamese")), NULL, makeRect(left + pad, y + pad, third, s(56)));
+	push(K_LANG, 2, T(_T("Anh–Việt"), _T("Mixed")), NULL, makeRect(left + pad + third + gap, y + pad, third, s(56)));
+	push(K_LANG, 0, T(_T("Tiếng Anh"), _T("English")), NULL, makeRect(left + pad + (third + gap) * 2, y + pad, inner - (third + gap) * 2, s(56)));
 	int i = push(K_HOTKEY, 0, T(_T("Chuyển nhanh"), _T("Switch with")), NULL, makeRect(left + pad, y + pad + s(56) + gap, inner, s(32)));
 	items[i].linkAction = ACT_CAPTURE;
 	LPCTSTR linkText = capturing && captureTarget == 0 ? T(_T("Huỷ"), _T("Cancel")) : T(_T("Đổi phím"), _T("Change"));
@@ -652,22 +653,26 @@ void SettingsWindow::paintItem(Gdiplus::Graphics& g, const Item& item, const int
 
 	switch (item.kind) {
 	case K_LANG: {
-		bool on = (vLanguage != 0) == (item.id != 0);
+		bool on = TYPING_MODE == item.id;
 		if (on)
 			fillRound(g, rc, (float)s(9), pal.accent);
 		else if (hot)
 			fillRound(g, rc, (float)s(9), pressed ? pal.cardPressed : pal.cardHover);
-		RECT badge = makeRect(rc.left + s(10), cy - s(16), s(32), s(32));
+		RECT badge = makeRect(rc.left + s(8), cy - s(14), s(28), s(28));
 		if (on)
 			fillRound(g, badge, (float)s(8), pal.onAccent == 0xFFFFFFFF ? fade(0xFFFFFFFF, 22) : 0x24000000);
 		else
 			fillRound(g, badge, (float)s(8), pal.field, pal.stroke);
 		DWORD color = on ? pal.onAccent : pal.text;
-		drawText(g, item.id ? _T("V") : _T("E"), badge, fontBadge, color, 1, 1);
-		RECT title = { badge.right + s(10), rc.top, rc.right - s(6), cy + s(2) };
+		//EV: the upright E reads heavier than the slanted V, so the pair looks centered a bit to the right
+		RECT letters = badge;
+		if (item.id == 2)
+			OffsetRect(&letters, s(1), 0);
+		drawText(g, item.id == 2 ? _T("EV") : item.id ? _T("V") : _T("E"), letters, item.id == 2 ? fontCaption : fontBadge, color, 1, 3);
+		RECT title = { badge.right + s(8), rc.top, rc.right - s(4), cy + s(2) };
 		drawText(g, item.label, title, fontTitle, color, 0, 2);
 		RECT state = { title.left, cy + s(2), title.right, rc.bottom };
-		drawText(g, on ? T(_T("Đang dùng"), _T("In use")) : T(_T("Bấm để chuyển"), _T("Click to switch")), state, fontCaption, fade(color, 80), 0, 0);
+		drawText(g, on ? T(_T("Đang dùng"), _T("In use")) : T(_T("Bấm để chọn"), _T("Click to use")), state, fontCaption, fade(color, 80), 0, 0);
 		break;
 	}
 	case K_HOTKEY: {
@@ -949,7 +954,7 @@ bool SettingsWindow::isInteractive(const int& item, const int& part) const {
 	const Item& it = items[item];
 	switch (it.kind) {
 	case K_LANG:
-		return part == 0 && (vLanguage != 0) != (it.id != 0);
+		return part == 0 && TYPING_MODE != it.id;
 	case K_HOTKEY:
 		return part == 1;
 	case K_SEGBUTTON:
@@ -1038,7 +1043,7 @@ void SettingsWindow::activate(const int& index, const int& part) {
 	Item item = items[index];
 	switch (item.kind) {
 	case K_LANG:
-		setOption(OPT_LANGUAGE, item.id != 0);
+		AppDelegate::getInstance()->setTypingMode(item.id);
 		break;
 	case K_HOTKEY:
 		doAction(item.linkAction);

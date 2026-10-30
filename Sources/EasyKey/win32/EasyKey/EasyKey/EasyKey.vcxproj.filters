@@ -42,6 +42,12 @@
     <ClInclude Include="..\..\..\engine\Macro.h">
       <Filter>engine</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\engine\MixedWords.h">
+      <Filter>engine</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\engine\MixedWordsData.h">
+      <Filter>engine</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\..\engine\SmartSwitchKey.h">
       <Filter>engine</Filter>
     </ClInclude>
@@ -117,6 +123,9 @@
       <Filter>engine</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\engine\Macro.cpp">
+      <Filter>engine</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\engine\MixedWords.cpp">
       <Filter>engine</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\engine\SmartSwitchKey.cpp">

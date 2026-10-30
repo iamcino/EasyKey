@@ -62,6 +62,8 @@ public: //event
 	void onDefaultConfig();
 
 	void onToggleVietnamese();
+	//TYPING_MODE: 0 English, 1 Vietnamese, 2 English and Vietnamese mixed
+	void setTypingMode(const int& mode);
 
 	void onMacroTable();
 	void onConvertTool();

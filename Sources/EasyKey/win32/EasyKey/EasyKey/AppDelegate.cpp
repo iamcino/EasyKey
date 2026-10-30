@@ -38,6 +38,7 @@ static AppDelegate* _instance;
 
 //see document in Engine.h
 int vLanguage = 1;
+int vMixedEnglish = 0;
 int vInputType = 0;
 int vFreeMark = 0;
 int vCodeTable = 0;
@@ -350,6 +351,7 @@ void AppDelegate::onUninstall() {
 
 void AppDelegate::onDefaultConfig() {
 	APP_SET_DATA(vLanguage, 1);
+	APP_SET_DATA(vMixedEnglish, 0);
 	APP_SET_DATA(vInputType, 0);
 	vFreeMark = 0;
 	APP_SET_DATA(vCodeTable, 0);
@@ -399,6 +401,25 @@ void AppDelegate::onToggleVietnamese() {
 	if (vUseSmartSwitchKey) {
 		string& exe = EasyKeyHelper::getLastAppExecuteName();
 		setAppInputMethodStatus(exe, vLanguage | (vCodeTable << 1));
+		saveSmartSwitchKeyData();
+	}
+}
+
+void AppDelegate::setTypingMode(const int& mode) {
+	APP_SET_DATA(vLanguage, mode != 0 ? 1 : 0);
+	if (mode != 0) {
+		//English keeps the last Vietnamese mode, the switch key goes back to it
+		APP_SET_DATA(vMixedEnglish, mode == 2 ? 1 : 0);
+	}
+	startNewSession();
+	if (settingsWindow) {
+		settingsWindow->fillData();
+	}
+	SystemTrayHelper::updateData();
+	showSwitchFlyout();
+
+	if (vUseSmartSwitchKey) {
+		setAppInputMethodStatus(EasyKeyHelper::getFrontMostAppExecuteName(), vLanguage | (vCodeTable << 1));
 		saveSmartSwitchKeyData();
 	}
 }
