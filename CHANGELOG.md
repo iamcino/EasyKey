@@ -2,6 +2,12 @@
 
 **Tiếng Việt** · [English](CHANGELOG.en.md)
 
+## 1.0.12 (Windows 11 x64)
+- Phím chuyển chế độ (mặc định Alt + Z) và bấm vào biểu tượng khay giờ lần lượt qua cả ba chế độ: Tiếng Việt → Anh–Việt → Tiếng Anh → Tiếng Việt.
+- Biểu tượng khay hiện **EV** khi gõ Anh–Việt, thay vì chữ V như khi gõ tiếng Việt.
+- Phím trên biểu tượng khay lại theo màu nhấn: màu nhấn của Windows, hoặc màu bạn chọn trong Cài đặt. Vẫn giữ hình phím bo góc như biểu tượng ứng dụng.
+- Mũi tên báo có bản mới đổi thành mũi tên xanh lá có quầng sáng, đặt ở góc trên bên phải biểu tượng khay; mục cập nhật trong menu khay dùng cùng mũi tên.
+
 ## 1.0.11 (Windows 11 x64)
 - Chế độ mới **Anh–Việt**, bên cạnh Tiếng Việt và Tiếng Anh: gõ tiếng Việt như thường, từ tiếng Anh tự trả lại phím khi gõ xong từ, kể cả từ trùng với chữ Việt như "this" (thí), "test" (tét). EasyKey xét độ phổ biến của từ trong mỗi thứ tiếng và các từ xung quanh, nên "tôi sẽ đi" vẫn là tiếng Việt còn "There are" không thành "Thể are". Bật bằng nút Anh–Việt trong Cài đặt hoặc "Gõ Anh–Việt" ở menu khay; Alt + Z chuyển giữa tiếng Anh và chế độ Việt dùng lần cuối.
 - Sửa lỗi bảng mã theo từng ứng dụng: chuyển sang ứng dụng dùng VNI Windows hay TCVN3 thì menu khay vẫn đánh dấu Unicode, trông như bị trả về Unicode. Ứng dụng không cho đọc tên làm bảng mã chọn ở đó bị ghi nhầm sang ứng dụng trước; ứng dụng Microsoft Store giờ được nhớ theo tên riêng thay vì chung một tên ApplicationFrameHost.exe.

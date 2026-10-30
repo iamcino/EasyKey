@@ -503,11 +503,16 @@ bool checkHotKey(int hotKeyData, bool checkKeyCode = true) {
 	return true;
 }
 
+//Vietnamese, English and Vietnamese mixed, English in turn, the order of the Settings buttons
 void switchLanguage() {
-	if (vLanguage == 0)
+	if (vLanguage == 0) {
 		vLanguage = 1;
-	else
+		vMixedEnglish = 0;
+	} else if (!vMixedEnglish) {
+		vMixedEnglish = 1;
+	} else {
 		vLanguage = 0;
+	}
 	if (HAS_BEEP(vSwitchKeyStatus))
 		MessageBeep(MB_OK);
 	AppDelegate::getInstance()->onInputMethodChangedFromHotKey();

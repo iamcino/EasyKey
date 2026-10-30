@@ -19,8 +19,12 @@ the MIT license, see LICENSES/MIT.txt.
  * Plain C++ with no Windows calls, so it can be checked anywhere.
  */
 
-//coverage of size x size pixels, row by row, 0..255: the tile, and the letter inside it;
+#define TRAY_GLYPH_E	0 //English
+#define TRAY_GLYPH_V	1 //Vietnamese
+#define TRAY_GLYPH_EV	2 //English and Vietnamese mixed
+
+//coverage of size x size pixels, row by row, 0..255: the tile, and the letters (TRAY_GLYPH_*) inside it;
 //the rows the tile spans, for its gradient
-void drawTrayGlyph(const int& size, const bool& vietnamese,
+void drawTrayGlyph(const int& size, const int& letters,
 				   std::vector<unsigned char>& tile, std::vector<unsigned char>& letter,
 				   int& tileTop, int& tileBottom);

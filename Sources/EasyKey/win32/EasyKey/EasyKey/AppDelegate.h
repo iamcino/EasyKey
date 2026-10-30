@@ -61,7 +61,8 @@ public: //event
 	void onUninstall();
 	void onDefaultConfig();
 
-	void onToggleVietnamese();
+	//the tray icon was clicked: the next typing mode, in the order of the switch key
+	void onNextTypingMode();
 	//TYPING_MODE: 0 English, 1 Vietnamese, 2 English and Vietnamese mixed
 	void setTypingMode(const int& mode);
 

@@ -102,8 +102,8 @@ tiếng (lập trình, công việc, học tập):
 - Xét theo ngữ cảnh: "tôi sẽ đi" vẫn là tiếng Việt, còn "There are" không
   thành "Thể are". Một từ tiếng Anh rõ ràng còn sửa lại từ ngay trước nó.
 - Bật bằng nút **Anh–Việt** (badge EV) trong Cài đặt hoặc mục **Gõ Anh–Việt**
-  ở menu khay. **Alt + Z** chuyển giữa tiếng Anh và chế độ Việt bạn dùng lần
-  cuối.
+  ở menu khay. **Alt + Z** hay bấm vào biểu tượng khay lần lượt
+  chuyển qua cả ba chế độ: Việt, Anh–Việt, Anh.
 
 ### Theo từng ứng dụng
 
@@ -131,9 +131,9 @@ tiếng (lập trình, công việc, học tập):
 - Giao diện tiếng Việt hoặc tiếng Anh, tự chọn theo vùng của Windows.
 - Popup nhỏ khi chuyển Việt/Anh, đổi kiểu gõ hay bảng mã (không hiện khi đang
   chơi game toàn màn hình). Tuỳ chọn kêu bíp khi chuyển.
-- Biểu tượng khay vẽ đúng cỡ pixel ở mọi mức phóng to: phím xanh chữ **V** khi
-  gõ tiếng Việt, ô trung tính chữ **E** khi gõ tiếng Anh, mũi tên xanh khi có
-  bản mới.
+- Biểu tượng khay vẽ đúng cỡ pixel ở mọi mức phóng to: phím màu nhấn chữ **V** khi
+  gõ tiếng Việt, **EV** khi gõ Anh–Việt, ô trung tính chữ **E** khi gõ tiếng
+  Anh, mũi tên xanh lá phát sáng khi có bản mới.
 
 ### Ứng dụng
 
@@ -168,7 +168,7 @@ chuyển Việt/Anh.
 ### Cập nhật
 
 EasyKey kiểm tra bản mới khi khởi động và 6 giờ một lần (tắt ở Nâng cao › Hệ
-thống). Khi có bản mới, biểu tượng khay có mũi tên xanh, menu khay hiện
+thống). Khi có bản mới, biểu tượng khay có mũi tên xanh lá, menu khay hiện
 **Cập nhật lên …** và cuối cửa sổ Cài đặt có dòng báo. Không có gì được cài cho
 tới khi bạn đồng ý. Lúc đó EasyKey tải `EasyKey.exe` mới từ trang phát hành,
 đối chiếu mã SHA-256, thay file đang chạy rồi khởi động lại. Bấm phải › **Kiểm
@@ -183,7 +183,7 @@ tra cập nhật…** để kiểm tra ngay.
 
 | Muốn làm gì | Cách làm |
 |---|---|
-| Chuyển Việt/Anh | Bấm **Alt + Z**, hoặc bấm vào biểu tượng ở khay |
+| Chuyển Việt → Anh–Việt → Anh | Bấm **Alt + Z**, hoặc bấm vào biểu tượng ở khay |
 | Gõ lẫn tiếng Anh trong câu tiếng Việt | Bấm phải vào biểu tượng ở khay › Gõ Anh–Việt, hoặc chọn Anh–Việt trong Cài đặt |
 | Mở Cài đặt | Bấm đúp vào biểu tượng ở khay, hoặc bấm phải › Cài đặt… |
 | Đổi kiểu gõ, bảng mã | Bấm phải vào biểu tượng ở khay › Kiểu gõ / Bảng mã, hoặc trong Cài đặt |
