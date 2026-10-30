@@ -2,7 +2,9 @@
 
 **Tiếng Việt** · [English](DESIGN.en.md)
 
-Tài liệu này giải thích EasyKey hoạt động thế nào và mã nguồn được tổ chức ra sao. Đối tượng là người muốn đọc, sửa hoặc đóng góp mã. Hướng dẫn dùng nằm ở [README](../README.md), cách build ở [BUILD](BUILD.md).
+> Phiên bản 1.0.11 · Windows 11 x64 · C++ / Win32, Direct2D, DirectWrite
+
+Tài liệu này giải thích EasyKey hoạt động thế nào và mã nguồn được tổ chức ra sao. Đối tượng là người muốn đọc, sửa hoặc đóng góp mã. Hướng dẫn dùng nằm ở [README](../README.md), cách build ở [BUILD](BUILD.md), quy tắc đóng góp ở [CONTRIBUTING](../CONTRIBUTING.md).
 
 ## Mục lục
 1. [Mục tiêu](#1-mục-tiêu)
@@ -89,7 +91,7 @@ Cả hai bỏ qua khi cửa sổ đang ở trước chạy quyền Admin, vì l�
 | Ứng dụng quyền Admin | Windows không cho ứng dụng thường gửi phím vào. EasyKey báo một lần cho mỗi ứng dụng. Tuỳ chọn chạy quyền Admin dùng Task Scheduler để khởi động cùng Windows mà không hỏi UAC. | `onElevatedWindow`, `registerAdminTask` |
 | Phím tắt có Alt hoặc Win | Hook ăn mất phím chữ của phím tắt, nên ứng dụng tưởng Alt/Win được bấm riêng và mở menu hay Start. EasyKey gửi thêm phím trống 0xE8 để tránh việc này. | `maskMenuKey` |
 | Chế độ game | Với game trong danh sách, phím đi thẳng vào game. Enter mở chat thì bỏ dấu, Enter hoặc Esc kết thúc. | `_inGame`, `_gameChat` |
-| Nhớ theo ứng dụng | Khi đổi cửa sổ (`EVENT_SYSTEM_FOREGROUND`), đọc lại Việt/Anh và bảng mã đã lưu cho file exe đó. | `winEventProcCallback`, `SmartSwitchKey.cpp` |
+| Nhớ theo ứng dụng | Khi đổi cửa sổ (`EVENT_SYSTEM_FOREGROUND`), đọc lại Việt/Anh và bảng mã đã lưu cho file exe đó rồi cập nhật dấu chọn ở menu khay. Tên exe đọc bằng `PROCESS_QUERY_LIMITED_INFORMATION` (đủ cho cả ứng dụng không cho quyền đọc bộ nhớ). Ứng dụng Store nằm trong `ApplicationFrameHost.exe` được nhớ theo tiến trình sở hữu cửa sổ `CoreWindow` bên trong khung. Nếu không đọc được tên, giữ nguyên lựa chọn hiện tại thay vì ghi sang ứng dụng trước. | `winEventProcCallback`, `getFrontMostAppExecuteName`, `SmartSwitchKey.cpp` |
 | Bấm chuột | Bắt đầu từ mới, vì con trỏ có thể đã sang chỗ khác. | `mouseHookProcess` |
 
 ## 7. Engine
@@ -119,7 +121,7 @@ Giao diện không dùng hộp thoại Win32 cổ điển mà tự vẽ để gi
 | `SettingsWindow` | Cửa sổ Cài đặt: màn hình chính và phần Nâng cao (danh sách mục khai báo ở đầu file). |
 | `FlyoutWindow` | Popup nhỏ khi chuyển Việt/Anh và các thông báo, vẽ bằng Direct2D. |
 | `MessageWindow` | Hộp thoại hỏi/thông báo cùng phong cách. |
-| `SystemTrayHelper`, `TrayGlyph` | Biểu tượng khay (vẽ đúng cỡ pixel theo DPI) và menu chuột phải. |
+| `SystemTrayHelper`, `TrayGlyph` | Biểu tượng khay (phím bo góc như biểu tượng ứng dụng, vẽ đúng cỡ pixel theo DPI) và menu chuột phải. |
 | `AboutWindow`, `MacroWindow`, `ConvertToolWindow` | Giới thiệu, Bảng gõ tắt, Công cụ chuyển mã. |
 
 Chữ trên giao diện có hai ngôn ngữ, chọn bằng macro `TR("tiếng Việt", "English")` hoặc cặp `_T()` trong bảng mục của `SettingsWindow`.

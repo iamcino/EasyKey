@@ -2,6 +2,12 @@
 
 **Tiếng Việt** · [English](CHANGELOG.en.md)
 
+## 1.0.11 (Windows 11 x64)
+- Chế độ mới **Anh–Việt**, bên cạnh Tiếng Việt và Tiếng Anh: gõ tiếng Việt như thường, từ tiếng Anh tự trả lại phím khi gõ xong từ, kể cả từ trùng với chữ Việt như "this" (thí), "test" (tét). EasyKey xét độ phổ biến của từ trong mỗi thứ tiếng và các từ xung quanh, nên "tôi sẽ đi" vẫn là tiếng Việt còn "There are" không thành "Thể are". Bật bằng nút Anh–Việt trong Cài đặt hoặc "Gõ Anh–Việt" ở menu khay; Alt + Z chuyển giữa tiếng Anh và chế độ Việt dùng lần cuối.
+- Sửa lỗi bảng mã theo từng ứng dụng: chuyển sang ứng dụng dùng VNI Windows hay TCVN3 thì menu khay vẫn đánh dấu Unicode, trông như bị trả về Unicode. Ứng dụng không cho đọc tên làm bảng mã chọn ở đó bị ghi nhầm sang ứng dụng trước; ứng dụng Microsoft Store giờ được nhớ theo tên riêng thay vì chung một tên ApplicationFrameHost.exe.
+- Biểu tượng khay vẽ theo phím trong biểu tượng EasyKey: phím xanh chữ V khi gõ tiếng Việt, cùng hình phím màu trung tính chữ E khi gõ tiếng Anh. Màu không còn đổi theo màu nhấn của Windows.
+- Bộ tài liệu viết lại: README giới thiệu ưu thế và đủ tính năng, thêm chính sách quyền riêng tư (PRIVACY.md), bảo mật (SECURITY.md), hướng dẫn đóng góp (CONTRIBUTING.md) và miễn trừ trách nhiệm (DISCLAIMER.md).
+
 ## 1.0.10 (Windows 11 x64)
 - Sửa lỗi chữ EasyKey gõ lại bị viết hoa lẫn lộn, ví dụ "giúp tôi hoàn thiện" thành "giÚP tÔi hOÀN thIỆN" (gặp ở Gemini trên Firefox). Nguyên nhân là EasyKey lỡ mất lúc nhả phím Shift, ví dụ khi đang khoá màn hình hay mở cửa sổ quyền Admin, rồi cứ tưởng Shift vẫn đang giữ. Giờ EasyKey đọc lại trạng thái thật của Shift, Ctrl, Alt, Win và Caps Lock trước mỗi phím.
 - README viết lại cho rõ ràng hơn (bảng thao tác, cập nhật và gỡ bỏ, xử lý sự cố, cách ghi nhật ký phím để báo lỗi). Thêm tài liệu thiết kế cho người phát triển (docs/DESIGN.md). Nút "Windows gạch đỏ chữ Việt?" trong Cài đặt lại mở đúng mục hướng dẫn.

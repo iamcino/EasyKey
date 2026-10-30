@@ -2,6 +2,12 @@
 
 [Tiếng Việt](CHANGELOG.md) · **English**
 
+## 1.0.11 (Windows 11 x64)
+- New **Mixed** mode next to Vietnamese and English: type Vietnamese as usual, and English words get their keys back when the word ends, even words that are also Vietnamese such as "this" (thí) or "test" (tét). EasyKey weighs how common the word is in each language and the words around it, so "tôi sẽ đi" stays Vietnamese and "There are" does not turn into "Thể are". Turn it on with the Mixed button in Settings or "Type English and Vietnamese" in the tray menu; Alt + Z switches between English and the Vietnamese mode used last.
+- Fixed the per-app encoding: switching to an app on VNI Windows or TCVN3 left the tray menu ticked on Unicode, so it looked reset to Unicode. Apps whose name could not be read had the encoding picked there saved for the previous app; Microsoft Store apps are now remembered under their own name instead of sharing ApplicationFrameHost.exe.
+- The tray icon is drawn like the key in the EasyKey icon: a blue key with V for Vietnamese, the same key shape in a neutral color with E for English. It no longer follows the Windows accent color.
+- Rewritten documentation: a README that lays out EasyKey's strengths and all its features, plus a privacy policy (PRIVACY.md), security policy (SECURITY.md), contributing guide (CONTRIBUTING.md) and disclaimer (DISCLAIMER.md).
+
 ## 1.0.10 (Windows 11 x64)
 - Fixed letters EasyKey rewrites coming out in capitals, for example "giúp tôi hoàn thiện" turning into "giÚP tÔi hOÀN thIỆN" (seen in Gemini on Firefox). EasyKey had missed a Shift key release, for example while the screen was locked or an administrator window was in front, and kept treating Shift as held. EasyKey now reads the real state of Shift, Ctrl, Alt, Win and Caps Lock before every key.
 - The README is rewritten to be clearer (a table of everyday actions, updating and removing, troubleshooting, how to record a key log for a bug report). New design document for developers (docs/DESIGN.en.md). The "Red underlines under Vietnamese?" button in Settings opens the right guide again.

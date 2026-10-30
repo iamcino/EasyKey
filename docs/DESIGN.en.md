@@ -2,7 +2,9 @@
 
 [Tiếng Việt](DESIGN.md) · **English**
 
-This document explains how EasyKey works and how its source code is organized. It is for anyone who wants to read, change or contribute to the code. How to use EasyKey is in the [README](../README.en.md), how to build it in [BUILD](BUILD.en.md).
+> Version 1.0.11 · Windows 11 x64 · C++ / Win32, Direct2D, DirectWrite
+
+This document explains how EasyKey works and how its source code is organized. It is for anyone who wants to read, change or contribute to the code. How to use EasyKey is in the [README](../README.en.md), how to build it in [BUILD](BUILD.en.md), contribution rules in [CONTRIBUTING](../CONTRIBUTING.md).
 
 ## Contents
 1. [Goals](#1-goals)
@@ -89,7 +91,7 @@ Both skip the check while an elevated window is in front, because the hook not s
 | Elevated apps | Windows doesn't let normal apps send keys to them. EasyKey tells the user once per app. The run-as-administrator option uses Task Scheduler to start with Windows without a UAC prompt. | `onElevatedWindow`, `registerAdminTask` |
 | Shortcuts with Alt or Win | The hook eats the letter of the shortcut, so the app thinks Alt/Win was pressed alone and opens its menu or Start. EasyKey sends an extra no-op key 0xE8 to prevent that. | `maskMenuKey` |
 | Game mode | For games on the list, keys go straight to the game. Enter opens the chat and marks are added; Enter or Esc ends it. | `_inGame`, `_gameChat` |
-| Per app memory | When the foreground window changes (`EVENT_SYSTEM_FOREGROUND`), load the Vietnamese/English mode and encoding saved for that exe. | `winEventProcCallback`, `SmartSwitchKey.cpp` |
+| Per app memory | When the foreground window changes (`EVENT_SYSTEM_FOREGROUND`), load the Vietnamese/English mode and encoding saved for that exe and update the ticks in the tray menu. The exe name is read with `PROCESS_QUERY_LIMITED_INFORMATION`, which also works for apps that refuse memory reads. Store apps hosted in `ApplicationFrameHost.exe` are remembered by the process that owns the `CoreWindow` inside the frame. When the name can't be read, the current choice stays instead of being saved for the previous app. | `winEventProcCallback`, `getFrontMostAppExecuteName`, `SmartSwitchKey.cpp` |
 | Mouse click | Start a new word, since the caret may have moved. | `mouseHookProcess` |
 
 ## 7. Engine
@@ -119,7 +121,7 @@ The interface doesn't use classic Win32 dialogs; it is custom drawn to look like
 | `SettingsWindow` | The Settings window: main screen and Advanced (the item list is declared at the top of the file). |
 | `FlyoutWindow` | The small popup when switching Vietnamese/English and for notices, drawn with Direct2D. |
 | `MessageWindow` | Question and notice dialogs in the same style. |
-| `SystemTrayHelper`, `TrayGlyph` | The tray icon (drawn at the exact pixel size for the DPI) and the right-click menu. |
+| `SystemTrayHelper`, `TrayGlyph` | The tray icon (a rounded key like the app icon, drawn at the exact pixel size for the DPI) and the right-click menu. |
 | `AboutWindow`, `MacroWindow`, `ConvertToolWindow` | About, Shortcut list, Convert text. |
 
 Interface text comes in two languages, picked with the `TR("Vietnamese", "English")` macro or the `_T()` pairs in the `SettingsWindow` item table.
