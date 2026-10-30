@@ -296,10 +296,13 @@ static int trayIconSize() {
 	return GetSystemMetrics(SM_CXSMICON);
 }
 
-//the tray glyph drawn for this exact size, a solid tile with the letter in its own color; the caller destroys it
-static HICON createTrayIcon(const int& size, const bool& vietnamese, const COLORREF& tileColor, const COLORREF& letterColor) {
+//the tray glyph drawn for this exact size, a tile shading from tileTopColor at its top to tileColor at its
+//bottom, with the letter in its own color; the caller destroys it
+static HICON createTrayIcon(const int& size, const bool& vietnamese, const COLORREF& tileTopColor, const COLORREF& tileColor,
+							const COLORREF& letterColor) {
 	vector<BYTE> tile, letter;
-	drawTrayGlyph(size, vietnamese, tile, letter);
+	int tileTop, tileBottom;
+	drawTrayGlyph(size, vietnamese, tile, letter, tileTop, tileBottom);
 	BITMAPINFO bmi = {};
 	bmi.bmiHeader.biSize = sizeof(bmi.bmiHeader);
 	bmi.bmiHeader.biWidth = size;
@@ -310,10 +313,15 @@ static HICON createTrayIcon(const int& size, const bool& vietnamese, const COLOR
 	vector<DWORD> pixels(size * size);
 	for (int i = 0; i < size * size; i++) {
 		//icons take straight, not premultiplied, alpha
+		int g = tileBottom > tileTop + 1 ? (i / size - tileTop) * 255 / (tileBottom - tileTop - 1) : 255;
+		g = g < 0 ? 0 : g > 255 ? 255 : g;
+		auto shade = [&](const int& top, const int& bottom) { return (top * (255 - g) + bottom * g + 127) / 255; };
 		int k = letter[i];
 		auto mix = [&](const int& from, const int& to) { return (DWORD)((from * (255 - k) + to * k + 127) / 255); };
-		pixels[i] = ((DWORD)tile[i] << 24) | (mix(GetRValue(tileColor), GetRValue(letterColor)) << 16) |
-			(mix(GetGValue(tileColor), GetGValue(letterColor)) << 8) | mix(GetBValue(tileColor), GetBValue(letterColor));
+		pixels[i] = ((DWORD)tile[i] << 24) |
+			(mix(shade(GetRValue(tileTopColor), GetRValue(tileColor)), GetRValue(letterColor)) << 16) |
+			(mix(shade(GetGValue(tileTopColor), GetGValue(tileColor)), GetGValue(letterColor)) << 8) |
+			mix(shade(GetBValue(tileTopColor), GetBValue(tileColor)), GetBValue(letterColor));
 	}
 	HDC dc = GetDC(NULL);
 	ICONINFO info = {};
@@ -440,23 +448,24 @@ static HBITMAP updateArrowBitmap() {
 static void loadTrayIcon() {
 	static HICON glyph = NULL, badged = NULL;
 	//a solid tile drawn for the size the taskbar wants, so no scaling blurs it:
-	//V on the accent color in Vietnamese mode, E in white on a dark taskbar and in black on a light one
+	//V on the blue key cap of the app icon in Vietnamese mode, E in white on a dark taskbar and in black on a light one
 	bool darkTaskbar = ThemeHelper::isTaskbarDarkMode();
-	COLORREF tileColor, letterColor;
+	COLORREF tileTopColor, tileColor, letterColor;
 	if (vLanguage) {
-		//the accent of light mode is the deep one, white text on it reads on either taskbar
-		tileColor = ThemeHelper::getAccentColor(false, false);
+		//the blue of the app icon, so the tray matches the taskbar button whatever the Windows accent is
+		tileTopColor = RGB(0x2F, 0x8A, 0xE8);
+		tileColor = RGB(0x0A, 0x65, 0xC7);
 		letterColor = RGB(0xFF, 0xFF, 0xFF);
 		lstrcpyn(nid.szTip, vMixedEnglish ? TR("EasyKey: đang gõ Anh–Việt", "EasyKey: typing English and Vietnamese") :
 			TR("EasyKey: đang gõ tiếng Việt", "EasyKey: typing Vietnamese"), 128);
 	}
 	else {
-		tileColor = darkTaskbar ? RGB(0xFF, 0xFF, 0xFF) : RGB(0x1C, 0x1C, 0x1C);
+		tileTopColor = tileColor = darkTaskbar ? RGB(0xFF, 0xFF, 0xFF) : RGB(0x1C, 0x1C, 0x1C);
 		letterColor = darkTaskbar ? RGB(0x1C, 0x1C, 0x1C) : RGB(0xFF, 0xFF, 0xFF);
 		lstrcpyn(nid.szTip, TR("EasyKey: đang gõ tiếng Anh", "EasyKey: typing English"), 128);
 	}
 	HICON previous = glyph, previousBadged = badged;
-	glyph = createTrayIcon(trayIconSize(), vLanguage != 0, tileColor, letterColor);
+	glyph = createTrayIcon(trayIconSize(), vLanguage != 0, tileTopColor, tileColor, letterColor);
 	nid.hIcon = glyph;
 	//a newer version is out: a small green arrow on the icon
 	const string& update = Updater::availableVersion();

@@ -974,7 +974,9 @@ VOID CALLBACK winEventProcCallback(HWINEVENTHOOK hWinEventHook, DWORD dwEvent, H
 	//smart switch key
 	if (vUseSmartSwitchKey || vRememberCode) {
 		string& exe = EasyKeyHelper::getFrontMostAppExecuteName();
-		if (exe.compare("explorer.exe") == 0) //dont apply with windows explorer
+		//Explorer counts as the app the user came from; an app whose name can't be read
+		//keeps what is on now instead of sharing one entry with every other such app
+		if (!EasyKeyHelper::isRealApp(exe))
 			return;
 		_languageTemp = getAppInputMethodStatus(exe, vLanguage | (vCodeTable << 1));
 		if (vUseSmartSwitchKey && (_languageTemp & 0x01) != vLanguage) {

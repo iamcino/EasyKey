@@ -468,6 +468,9 @@ void AppDelegate::onTableCode(const int & code, const bool& showFlyout) {
 	if (settingsWindow) {
 		settingsWindow->fillData();
 	}
+	//also when the app switch picks the code table: the tray menu kept the old tick, so the
+	//app looked like it was back on Unicode
+	SystemTrayHelper::updateData();
 	if (vRememberCode) {
 		setAppInputMethodStatus(EasyKeyHelper::getFrontMostAppExecuteName(), vLanguage | (vCodeTable << 1));
 		saveSmartSwitchKeyData();
