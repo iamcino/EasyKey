@@ -33,7 +33,8 @@ CURATED_WHITELIST = {
     'request', 'response', 'endpoint', 'plugin', 'module', 'package',
     'repository', 'ok', 'cool', 'nice', 'lol', 'omg', 'btw', 'idk',
     'tbh', 'imho', 'pls', 'thx', 'stream', 'content', 'creator',
-    'fan', 'like', 'share', 'comment', 'follow', 'unsubscribe'
+    'fan', 'like', 'share', 'comment', 'follow', 'unsubscribe',
+    'fix', 'fixed', 'fixes', 'fixing'
 }
 
 # a Vietnamese syllable without marks; an English word that isn't one ("you", "are") is no Vietnamese word,

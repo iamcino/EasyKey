@@ -335,7 +335,23 @@ static void testMixed() {
     expectTyping("Mixed whitelist", "warning ", L"warning ");
     vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
     expectTyping("Mixed whitelist", "merge ", L"merge ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed whitelist", "fix ", L"fix ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed whitelist", "fixed ", L"fixed ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed whitelist", "fixes ", L"fixes ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed whitelist", "fixing ", L"fixing ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed phrase", "tooi fix bug ", L"t\u00f4i fix bug ");
     vRestoreIfWrongSpelling = 1;
+    vAllowConsonantZFWJ = 1;
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed ZFWJ fix", "fix ", L"fix ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed ZFWJ fix", "tooi fix bug ", L"t\u00f4i fix bug ");
+    vAllowConsonantZFWJ = 0;
     //backspace across word boundary must not eat earlier word
     vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
     expectTyping("Backspace across space", "dungf back <<<<<space ", L"d\u00f9ng space ");

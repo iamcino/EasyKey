@@ -7,7 +7,7 @@
 //  SPDX-License-Identifier: GPL-3.0-only AND CC-BY-SA-4.0
 //
 
-#define MIXED_WORD_COUNT 3312
+#define MIXED_WORD_COUNT 3316
 
 static const char MIXED_WORDS[] =
     "azh\naaX0\naaaVS\naacN0\naapS0\nabilityb0\nablef0\naboutp0\naboved0\nabsolutelyb0\nacaS0\naccessb0\naccordinge0\n"
@@ -119,7 +119,7 @@ static const char MIXED_WORDS[] =
     "expressionsW0\nexpressiveR0\nexpresslyS0\nexpresswayO0\nextrab0\nexxonO0\neyeb0\neyesd0\nfc0\nfacef0\n"
     "factf0\nfairb0\nfallc0\nfamilyi0\nfana0\nfansb0\nfarg0\nfastc0\nfathere0\nfavoriteb0\nfearb0\nfebruaryb0\n"
     "federalc0\nfeeli0\nfeelingc0\nfeetb0\nfeltc0\nfemaleb0\nfewh0\nfieldd0\nfightd0\nfigurec0\nfilmd0\nfinale0\n"
-    "finallyd0\nfinancialc0\nfindj0\nfined0\nfiree0\nfirstm0\nfitb0\nfivef0\nfocusb0\nfollowc0\nfollowedb0\n"
+    "finallyd0\nfinancialc0\nfindj0\nfined0\nfiree0\nfirstm0\nfitb0\nfix`0\nfixed_0\nfixesT0\nfixingY0\nfivef0\nfocusb0\nfollowc0\nfollowedb0\n"
     "followingg0\nfoodf0\nfootballc0\nforv0\nforced0\nforcesb0\nforeignc0\nforgetc0\nforme0\nformere0\nforwardc0\n"
     "foundi0\nfourg0\nfreeh0\nfrenchc0\nfridayb0\nfriendf0\nfriendsf0\nfromr0\nfronte0\nfuckf0\nfuckinge0\n"
     "fullg0\nfune0\nfunnyb0\nfurthere0\nfuturee0\ngb0\ngaYb\ngaaN0\ngaapN0\ngaiM^\ngamei0\ngamesf0\nganO`\n"
