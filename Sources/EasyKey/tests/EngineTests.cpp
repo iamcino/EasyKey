@@ -336,6 +336,13 @@ static void testMixed() {
     vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
     expectTyping("Mixed whitelist", "merge ", L"merge ");
     vRestoreIfWrongSpelling = 1;
+    //backspace across word boundary must not eat earlier word
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Backspace across space", "dungf back <<<<<space ", L"d\u00f9ng space ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Backspace across space", "dungf back<<<<<space ", L"dungfspace ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Backspace across dot EV", "abc. <<d ", L"abcd ");
     vMixedEnglish = 0;
     vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
 }
