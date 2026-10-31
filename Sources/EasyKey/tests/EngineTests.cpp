@@ -295,6 +295,32 @@ static void testMixed() {
     expectTyping("Mixed EV title-case", "DDuwowfng ", L"\u0110\u01b0\u1eddng ");
     vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
     expectTyping("Mixed EV title-case", "VIeejt ", L"VI\u1ec7t ");
+    //collocation rules for tét vs test
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed phrase", "banhs test ", L"b\u00e1nh t\u00e9t ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed phrase", "thijt test ", L"th\u1ecbt t\u00e9t ");
+    //negative tests ensuring English loanword 'test' stays 'test'
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed phrase", "dungf cho test ", L"d\u00f9ng cho test ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed phrase", "cais nayf bij test fail ", L"c\u00e1i n\u00e0y b\u1ecb test fail ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed phrase", "chayj xe test ", L"ch\u1ea1y xe test ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed phrase", "tooi chayj test ", L"t\u00f4i ch\u1ea1y test ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed phrase", "test thuwr ", L"test th\u1eed ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed phrase", "unit test ", L"unit test ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed phrase", "test case ", L"test case ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed phrase", "test ddaafu tieen ", L"test \u0111\u1ea7u ti\u00ean ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed phrase", "laafn test ddaafu ", L"l\u1ea7n test \u0111\u1ea7u ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed phrase", "test daafu ", L"test d\u1ea7u ");
     //curated whitelist words (tested with spell restore off to prove recognition from mixed dictionary)
     vRestoreIfWrongSpelling = 0;
     vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);

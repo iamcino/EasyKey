@@ -2,6 +2,9 @@
 
 [Tiếng Việt](CHANGELOG.md) · **English**
 
+## 1.0.14 (Windows 11 x64)
+- Mixed mode: typing `test` right after "bánh" or "thịt" now gives "tét" (bánh tét, thịt tét) instead of keeping the English word. Other sentences such as "chạy test" or "test đầu tiên" keep "test". To get "tét" anywhere else, type `tets`.
+
 ## 1.0.13 (Windows 11 x64)
 - Mixed mode keeps code names and emails as typed: snake_case (`max_size`, `sort_desc`, which used to become "mã_size", "sort_déc"), camelCase (`parseJSON`, `iPhone`), letters mixed with digits, and email addresses. In this mode `_` and `@` no longer end a word. Capitals on the first two keys such as "DDi" or "VIeejt" still give "Đi" and "VIệt".
 - Mixed mode no longer corrects the word before (for example "Thể are" into "There are"): erasing and retyping the earlier word often went wrong in slow apps and rich editors, so it is now off by default.

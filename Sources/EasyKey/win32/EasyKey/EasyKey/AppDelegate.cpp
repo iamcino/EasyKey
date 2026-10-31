@@ -28,10 +28,8 @@ See LICENSE and NOTICE.
 #pragma comment(lib, "comctl32.lib")
 
 //shown once after updating to this version; change it with each release
-#define WHATS_NEW_VI L"• Anh–Việt giữ nguyên tên biến, email khi gõ code (max_size, parseJSON) và biết thêm từ công nghệ.\n" \
-	L"• Anh–Việt không còn xoá và gõ lại từ đã gõ trước đó."
-#define WHATS_NEW_EN L"• Mixed mode keeps code names and emails as typed (max_size, parseJSON) and knows more tech words.\n" \
-	L"• Mixed mode no longer erases and retypes the word before."
+#define WHATS_NEW_VI L"• Anh–Việt: \"test\" ngay sau \"bánh\" hoặc \"thịt\" giờ ra \"tét\" (bánh tét, thịt tét)."
+#define WHATS_NEW_EN L"• Mixed mode: \"test\" right after \"bánh\" or \"thịt\" now gives \"tét\" (bánh tét, thịt tét)."
 
 //6 hours
 #define UPDATE_CHECK_INTERVAL (6 * 60 * 60 * 1000)
