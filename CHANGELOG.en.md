@@ -2,6 +2,11 @@
 
 [Tiếng Việt](CHANGELOG.md) · **English**
 
+## 1.0.13 (Windows 11 x64)
+- Mixed mode keeps code names and emails as typed: snake_case (`max_size`, `sort_desc`, which used to become "mã_size", "sort_déc"), camelCase (`parseJSON`, `iPhone`), letters mixed with digits, and email addresses. In this mode `_` and `@` no longer end a word. Capitals on the first two keys such as "DDi" or "VIeejt" still give "Đi" and "VIệt".
+- Mixed mode no longer corrects the word before (for example "Thể are" into "There are"): erasing and retyping the earlier word often went wrong in slow apps and rich editors, so it is now off by default.
+- 39 common tech and chat words join the English list of Mixed mode, such as install, update, software, warning, merge, commit, token, btw.
+
 ## 1.0.12 (Windows 11 x64)
 - The mode switch key (Alt + Z by default) and a click on the tray icon now go through all three modes in turn: Vietnamese → Mixed → English → Vietnamese.
 - The tray icon shows **EV** while typing Mixed, instead of the V used for Vietnamese.

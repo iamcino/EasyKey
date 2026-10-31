@@ -2,6 +2,11 @@
 
 **Tiếng Việt** · [English](CHANGELOG.en.md)
 
+## 1.0.13 (Windows 11 x64)
+- Chế độ Anh–Việt giữ nguyên tên biến và email khi gõ code: snake_case (`max_size`, `sort_desc`, trước đây thành "mã_size", "sort_déc"), camelCase (`parseJSON`, `iPhone`), chữ lẫn số và địa chỉ email. Trong chế độ này dấu `_` và `@` không còn ngắt từ. Gõ hoa hai chữ đầu như "DDi", "VIeejt" vẫn ra "Đi", "VIệt".
+- Chế độ Anh–Việt không còn tự sửa lại từ đứng trước (ví dụ "Thể are" thành "There are"): việc xoá rồi gõ lại từ cũ hay chạy sai ở các ứng dụng chậm hoặc trình soạn thảo phức tạp, nên giờ tắt mặc định.
+- Thêm 39 từ công nghệ và từ chat hay gặp vào danh sách tiếng Anh của chế độ Anh–Việt, như install, update, software, warning, merge, commit, token, btw.
+
 ## 1.0.12 (Windows 11 x64)
 - Phím chuyển chế độ (mặc định Alt + Z) và bấm vào biểu tượng khay giờ lần lượt qua cả ba chế độ: Tiếng Việt → Anh–Việt → Tiếng Anh → Tiếng Việt.
 - Biểu tượng khay hiện **EV** khi gõ Anh–Việt, thay vì chữ V như khi gõ tiếng Việt.

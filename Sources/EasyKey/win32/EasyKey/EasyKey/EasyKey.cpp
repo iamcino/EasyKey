@@ -106,6 +106,7 @@ void EasyKeyInit() {
 	APP_GET_DATA(vLanguage, 1);
 	vLanguage = vLanguage ? 1 : 0; //older versions could save the code table bits here too
 	APP_GET_DATA(vMixedEnglish, 0);
+	APP_GET_DATA(vMixedFixLast, 0);
 	APP_GET_DATA(vInputType, 0);
 	vFreeMark = 0;
 	APP_GET_DATA(vCodeTable, 0);

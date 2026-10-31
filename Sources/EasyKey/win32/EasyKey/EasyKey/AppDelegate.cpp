@@ -28,10 +28,10 @@ See LICENSE and NOTICE.
 #pragma comment(lib, "comctl32.lib")
 
 //shown once after updating to this version; change it with each release
-#define WHATS_NEW_VI L"• Alt + Z và bấm vào biểu tượng khay chuyển lần lượt Việt → Anh–Việt → Anh.\n" \
-	L"• Biểu tượng khay hiện EV khi gõ Anh–Việt và lại theo màu nhấn."
-#define WHATS_NEW_EN L"• Alt + Z and a click on the tray icon go Vietnamese → Mixed → English in turn.\n" \
-	L"• The tray icon shows EV in Mixed mode and follows the accent color again."
+#define WHATS_NEW_VI L"• Anh–Việt giữ nguyên tên biến, email khi gõ code (max_size, parseJSON) và biết thêm từ công nghệ.\n" \
+	L"• Anh–Việt không còn xoá và gõ lại từ đã gõ trước đó."
+#define WHATS_NEW_EN L"• Mixed mode keeps code names and emails as typed (max_size, parseJSON) and knows more tech words.\n" \
+	L"• Mixed mode no longer erases and retypes the word before."
 
 //6 hours
 #define UPDATE_CHECK_INTERVAL (6 * 60 * 60 * 1000)
@@ -41,6 +41,7 @@ static AppDelegate* _instance;
 //see document in Engine.h
 int vLanguage = 1;
 int vMixedEnglish = 0;
+int vMixedFixLast = 0;
 int vInputType = 0;
 int vFreeMark = 0;
 int vCodeTable = 0;
