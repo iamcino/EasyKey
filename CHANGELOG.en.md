@@ -3,7 +3,7 @@
 [Tiếng Việt](CHANGELOG.md) · **English**
 
 ## 1.0.15 (Windows 11 x64)
-- New **Use only 2 modes (English and Vietnamese)** option in Settings › Utilities: for users who only want to toggle between Vietnamese and English. When enabled, Mixed mode is completely hidden from the UI, hotkey (Alt + Z), tray icon clicks, and the flyout popup only cycle between the 2 modes.
+- New **Only 2 modes (English and Vietnamese)** option in Settings › Advanced › Typing: for users who only want to toggle between Vietnamese and English. When enabled, Mixed mode is completely hidden from the UI, hotkey (Alt + Z), tray icon clicks, and the flyout popup only cycle between the 2 modes.
 - Fixed an issue where using Backspace and Space after mistyping swallowed the previous word or dropped characters in the typing sequence.
 - Mixed mode: typing "fix" and its forms now works as expected when "Allow typing z, f, w, j" is enabled (no longer turns into "fĩ").
 - Quick Telex:

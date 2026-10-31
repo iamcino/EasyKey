@@ -28,8 +28,10 @@ See LICENSE and NOTICE.
 #pragma comment(lib, "comctl32.lib")
 
 //shown once after updating to this version; change it with each release
-#define WHATS_NEW_VI L"• Anh–Việt: \"test\" ngay sau \"bánh\" hoặc \"thịt\" giờ ra \"tét\" (bánh tét, thịt tét)."
-#define WHATS_NEW_EN L"• Mixed mode: \"test\" right after \"bánh\" or \"thịt\" now gives \"tét\" (bánh tét, thịt tét)."
+#define WHATS_NEW_VI L"• Tuỳ chọn mới: chỉ dùng 2 chế độ Anh và Việt (Nâng cao › Gõ).\n" \
+	L"• Xoá lùi qua dấu cách rồi gõ tiếp không còn làm mất từ trước."
+#define WHATS_NEW_EN L"• New option: only 2 modes, English and Vietnamese (Advanced › Typing).\n" \
+	L"• Backspacing over a space and typing on no longer loses the word before."
 
 //6 hours
 #define UPDATE_CHECK_INTERVAL (6 * 60 * 60 * 1000)
