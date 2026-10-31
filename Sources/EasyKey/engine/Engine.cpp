@@ -229,7 +229,7 @@ void checkSpelling(const bool& forceCheckVowel=false) {
         }
         
         if (j == _spellingEndIndex){ //for "d" case
-            _spellingOK = true;
+            _spellingOK = !forceCheckVowel;
         }
         
         //check next vowel
@@ -1255,20 +1255,29 @@ static bool hasTripleW() {
 bool checkRestoreIfWrongSpelling(const int& handleCode) {
     if (_stateIndex == 0) return false;
     bool undone = hasTripleW();
+    bool hasVowel = false;
     for (ii = 0; ii < _index; ii++) {
-        if (undone || (!IS_CONSONANT(CHR(ii)) &&
-            (TypingWord[ii] & MARK_MASK || TypingWord[ii] & TONE_MASK || TypingWord[ii] & TONEW_MASK))) {
-            
-            hCode = handleCode;
-            hBPC = _index;
-            hNCC = _stateIndex;
-            for (i = 0; i < _stateIndex; i++) {
-                TypingWord[i] = KeyStates[i];
-                hData[_stateIndex - 1 - i] = TypingWord[i];
+        if (!IS_CONSONANT(CHR(ii))) {
+            hasVowel = true;
+            if (TypingWord[ii] & MARK_MASK || TypingWord[ii] & TONE_MASK || TypingWord[ii] & TONEW_MASK) {
+                undone = true;
+                break;
             }
-            _index = _stateIndex;
-            return true;
         }
+    }
+    if (!hasVowel && _index > 1) {
+        undone = true;
+    }
+    if (undone) {
+        hCode = handleCode;
+        hBPC = _index;
+        hNCC = _stateIndex;
+        for (i = 0; i < _stateIndex; i++) {
+            TypingWord[i] = KeyStates[i];
+            hData[_stateIndex - 1 - i] = TypingWord[i];
+        }
+        _index = _stateIndex;
+        return true;
     }
     return false;
 }
@@ -1769,7 +1778,22 @@ void vKeyHandleEvent(const vKeyEvent& event,
         _rawKeys.push_back(data | (_isCaps ? CAPS_MASK : 0));
         
         if (!IS_SPECIALKEY(data) || tempDisableKey) { //do nothing
-            if (vQuickTelex && IS_QUICK_TELEX_KEY(data)) {
+            if (vQuickTelex && _index >= 2 && _rawKeys.size() >= 3 &&
+                (_rawKeys[_rawKeys.size() - 2] & CHAR_MASK) == data &&
+                (_rawKeys[_rawKeys.size() - 3] & CHAR_MASK) == data &&
+                _quickTelex.find(data) != _quickTelex.end() &&
+                CHR(_index - 1) == _quickTelex[data][1] &&
+                CHR(_index - 2) == _quickTelex[data][0]) {
+                //undo quick telex on third repeat: e.g. pp -> ph, third p -> pp
+                hCode = vWillProcess;
+                hBPC = 2;
+                hNCC = 2;
+                hData[1] = data | (_rawKeys[_rawKeys.size() - 2] & CAPS_MASK);
+                hData[0] = data | (_isCaps ? CAPS_MASK : 0);
+                TypingWord[_index - 2] = hData[1];
+                TypingWord[_index - 1] = hData[0];
+                return;
+            } else if (vQuickTelex && IS_QUICK_TELEX_KEY(data)) {
                 handleQuickTelex(data, _isCaps);
                 return;
             } else {

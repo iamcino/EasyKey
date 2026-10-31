@@ -249,6 +249,12 @@ static void testTelex() {
     expectTyping("Quick Telex non-initial tt", "attack ", L"attack ");
     vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
     expectTyping("Quick Telex non-initial gg", "egg ", L"egg ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Quick Telex triple p", "ppp", L"pp");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Quick Telex pp word", "pp ", L"pp ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Quick Telex triple c", "ccc", L"cc");
     vQuickTelex = 0;
 }
 
