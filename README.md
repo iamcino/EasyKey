@@ -108,7 +108,7 @@ tiếng (lập trình, công việc, học tập):
   thành "Thể are". Một từ tiếng Anh rõ ràng còn sửa lại từ ngay trước nó.
 - Bật bằng nút **Anh–Việt** (badge EV) trong Cài đặt hoặc mục **Gõ Anh–Việt**
   ở menu khay. **Alt + Z** hay bấm vào biểu tượng khay lần lượt
-  chuyển qua cả ba chế độ: Việt, Anh–Việt, Anh.
+  chuyển qua cả ba chế độ: Việt, Anh–Việt, Anh. Nếu muốn bàn phím chỉ xoay vòng giữa Tiếng Việt và Tiếng Anh (không dùng chế độ Anh–Việt), bạn có thể bật tuỳ chọn **Chỉ dùng 2 chế độ (Anh và Việt)** trong Cài đặt › Tiện ích.
 
 ### Theo từng ứng dụng
 
