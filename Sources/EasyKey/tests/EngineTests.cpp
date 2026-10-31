@@ -229,6 +229,27 @@ static void testTelex() {
     vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0); //a click in the same window
     expectTyping("Telex", "xin chaof", L"xin chào");
     vUpperCaseFirstChar = 0;
+    //quick telex: initial pp/tt/gg/kk/qq/cc/nn convert, but non-initial only cc and nn
+    vQuickTelex = 1;
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Quick Telex", "ppa", L"pha");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Quick Telex", "tta", L"tha");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Quick Telex", "cco", L"cho");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Quick Telex", "thicc", L"thich");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Quick Telex", "nna", L"nga");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Quick Telex", "dunn", L"dung");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Quick Telex non-initial pp", "app ", L"app ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Quick Telex non-initial tt", "attack ", L"attack ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Quick Telex non-initial gg", "egg ", L"egg ");
+    vQuickTelex = 0;
 }
 
 static void testMixed() {
