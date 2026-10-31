@@ -1254,6 +1254,54 @@ bool checkRestoreIfWrongSpelling(const int& handleCode) {
     return false;
 }
 
+//token classifier for code-like identifiers, camelCase, URLs, and emails in Mixed mode
+static bool isCodeLikeToken(const vector<Uint32>& rawKeys, int inputType) {
+    if (rawKeys.empty())
+        return false;
+    bool hasLowerToUpper = false;
+    bool hasLetter = false, hasDigit = false;
+    bool hasUnderscore = false, hasAtSign = false;
+    bool prevWasLower = false;
+    for (size_t i = 0; i < rawKeys.size(); i++) {
+        Uint16 key = rawKeys[i] & CHAR_MASK;
+        bool isCaps = (rawKeys[i] & CAPS_MASK) != 0;
+        Uint16 c = keyCodeToCharacter(key);
+        if (key == KEY_MINUS) {
+            if (isCaps) {
+                hasUnderscore = true;
+            }
+            prevWasLower = false;
+        } else if (key == KEY_2 && isCaps) {
+            hasAtSign = true;
+            prevWasLower = false;
+        } else if (c >= 'a' && c <= 'z') {
+            hasLetter = true;
+            if (isCaps) {
+                if (prevWasLower) {
+                    hasLowerToUpper = true;
+                }
+                prevWasLower = false;
+            } else {
+                prevWasLower = true;
+            }
+        } else if (c >= '0' && c <= '9' && !isCaps) {
+            hasDigit = true;
+            prevWasLower = false;
+        } else {
+            prevWasLower = false;
+        }
+    }
+    if (hasUnderscore)
+        return true;
+    if (hasAtSign)
+        return true;
+    if (hasLowerToUpper)
+        return true;
+    if (inputType != vVNI && hasLetter && hasDigit)
+        return true;
+    return false;
+}
+
 static int mixedBias(const int& context) {
     return MIXED_CONTEXT_WEIGHT * context / 100;
 }
@@ -1281,8 +1329,12 @@ bool checkMixedEnglish(const int& handleCode, const bool& spaceFollows) {
         keys += (char)c;
     }
     int english, vietnamese, score = 0, language = 0; //1: English, -1: Vietnamese, 0: can't tell
-    bool listed = !keys.empty() && findMixedWord(keys, english, vietnamese), clear = false;
-    if (listed) {
+    bool codeLike = isCodeLikeToken(_rawKeys, vInputType);
+    bool listed = !codeLike && !keys.empty() && findMixedWord(keys, english, vietnamese), clear = false;
+    if (codeLike) {
+        language = 1;
+        clear = false;
+    } else if (listed) {
         score = english - vietnamese - MIXED_VIETNAMESE_LEAN;
         language = score + mixedBias(_mixedContext) > 0 ? 1 : -1;
         clear = score >= MIXED_CLEAR || score <= -MIXED_CLEAR;
@@ -1308,7 +1360,7 @@ bool checkMixedEnglish(const int& handleCode, const bool& spaceFollows) {
             contextBefore = (_mixedLast.contextBefore + (english ? 100 : -100)) / 2;
         }
     }
-    if (language != 0)
+    if (language != 0 && !codeLike)
         _mixedContext = (contextBefore + language * 100) / 2;
     //this word may be the next one's "last word"
     MixedWord word;
@@ -1463,8 +1515,16 @@ void vKeyHandleEvent(const vKeyEvent& event,
                capsStatus == 2); //caps lock
     if (data == KEY_ESC && state == KeyDown && vRestoreOnEscape && !otherControlKey && restoreRawKeys())
         return;
-    if ((IS_NUMBER_KEY(data) && capsStatus == 1)
-        || otherControlKey || isWordBreak(event, state, data) || (_index == 0 && IS_NUMBER_KEY(data))) {
+    bool wordBreak = isWordBreak(event, state, data);
+    bool numBreak = IS_NUMBER_KEY(data) && capsStatus == 1;
+    if (vMixedEnglish && _index > 0) {
+        if ((data == KEY_MINUS && capsStatus == 1) || (data == KEY_2 && capsStatus == 1)) {
+            wordBreak = false;
+            numBreak = false;
+        }
+    }
+    if (numBreak
+        || otherControlKey || wordBreak || (_index == 0 && IS_NUMBER_KEY(data))) {
         hCode = vDoNothing;
         hBPC = 0;
         hNCC = 0;
@@ -1478,7 +1538,7 @@ void vKeyHandleEvent(const vKeyEvent& event,
         } else if ((vQuickStartConsonant || vQuickEndConsonant) && !tempDisableKey && isMacroBreakCode(data)) {
             checkQuickConsonant();
         } else if (vMixedEnglish && !_hasHandledMacro && event != vKeyEvent::Mouse &&
-                   (isWordBreak(event, state, data) || (IS_NUMBER_KEY(data) && capsStatus == 1)) &&
+                   (wordBreak || numBreak) &&
                    checkMixedEnglish(vRestoreAndStartNewSession, false)) {
             //an English word got its keys back, maybe the word before it changed too
         } else if (vRestoreIfWrongSpelling && (isWordBreak(event, state, data) || (IS_NUMBER_KEY(data) && capsStatus == 1))) { //restore key if wrong spelling with break-key, also @ ! # ...

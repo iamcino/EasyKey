@@ -64,6 +64,12 @@ static Uint16 charToKeyCode(char c) {
         case '?': return KEY_SLASH; //with Shift
         case '!': return KEY_1; //with Shift
         case '@': return KEY_2; //with Shift
+        case '_': return KEY_MINUS; //with Shift
+        case '-': return KEY_MINUS;
+        case ':': return KEY_SEMICOLON; //with Shift
+        case ';': return KEY_SEMICOLON;
+        case '/': return KEY_SLASH;
+        case ',': return KEY_COMMA;
     }
     return 0;
 }
@@ -97,7 +103,7 @@ static wstring typeKeys(const string& keys) {
     for (char c : keys) {
         Uint16 keyCode = charToKeyCode(c);
         bool isPunctuation = c == '.' || c == '?' || c == '!' || c == '@';
-        bool isCaps = (c >= 'A' && c <= 'Z') || c == '?' || c == '!' || c == '@';
+        bool isCaps = (c >= 'A' && c <= 'Z') || c == '?' || c == '!' || c == '@' || c == '_' || c == ':';
         vKeyHandleEvent(vKeyEvent::Keyboard, vKeyEventState::KeyDown, keyCode, isCaps ? 1 : 0, false);
         if (pData->code == vDoNothing) {
             //the key is passed through to the application
@@ -105,6 +111,8 @@ static wstring typeKeys(const string& keys) {
                 if (!text.empty()) text.pop_back();
             } else if (keyCode == KEY_ESC) {
                 text += L'|'; //Esc reached the application
+            } else if (keyCodeToCharacter(keyCode | (isCaps ? CAPS_MASK : 0))) {
+                text += (wchar_t)keyCodeToCharacter(keyCode | (isCaps ? CAPS_MASK : 0));
             } else if (isPunctuation) {
                 text += (wchar_t)c;
             } else {
@@ -263,6 +271,30 @@ static void testMixed() {
     expectTyping("Mixed", "cos ", L"có ");
     vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
     expectTyping("Mixed", "sex ", L"sẽ ");
+    //code-like tokens, camelCase, snake_case, identifiers, emails
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed code-like", "user_id ", L"user_id ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed code-like", "parseJSON ", L"parseJSON ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed code-like", "EasyKeyEngine ", L"EasyKeyEngine ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed code-like", "vi_tri laf thoong soos ", L"vi_tri là thông số ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed code-like", "user@gmail.com ", L"user@gmail.com ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed code-like", "max_size ", L"max_size ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed code-like", "sort_desc ", L"sort_desc ");
+    //title-case words with Shift held over first keys must NOT be treated as camelCase
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed EV title-case", "DDi ", L"\u0110i ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed EV title-case", "DDaf Nawngx ", L"\u0110\u00e0 N\u1eb5ng ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed EV title-case", "DDuwowfng ", L"\u0110\u01b0\u1eddng ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed EV title-case", "VIeejt ", L"VI\u1ec7t ");
     vMixedEnglish = 0;
     vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
 }
@@ -285,6 +317,9 @@ static void testVNI() {
     expectTyping("VNI", "d9u7o7c5", L"được");
     expectTyping("VNI", "xin chao2", L"xin chào");
     expectTyping("VNI", "a10", L"a");
+    expectTyping("VNI", "me5 ", L"mẹ ");
+    expectTyping("VNI", "la2 ", L"là ");
+    expectTyping("VNI", "ba2 ", L"bà ");
 }
 
 static void expectConvert(const char* name, const string& input, const string& expected) {
