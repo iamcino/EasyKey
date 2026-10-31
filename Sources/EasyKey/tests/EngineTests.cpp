@@ -18,6 +18,7 @@
 //engine settings, normally defined by each platform app (see Engine.h)
 int vLanguage = 1;
 int vMixedEnglish = 0;
+int vMixedFixLast = 0;
 int vInputType = 0;
 int vFreeMark = 0;
 int vCodeTable = 0;
@@ -232,13 +233,23 @@ static void testMixed() {
     expectTyping("Mixed", "This is my car.", L"This is my car.");
     expectTyping("Mixed", "different ", L"different ");
     expectTyping("Mixed", "off ", L"off ");
-    //a clear word settles the one before it, that could be read both ways
+    //with vMixedFixLast off (default in 1.0.13), a word does not retroactively rewrite previous words
+    vMixedFixLast = 0;
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed default", "There are ", L"Th\u1ec3 are ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed default", "Did you see ", L"\u0110i you see ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed default", "The car was ", L"The c\u1ea3 was ");
+    //with vMixedFixLast on, an English word settles the one before it
+    vMixedFixLast = 1;
     vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
     expectTyping("Mixed", "There are ", L"There are ");
     vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
     expectTyping("Mixed", "Did you see ", L"Did you see ");
     vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
     expectTyping("Mixed", "The car was ", L"The car was ");
+    vMixedFixLast = 0;
     vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
     expectTyping("Mixed", "There  are ", L"Thể  are "); //only across one space
     vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);

@@ -58,6 +58,13 @@ extern int vLanguage;
 extern int vMixedEnglish;
 
 /*
+ * Fix the previous word if the current word is clearly another language (EasyKey)
+ * 0: No (default in 1.0.13: off to avoid erratic backspaces in async/rich-text apps)
+ * 1: Yes (experimental retroactive correction)
+ */
+extern int vMixedFixLast;
+
+/*
  * 0: Telex
  * 1: VNI
  */

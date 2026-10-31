@@ -41,6 +41,7 @@ static AppDelegate* _instance;
 //see document in Engine.h
 int vLanguage = 1;
 int vMixedEnglish = 0;
+int vMixedFixLast = 0;
 int vInputType = 0;
 int vFreeMark = 0;
 int vCodeTable = 0;

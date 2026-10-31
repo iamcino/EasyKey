@@ -1297,7 +1297,7 @@ bool checkMixedEnglish(const int& handleCode, const bool& spaceFollows) {
     //(not with VNI Windows and compound Unicode, there a letter on screen may take two backspaces)
     bool fixLast = false;
     vector<Uint32> lastText; //the last word as it should be now
-    if (hadLast && clear && !IS_DOUBLE_CODE(vCodeTable)) {
+    if (vMixedFixLast && hadLast && clear && !IS_DOUBLE_CODE(vCodeTable)) {
         bool english = _mixedLast.score + mixedBias((_mixedLast.contextBefore + language * 100) / 2) > 0;
         lastText = english ? _mixedLast.keys : _mixedLast.vietnamese;
         size_t shown = english ? _mixedLast.vietnamese.size() : _mixedLast.keys.size();
