@@ -87,8 +87,12 @@ vKeyHookState HookState;
 static Uint32 TypingWord[MAX_BUFF];
 static Byte _index = 0;
 static vector<Uint32> _longWordHelper; //save the word when _index >= MAX_BUFF
-static list<vector<Uint32>> _typingStates; //Aug 28th, 2019: typing helper, save long state of Typing word, can go back and modify the word
-vector<Uint32> _typingStatesData;
+struct TypingState {
+    vector<Uint32> typingWord;
+    vector<Uint32> keyStates;
+    vector<Uint32> rawKeys;
+};
+static list<TypingState> _typingStates; //Aug 28th, 2019: typing helper, save long state of Typing word, can go back and modify the word
 
 /**
  * Use for restore key if invalid word
@@ -156,7 +160,6 @@ string wideStringToUtf8(const wstring& str) {
 void* vKeyInit() {
     _index = 0;
     _stateIndex = 0;
-    _typingStatesData.clear();
     _typingStates.clear();
     _longWordHelper.clear();
     return &HookState;
@@ -403,72 +406,87 @@ void saveWord() {
     if (hCode != vReplaceMaro) {
         if (_index > 0) {
             if (_longWordHelper.size() > 0) { //save long word first
-                _typingStatesData.clear();
+                TypingState longState;
                 for (i = 0; i < _longWordHelper.size(); i++) {
                     if (i != 0 && i % MAX_BUFF == 0) { //save if overflow
-                        _typingStates.push_back(_typingStatesData);
-                        _typingStatesData.clear();
+                        _typingStates.push_back(longState);
+                        longState.typingWord.clear();
                     }
-                    _typingStatesData.push_back(_longWordHelper[i]);
+                    longState.typingWord.push_back(_longWordHelper[i]);
                 }
-                _typingStates.push_back(_typingStatesData);
+                _typingStates.push_back(longState);
                 _longWordHelper.clear();
             }
             
             //save current word
-            _typingStatesData.clear();
+            TypingState state;
             for (i = 0; i < _index; i++) {
-                _typingStatesData.push_back(TypingWord[i]);
+                state.typingWord.push_back(TypingWord[i]);
             }
-            _typingStates.push_back(_typingStatesData);
+            for (i = 0; i < _stateIndex; i++) {
+                state.keyStates.push_back(KeyStates[i]);
+            }
+            state.rawKeys = _rawKeys;
+            _typingStates.push_back(state);
         }
     } else { //save macro words
-        _typingStatesData.clear();
+        TypingState macroState;
         for (i = 0; i < hMacroData.size(); i++) {
             if (i != 0 && i % MAX_BUFF == 0) { //break if overflow
-                _typingStates.push_back(_typingStatesData);
-                _typingStatesData.clear();
+                _typingStates.push_back(macroState);
+                macroState.typingWord.clear();
             }
-            _typingStatesData.push_back(hMacroData[i]);
+            macroState.typingWord.push_back(hMacroData[i]);
         }
-        _typingStates.push_back(_typingStatesData);
+        _typingStates.push_back(macroState);
     }
 }
 
 void saveWord(const Uint32& keyCode, const int& count) {
-    _typingStatesData.clear();
+    TypingState state;
     for (i = 0; i < count; i++) {
-        _typingStatesData.push_back(keyCode);
+        state.typingWord.push_back(keyCode);
     }
-    _typingStates.push_back(_typingStatesData);
+    _typingStates.push_back(state);
 }
 
 void saveSpecialChar() {
-    _typingStatesData.clear();
+    TypingState state;
     for (i = 0; i < _specialChar.size(); i++) {
-        _typingStatesData.push_back(_specialChar[i]);
+        state.typingWord.push_back(_specialChar[i]);
     }
-    _typingStates.push_back(_typingStatesData);
+    _typingStates.push_back(state);
     _specialChar.clear();
 }
 
 void restoreLastTypingState() {
     if (_typingStates.size() > 0) {
-        _typingStatesData = _typingStates.back();
+        TypingState state = _typingStates.back();
         _typingStates.pop_back();
-        if (_typingStatesData.size() > 0){
-            if (_typingStatesData[0] == KEY_SPACE) {
-                _spaceCount = (int)_typingStatesData.size();
+        if (state.typingWord.size() > 0){
+            if (state.typingWord[0] == KEY_SPACE) {
+                _spaceCount = (int)state.typingWord.size();
                 _index = 0;
-            } else if (std::find(_charKeyCode.begin(), _charKeyCode.end(), (Uint16)_typingStatesData[0]) != _charKeyCode.end()) {
+                _stateIndex = 0;
+                _rawKeys.clear();
+            } else if (std::find(_charKeyCode.begin(), _charKeyCode.end(), (Uint16)state.typingWord[0]) != _charKeyCode.end()) {
                 _index = 0;
-                _specialChar = _typingStatesData;
+                _stateIndex = 0;
+                _rawKeys.clear();
+                _specialChar = state.typingWord;
                 checkSpelling();
             } else {
-                for (i = 0; i < _typingStatesData.size(); i++) {
-                    TypingWord[i] = _typingStatesData[i];
+                for (i = 0; i < state.typingWord.size(); i++) {
+                    TypingWord[i] = state.typingWord[i];
                 }
-                _index = (Byte)_typingStatesData.size();
+                _index = (Byte)state.typingWord.size();
+                for (i = 0; i < state.keyStates.size(); i++) {
+                    KeyStates[i] = state.keyStates[i];
+                }
+                _stateIndex = (Byte)state.keyStates.size();
+                _rawKeys = state.rawKeys;
+                if (vCheckSpelling)
+                    checkSpelling();
             }
         }
     }
@@ -1235,6 +1253,7 @@ static bool hasTripleW() {
 }
 
 bool checkRestoreIfWrongSpelling(const int& handleCode) {
+    if (_stateIndex == 0) return false;
     bool undone = hasTripleW();
     for (ii = 0; ii < _index; ii++) {
         if (undone || (!IS_CONSONANT(CHR(ii)) &&
@@ -1415,8 +1434,12 @@ bool checkMixedEnglish(const int& handleCode, const bool& spaceFollows) {
             text.push_back(KEY_SPACE);
             //the line history keeps the last word, then the space: it is what backspace brings back
             auto it = _typingStates.end();
-            if (_typingStates.size() >= 2 && (--it)->size() == 1 && (*it)[0] == KEY_SPACE)
-                *(--it) = lastText;
+            if (_typingStates.size() >= 2 && (--it)->typingWord.size() == 1 && it->typingWord[0] == KEY_SPACE) {
+                --it;
+                it->typingWord = lastText;
+                it->keyStates.clear();
+                it->rawKeys.clear();
+            }
         }
         for (i = 0; i < _index; i++)
             text.push_back(GET(TypingWord[i]));
@@ -1746,7 +1769,22 @@ void vKeyHandleEvent(const vKeyEvent& event,
         _rawKeys.push_back(data | (_isCaps ? CAPS_MASK : 0));
         
         if (!IS_SPECIALKEY(data) || tempDisableKey) { //do nothing
-            if (vQuickTelex && IS_QUICK_TELEX_KEY(data)) {
+            if (vQuickTelex && _index >= 2 && _rawKeys.size() >= 3 &&
+                (_rawKeys[_rawKeys.size() - 2] & CHAR_MASK) == data &&
+                (_rawKeys[_rawKeys.size() - 3] & CHAR_MASK) == data &&
+                _quickTelex.find(data) != _quickTelex.end() &&
+                CHR(_index - 1) == _quickTelex[data][1] &&
+                CHR(_index - 2) == _quickTelex[data][0]) {
+                //undo quick telex on third repeat: e.g. pp -> ph, third p -> pp
+                hCode = vWillProcess;
+                hBPC = 2;
+                hNCC = 2;
+                hData[1] = data | (_rawKeys[_rawKeys.size() - 2] & CAPS_MASK);
+                hData[0] = data | (_isCaps ? CAPS_MASK : 0);
+                TypingWord[_index - 2] = hData[1];
+                TypingWord[_index - 1] = hData[0];
+                return;
+            } else if (vQuickTelex && IS_QUICK_TELEX_KEY(data)) {
                 handleQuickTelex(data, _isCaps);
                 return;
             } else {

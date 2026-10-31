@@ -250,7 +250,8 @@ void SystemTrayHelper::createPopupMenu() {
 		DestroyMenu(popupMenu); //submenus go with it
 	popupMenu = CreatePopupMenu();
 	AppendMenu(popupMenu, MF_CHECKED, POPUP_VIET_ON_OFF, menuText(POPUP_VIET_ON_OFF));
-	AppendMenu(popupMenu, MF_UNCHECKED, POPUP_MIXED, menuText(POPUP_MIXED));
+	if (!vTwoModesOnly)
+		AppendMenu(popupMenu, MF_UNCHECKED, POPUP_MIXED, menuText(POPUP_MIXED));
 	AppendMenu(popupMenu, MF_SEPARATOR, 0, 0);
 
 	menuInputType = CreatePopupMenu();
@@ -503,7 +504,7 @@ static void loadTrayIcon() {
 		auto lighter = [](const int& c) { return c + (255 - c) * 18 / 100; };
 		tileTopColor = RGB(lighter(GetRValue(tileColor)), lighter(GetGValue(tileColor)), lighter(GetBValue(tileColor)));
 		letterColor = RGB(0xFF, 0xFF, 0xFF);
-		lstrcpyn(nid.szTip, vMixedEnglish ? TR("EasyKey: đang gõ Anh–Việt", "EasyKey: typing English and Vietnamese") :
+		lstrcpyn(nid.szTip, (!vTwoModesOnly && vMixedEnglish) ? TR("EasyKey: đang gõ Anh–Việt", "EasyKey: typing English and Vietnamese") :
 			TR("EasyKey: đang gõ tiếng Việt", "EasyKey: typing Vietnamese"), 128);
 	}
 	else {
@@ -551,12 +552,20 @@ void SystemTrayHelper::updateData() {
 
 	//show the switch key next to the Vietnamese mode it goes back to, like a menu accelerator
 	wstring hotKey = EasyKeyHelper::getHotKeyString(vSwitchKeyStatus);
-	for (UINT command : { POPUP_VIET_ON_OFF, POPUP_MIXED }) {
-		wstring text = menuText(command);
-		if (!hotKey.empty() && (command == POPUP_MIXED) == (vMixedEnglish != 0))
+	if (vTwoModesOnly) {
+		wstring text = menuText(POPUP_VIET_ON_OFF);
+		if (!hotKey.empty())
 			text += _T("\t") + hotKey;
-		ModifyMenu(popupMenu, command, MF_BYCOMMAND | (TYPING_MODE == (command == POPUP_MIXED ? 2 : 1) ? MF_CHECKED : MF_UNCHECKED),
-			command, text.c_str());
+		ModifyMenu(popupMenu, POPUP_VIET_ON_OFF, MF_BYCOMMAND | (vLanguage ? MF_CHECKED : MF_UNCHECKED),
+			POPUP_VIET_ON_OFF, text.c_str());
+	} else {
+		for (UINT command : { POPUP_VIET_ON_OFF, POPUP_MIXED }) {
+			wstring text = menuText(command);
+			if (!hotKey.empty() && (command == POPUP_MIXED) == (vMixedEnglish != 0))
+				text += _T("\t") + hotKey;
+			ModifyMenu(popupMenu, command, MF_BYCOMMAND | (TYPING_MODE == (command == POPUP_MIXED ? 2 : 1) ? MF_CHECKED : MF_UNCHECKED),
+				command, text.c_str());
+		}
 	}
 
 	MODIFY_MENU(menuInputType, POPUP_TELEX, vInputType == 0);

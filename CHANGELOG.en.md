@@ -2,6 +2,14 @@
 
 [Tiếng Việt](CHANGELOG.md) · **English**
 
+## 1.0.15 (Windows 11 x64)
+- New **Only 2 modes (English and Vietnamese)** option in Settings › Advanced › Typing: for users who only want to toggle between Vietnamese and English. When enabled, Mixed mode is completely hidden from the UI, hotkey (Alt + Z), tray icon clicks, and the flyout popup only cycle between the 2 modes.
+- Fixed an issue where using Backspace and Space after mistyping swallowed the previous word or dropped characters in the typing sequence.
+- Mixed mode: typing "fix" and its forms now works as expected when "Allow typing z, f, w, j" is enabled (no longer turns into "fĩ").
+- Quick Telex:
+  - Initial consonants `pp` (ph), `tt` (th), `gg` (gi), `kk` (kh), `qq` (qu) now only convert at the beginning of a word; English words with double letters such as `app`, `apple`, `happy`, `attack`, `egg` are no longer altered.
+  - Added triple-tap undo (e.g. `ppp` becomes `pp`, `ccc` becomes `cc`, `ttt` becomes `tt`).
+
 ## 1.0.14 (Windows 11 x64)
 - Mixed mode: typing `test` right after "bánh" or "thịt" now gives "tét" (bánh tét, thịt tét) instead of keeping the English word. Other sentences such as "chạy test" or "test đầu tiên" keep "test". To get "tét" anywhere else, type `tets`.
 

@@ -229,6 +229,42 @@ static void testTelex() {
     vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0); //a click in the same window
     expectTyping("Telex", "xin chaof", L"xin chào");
     vUpperCaseFirstChar = 0;
+    //abbreviations with d/dd
+    expectTyping("Telex abbr ddc", "ddc ", L"đc ");
+    expectTyping("Telex abbr ddk", "ddk ", L"đk ");
+    expectTyping("Telex abbr ddt", "ddt ", L"đt ");
+    expectTyping("Telex abbr ddm", "ddm ", L"đm ");
+    expectTyping("Telex abbr DDT", "DDT ", L"ĐT ");
+    expectTyping("Telex abbr DDHQG", "DDHQG ", L"ĐHQG ");
+    expectTyping("Telex abbr Ddc", "Ddc ", L"Đc ");
+    //quick telex: initial pp/tt/gg/kk/qq/cc/nn convert, but non-initial only cc and nn
+    vQuickTelex = 1;
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Quick Telex", "ppa", L"pha");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Quick Telex", "tta", L"tha");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Quick Telex", "cco", L"cho");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Quick Telex", "thicc", L"thich");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Quick Telex", "nna", L"nga");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Quick Telex", "dunn", L"dung");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Quick Telex non-initial pp", "app ", L"app ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Quick Telex non-initial tt", "attack ", L"attack ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Quick Telex non-initial gg", "egg ", L"egg ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Quick Telex abbr ddc", "ddc ", L"đc ");
+    expectTyping("Quick Telex abbr ddm", "ddm ", L"đm ");
+    expectTyping("Quick Telex abbr DDT", "DDT ", L"ĐT ");
+    expectTyping("Quick Telex abbr DDHQG", "DDHQG ", L"ĐHQG ");
+    expectTyping("Quick Telex triple p", "ppp ", L"pp ");
+    expectTyping("Quick Telex triple c", "ccc ", L"cc ");
+    vQuickTelex = 0;
 }
 
 static void testMixed() {
@@ -335,7 +371,30 @@ static void testMixed() {
     expectTyping("Mixed whitelist", "warning ", L"warning ");
     vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
     expectTyping("Mixed whitelist", "merge ", L"merge ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed whitelist", "fix ", L"fix ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed whitelist", "fixed ", L"fixed ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed whitelist", "fixes ", L"fixes ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed whitelist", "fixing ", L"fixing ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed phrase", "tooi fix bug ", L"t\u00f4i fix bug ");
     vRestoreIfWrongSpelling = 1;
+    vAllowConsonantZFWJ = 1;
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed ZFWJ fix", "fix ", L"fix ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed ZFWJ fix", "tooi fix bug ", L"t\u00f4i fix bug ");
+    vAllowConsonantZFWJ = 0;
+    //backspace across word boundary must not eat earlier word
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Backspace across space", "dungf back <<<<<space ", L"d\u00f9ng space ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Backspace across space", "dungf back<<<<<space ", L"dungfspace ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Backspace across dot EV", "abc. <<d ", L"abcd ");
     vMixedEnglish = 0;
     vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
 }

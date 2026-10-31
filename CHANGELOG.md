@@ -2,6 +2,14 @@
 
 **Tiếng Việt** · [English](CHANGELOG.en.md)
 
+## 1.0.15 (Windows 11 x64)
+- Thêm tuỳ chọn **Chỉ dùng 2 chế độ Anh và Việt** trong Cài đặt › Nâng cao › Gõ: dành cho người chỉ muốn chuyển đổi qua lại giữa Tiếng Việt và Tiếng Anh thuần tuý. Khi bật, chế độ Anh–Việt được ẩn hoàn toàn khỏi giao diện, phím tắt (Alt + Z), biểu tượng khay và popup chỉ xoay vòng giữa 2 chế độ.
+- Sửa lỗi gõ sai rồi dùng phím Backspace / phím cách (Space) làm nuốt mất từ trước đó hoặc làm mất chữ trong chuỗi phím.
+- Chế độ Anh–Việt: hỗ trợ từ "fix" và các biến thể khi bật tuỳ chọn "Cho phép gõ z, f, w, j" (không còn bị đổi thành "fĩ").
+- Gõ nhanh (Quick Telex):
+  - Các phụ âm đầu `pp` (ph), `tt` (th), `gg` (gi), `kk` (kh), `qq` (qu) chỉ chuyển đổi khi đứng ở đầu từ; gõ các từ tiếng Anh có phụ âm lặp như `app`, `apple`, `happy`, `attack`, `egg` không còn bị đổi thành `ph`, `th`, `gi`.
+  - Hỗ trợ gõ lặp 3 lần để hoàn tác (ví dụ `ppp` ra `pp`, `ccc` ra `cc`, `ttt` ra `tt`).
+
 ## 1.0.14 (Windows 11 x64)
 - Chế độ Anh–Việt: gõ `test` ngay sau "bánh" hoặc "thịt" giờ ra "tét" (bánh tét, thịt tét) thay vì giữ chữ tiếng Anh. Các câu khác như "chạy test", "test đầu tiên" vẫn giữ "test". Muốn gõ "tét" ở chỗ khác thì gõ `tets`.
 

@@ -107,10 +107,10 @@ languages (coding, work, study):
 - It also catches English words that Telex turns into Vietnamese: "this"
   (thí), "test" (tét), "mix" (mĩ).
 - It reads the context: "tôi sẽ đi" stays Vietnamese, and "There are" does not
-  become "Thể are". A clearly English word also fixes the word right before it.
+  become "Thể are".
 - Turn it on with the **Mixed** button (EV badge) in Settings or **Type English
   and Vietnamese** in the tray menu. **Alt + Z** or a click on the tray icon goes
-  through the three modes in turn: Vietnamese, Mixed, English.
+  through the three modes in turn: Vietnamese, Mixed, English. If you prefer cycling only between Vietnamese and English (hiding Mixed mode entirely), enable **Only 2 modes (English and Vietnamese)** under Settings › Advanced › Typing.
 
 ### Per app
 
