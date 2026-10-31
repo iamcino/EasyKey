@@ -1302,6 +1302,28 @@ static bool isCodeLikeToken(const vector<Uint32>& rawKeys, int inputType) {
     return false;
 }
 
+static char _lastRaw[16] = {0};
+static Byte _lastRawLen = 0;
+
+static bool isBanhThitPreceding(const char* raw, Byte len) {
+    if (len < 4) return false;
+    // banh, banhs, basnh, banh1
+    if ((len == 4 && raw[0] == 'b' && raw[1] == 'a' && raw[2] == 'n' && raw[3] == 'h') ||
+        (len == 5 && raw[0] == 'b' && (
+            (raw[1] == 'a' && raw[2] == 'n' && raw[3] == 'h' && (raw[4] == 's' || raw[4] == '1')) ||
+            (raw[1] == 'a' && raw[2] == 's' && raw[3] == 'n' && raw[4] == 'h')))) {
+        return true;
+    }
+    // thit, thijt, thitj, thit5
+    if ((len == 4 && raw[0] == 't' && raw[1] == 'h' && raw[2] == 'i' && raw[3] == 't') ||
+        (len == 5 && raw[0] == 't' && raw[1] == 'h' && raw[2] == 'i' && (
+            (raw[3] == 't' && (raw[4] == 'j' || raw[4] == '5')) ||
+            (raw[3] == 'j' && raw[4] == 't')))) {
+        return true;
+    }
+    return false;
+}
+
 static int mixedBias(const int& context) {
     return MIXED_CONTEXT_WEIGHT * context / 100;
 }
@@ -1331,9 +1353,13 @@ bool checkMixedEnglish(const int& handleCode, const bool& spaceFollows) {
     int english, vietnamese, score = 0, language = 0; //1: English, -1: Vietnamese, 0: can't tell
     bool codeLike = isCodeLikeToken(_rawKeys, vInputType);
     bool listed = !codeLike && !keys.empty() && findMixedWord(keys, english, vietnamese), clear = false;
+    bool isBanhThitTet = (keys == "test" && isBanhThitPreceding(_lastRaw, _lastRawLen));
     if (codeLike) {
         language = 1;
         clear = false;
+    } else if (isBanhThitTet) {
+        language = -1; // keep Vietnamese "tét"
+        clear = true;
     } else if (listed) {
         score = english - vietnamese - MIXED_VIETNAMESE_LEAN;
         language = score + mixedBias(_mixedContext) > 0 ? 1 : -1;
@@ -1402,6 +1428,18 @@ bool checkMixedEnglish(const int& handleCode, const bool& spaceFollows) {
         _mixedLast = word;
         _hasMixedLast = true;
     }
+    if (spaceFollows) {
+        _lastRawLen = 0;
+        for (i = 0; i < _rawKeys.size() && i < 15; i++) {
+            Uint16 c = keyCodeToCharacter(_rawKeys[i] & CHAR_MASK);
+            if (c >= 'A' && c <= 'Z') c = c - 'A' + 'a';
+            _lastRaw[_lastRawLen++] = (char)c;
+        }
+        _lastRaw[_lastRawLen] = '\0';
+    } else {
+        _lastRawLen = 0;
+        _lastRaw[0] = '\0';
+    }
     return restore || fixLast;
 }
 
@@ -1420,6 +1458,9 @@ bool restoreRawKeys() {
     startNewSession();
     _specialChar.clear();
     _typingStates.clear();
+    _hasMixedLast = false;
+    _lastRawLen = 0;
+    _lastRaw[0] = '\0';
     hMacroKey.clear();
     hCode = vWillProcess;
     hBPC = backspaceCount;
@@ -1551,6 +1592,8 @@ void vKeyHandleEvent(const vKeyEvent& event,
         }
         
         _hasMixedLast = false; //only a space may come between two words read together
+        _lastRawLen = 0;
+        _lastRaw[0] = '\0';
         if (event == vKeyEvent::Mouse)
             _mixedContext = 0; //the caret may be somewhere else now
         
@@ -1597,8 +1640,11 @@ void vKeyHandleEvent(const vKeyEvent& event,
         if (!tempDisableKey && vCheckSpelling) {
             checkSpelling(true); //force check spelling
         }
-        if (_spaceCount > 0)
+        if (_spaceCount > 0) {
             _hasMixedLast = false;
+            _lastRawLen = 0;
+            _lastRaw[0] = '\0';
+        }
         if (vUseMacro && !_hasHandledMacro && findMacro(hMacroKey, hMacroData)) { //macro
             hCode = vReplaceMaro;
             hBPC = (Byte)hMacroKey.size();
@@ -1635,6 +1681,8 @@ void vKeyHandleEvent(const vKeyEvent& event,
         hCode = vDoNothing;
         hExt = 2; //delete
         _hasMixedLast = false;
+        _lastRawLen = 0;
+        _lastRaw[0] = '\0';
         if (_specialChar.size() > 0) {
             _specialChar.pop_back();
             if (_specialChar.size() == 0) {
