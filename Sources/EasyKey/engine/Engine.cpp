@@ -229,7 +229,7 @@ void checkSpelling(const bool& forceCheckVowel=false) {
         }
         
         if (j == _spellingEndIndex){ //for "d" case
-            _spellingOK = !forceCheckVowel;
+            _spellingOK = true;
         }
         
         //check next vowel
@@ -1255,29 +1255,20 @@ static bool hasTripleW() {
 bool checkRestoreIfWrongSpelling(const int& handleCode) {
     if (_stateIndex == 0) return false;
     bool undone = hasTripleW();
-    bool hasVowel = false;
     for (ii = 0; ii < _index; ii++) {
-        if (!IS_CONSONANT(CHR(ii))) {
-            hasVowel = true;
-            if (TypingWord[ii] & MARK_MASK || TypingWord[ii] & TONE_MASK || TypingWord[ii] & TONEW_MASK) {
-                undone = true;
-                break;
+        if (undone || (!IS_CONSONANT(CHR(ii)) &&
+            (TypingWord[ii] & MARK_MASK || TypingWord[ii] & TONE_MASK || TypingWord[ii] & TONEW_MASK))) {
+            
+            hCode = handleCode;
+            hBPC = _index;
+            hNCC = _stateIndex;
+            for (i = 0; i < _stateIndex; i++) {
+                TypingWord[i] = KeyStates[i];
+                hData[_stateIndex - 1 - i] = TypingWord[i];
             }
+            _index = _stateIndex;
+            return true;
         }
-    }
-    if (!hasVowel && _index > 1) {
-        undone = true;
-    }
-    if (undone) {
-        hCode = handleCode;
-        hBPC = _index;
-        hNCC = _stateIndex;
-        for (i = 0; i < _stateIndex; i++) {
-            TypingWord[i] = KeyStates[i];
-            hData[_stateIndex - 1 - i] = TypingWord[i];
-        }
-        _index = _stateIndex;
-        return true;
     }
     return false;
 }

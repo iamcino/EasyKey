@@ -229,6 +229,14 @@ static void testTelex() {
     vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0); //a click in the same window
     expectTyping("Telex", "xin chaof", L"xin chào");
     vUpperCaseFirstChar = 0;
+    //abbreviations with d/dd
+    expectTyping("Telex abbr ddc", "ddc ", L"đc ");
+    expectTyping("Telex abbr ddk", "ddk ", L"đk ");
+    expectTyping("Telex abbr ddt", "ddt ", L"đt ");
+    expectTyping("Telex abbr ddm", "ddm ", L"đm ");
+    expectTyping("Telex abbr DDT", "DDT ", L"ĐT ");
+    expectTyping("Telex abbr DDHQG", "DDHQG ", L"ĐHQG ");
+    expectTyping("Telex abbr Ddc", "Ddc ", L"Đc ");
     //quick telex: initial pp/tt/gg/kk/qq/cc/nn convert, but non-initial only cc and nn
     vQuickTelex = 1;
     vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
@@ -250,11 +258,12 @@ static void testTelex() {
     vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
     expectTyping("Quick Telex non-initial gg", "egg ", L"egg ");
     vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
-    expectTyping("Quick Telex triple p", "ppp", L"pp");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
-    expectTyping("Quick Telex pp word", "pp ", L"pp ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
-    expectTyping("Quick Telex triple c", "ccc", L"cc");
+    expectTyping("Quick Telex abbr ddc", "ddc ", L"đc ");
+    expectTyping("Quick Telex abbr ddm", "ddm ", L"đm ");
+    expectTyping("Quick Telex abbr DDT", "DDT ", L"ĐT ");
+    expectTyping("Quick Telex abbr DDHQG", "DDHQG ", L"ĐHQG ");
+    expectTyping("Quick Telex triple p", "ppp ", L"pp ");
+    expectTyping("Quick Telex triple c", "ccc ", L"cc ");
     vQuickTelex = 0;
 }
 

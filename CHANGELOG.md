@@ -9,7 +9,6 @@
 - Gõ nhanh (Quick Telex):
   - Các phụ âm đầu `pp` (ph), `tt` (th), `gg` (gi), `kk` (kh), `qq` (qu) chỉ chuyển đổi khi đứng ở đầu từ; gõ các từ tiếng Anh có phụ âm lặp như `app`, `apple`, `happy`, `attack`, `egg` không còn bị đổi thành `ph`, `th`, `gi`.
   - Hỗ trợ gõ lặp 3 lần để hoàn tác (ví dụ `ppp` ra `pp`, `ccc` ra `cc`, `ttt` ra `tt`).
-  - Gõ từ chỉ gồm `pp ` rồi bấm phím cách sẽ tự phục hồi thành `pp ` thay vì giữ `ph `.
 
 ## 1.0.14 (Windows 11 x64)
 - Chế độ Anh–Việt: gõ `test` ngay sau "bánh" hoặc "thịt" giờ ra "tét" (bánh tét, thịt tét) thay vì giữ chữ tiếng Anh. Các câu khác như "chạy test", "test đầu tiên" vẫn giữ "test". Muốn gõ "tét" ở chỗ khác thì gõ `tets`.
