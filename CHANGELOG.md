@@ -2,6 +2,9 @@
 
 **Tiếng Việt** · [English](CHANGELOG.en.md)
 
+## 1.0.14 (Windows 11 x64)
+- Chế độ Anh–Việt: gõ `test` ngay sau "bánh" hoặc "thịt" giờ ra "tét" (bánh tét, thịt tét) thay vì giữ chữ tiếng Anh. Các câu khác như "chạy test", "test đầu tiên" vẫn giữ "test". Muốn gõ "tét" ở chỗ khác thì gõ `tets`.
+
 ## 1.0.13 (Windows 11 x64)
 - Chế độ Anh–Việt giữ nguyên tên biến và email khi gõ code: snake_case (`max_size`, `sort_desc`, trước đây thành "mã_size", "sort_déc"), camelCase (`parseJSON`, `iPhone`), chữ lẫn số và địa chỉ email. Trong chế độ này dấu `_` và `@` không còn ngắt từ. Gõ hoa hai chữ đầu như "DDi", "VIeejt" vẫn ra "Đi", "VIệt".
 - Chế độ Anh–Việt không còn tự sửa lại từ đứng trước (ví dụ "Thể are" thành "There are"): việc xoá rồi gõ lại từ cũ hay chạy sai ở các ứng dụng chậm hoặc trình soạn thảo phức tạp, nên giờ tắt mặc định.
