@@ -296,6 +296,7 @@ void SettingsWindow::layout() {
 	//Vietnamese, mixed or English (TYPING_MODE 1, 2, 0), three big buttons and the hotkey below them
 	int pad = s(4), gap = s(4);
 	int inner = right - left - pad * 2;
+	heroArea = makeRect(left, y, right - left, pad + s(56) + gap + s(32) + pad);
 	if (vTwoModesOnly) {
 		int half = (inner - gap) / 2;
 		push(K_LANG, 1, T(_T("Tiếng Việt"), _T("Vietnamese")), NULL, makeRect(left + pad, y + pad, half, s(56)));
@@ -1224,9 +1225,11 @@ void SettingsWindow::setOption(const int& id, const bool& on) {
 		break;
 	case OPT_TWO_MODES:
 		APP_SET_DATA(vTwoModesOnly, val);
-		if (val && vMixedEnglish) {
-			APP_SET_DATA(vMixedEnglish, 0);
-			AppDelegate::getInstance()->setTypingMode(1);
+		if (val) {
+			if (TYPING_MODE == 2)
+				AppDelegate::getInstance()->setTypingMode(1);
+			else
+				APP_SET_DATA(vMixedEnglish, 0);
 		}
 		layout();
 		InvalidateRect(hWnd, NULL, FALSE);
