@@ -295,6 +295,21 @@ static void testMixed() {
     expectTyping("Mixed EV title-case", "DDuwowfng ", L"\u0110\u01b0\u1eddng ");
     vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
     expectTyping("Mixed EV title-case", "VIeejt ", L"VI\u1ec7t ");
+    //curated whitelist words (tested with spell restore off to prove recognition from mixed dictionary)
+    vRestoreIfWrongSpelling = 0;
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed whitelist", "excited ", L"excited ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed whitelist", "explain ", L"explain ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed whitelist", "install ", L"install ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed whitelist", "software ", L"software ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed whitelist", "warning ", L"warning ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed whitelist", "merge ", L"merge ");
+    vRestoreIfWrongSpelling = 1;
     vMixedEnglish = 0;
     vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
 }
