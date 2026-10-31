@@ -47,6 +47,7 @@ enum ItemKind {
 
 enum Option {
 	OPT_NONE, OPT_LANGUAGE, OPT_CODE_TABLE,
+	OPT_TWO_MODES,
 	OPT_SPELLING, OPT_MODERN, OPT_MACRO, OPT_RUN_WITH_WINDOWS,
 	OPT_ESCAPE, OPT_INPUT_HOTKEY, OPT_ZWJF,
 	OPT_QUICK_TELEX, OPT_QUICK_START, OPT_QUICK_END, OPT_CAPS_FIRST, OPT_MACRO_ENGLISH, OPT_MACRO_AUTO_CAPS,
@@ -73,6 +74,7 @@ struct RowInfo {
 //K_SUBLABEL marks where the appearance rows (language, accent swatches, custom color) go
 static const RowInfo advancedRows[] = {
 	{ K_GROUP, 1, _T("Gõ"), _T("Typing") },
+	{ K_SUBTOGGLE, OPT_TWO_MODES, _T("Chỉ dùng 2 chế độ Anh và Việt"), _T("Only 2 modes (English and Vietnamese)"), _T("Ẩn chế độ gõ Anh–Việt (hỗn hợp)"), _T("Hide mixed English and Vietnamese mode") },
 	{ K_SUBTOGGLE, OPT_SPELLING, _T("Gõ thông minh"), _T("Smart typing"), _T("Chỉ bỏ dấu khi đúng chính tả, gõ sai thì trả lại phím"), _T("Marks only real words, puts the keys back otherwise") },
 	{ K_SUBTOGGLE, OPT_MODERN, _T("Dấu kiểu mới: hoà, thuý"), _T("Modern marks: hoà, thuý") },
 	{ K_SUBTOGGLE, OPT_MACRO, _T("Gõ tắt: ko → không"), _T("Shortcuts: ko → không") },
@@ -294,11 +296,16 @@ void SettingsWindow::layout() {
 	//Vietnamese, mixed or English (TYPING_MODE 1, 2, 0), three big buttons and the hotkey below them
 	int pad = s(4), gap = s(4);
 	int inner = right - left - pad * 2;
-	int third = (inner - gap * 2) / 3;
-	heroArea = makeRect(left, y, right - left, pad + s(56) + gap + s(32) + pad);
-	push(K_LANG, 1, T(_T("Tiếng Việt"), _T("Vietnamese")), NULL, makeRect(left + pad, y + pad, third, s(56)));
-	push(K_LANG, 2, T(_T("Anh–Việt"), _T("Mixed")), NULL, makeRect(left + pad + third + gap, y + pad, third, s(56)));
-	push(K_LANG, 0, T(_T("Tiếng Anh"), _T("English")), NULL, makeRect(left + pad + (third + gap) * 2, y + pad, inner - (third + gap) * 2, s(56)));
+	if (vTwoModesOnly) {
+		int half = (inner - gap) / 2;
+		push(K_LANG, 1, T(_T("Tiếng Việt"), _T("Vietnamese")), NULL, makeRect(left + pad, y + pad, half, s(56)));
+		push(K_LANG, 0, T(_T("Tiếng Anh"), _T("English")), NULL, makeRect(left + pad + half + gap, y + pad, inner - half - gap, s(56)));
+	} else {
+		int third = (inner - gap * 2) / 3;
+		push(K_LANG, 1, T(_T("Tiếng Việt"), _T("Vietnamese")), NULL, makeRect(left + pad, y + pad, third, s(56)));
+		push(K_LANG, 2, T(_T("Anh–Việt"), _T("Mixed")), NULL, makeRect(left + pad + third + gap, y + pad, third, s(56)));
+		push(K_LANG, 0, T(_T("Tiếng Anh"), _T("English")), NULL, makeRect(left + pad + (third + gap) * 2, y + pad, inner - (third + gap) * 2, s(56)));
+	}
 	int i = push(K_HOTKEY, 0, T(_T("Chuyển nhanh"), _T("Switch with")), NULL, makeRect(left + pad, y + pad + s(56) + gap, inner, s(32)));
 	items[i].linkAction = ACT_CAPTURE;
 	LPCTSTR linkText = capturing && captureTarget == 0 ? T(_T("Huỷ"), _T("Cancel")) : T(_T("Đổi phím"), _T("Change"));
@@ -1165,6 +1172,7 @@ bool SettingsWindow::getOption(const int& id) const {
 	int switchKey = capturing ? savedSwitchKey : vSwitchKeyStatus;
 	switch (id) {
 	case OPT_LANGUAGE: return vLanguage != 0;
+	case OPT_TWO_MODES: return vTwoModesOnly != 0;
 	case OPT_SPELLING: return vCheckSpelling != 0;
 	case OPT_MODERN: return vUseModernOrthography != 0;
 	case OPT_MACRO: return vUseMacro != 0;
@@ -1213,6 +1221,16 @@ void SettingsWindow::setOption(const int& id, const bool& on) {
 			setAppInputMethodStatus(EasyKeyHelper::getFrontMostAppExecuteName(), vLanguage | (vCodeTable << 1));
 			saveSmartSwitchKeyData();
 		}
+		break;
+	case OPT_TWO_MODES:
+		APP_SET_DATA(vTwoModesOnly, val);
+		if (val && vMixedEnglish) {
+			APP_SET_DATA(vMixedEnglish, 0);
+			AppDelegate::getInstance()->setTypingMode(1);
+		}
+		layout();
+		InvalidateRect(hWnd, NULL, FALSE);
+		SystemTrayHelper::rebuildMenu();
 		break;
 	case OPT_SPELLING:
 		//smart typing: spell check and putting the keys back go together

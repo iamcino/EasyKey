@@ -72,8 +72,9 @@ extern void checkHooks();
 
 extern int vLanguage;
 extern int vMixedEnglish;
+extern int vTwoModesOnly;
 //0 English, 1 Vietnamese, 2 English and Vietnamese mixed (Vietnamese on, English words kept)
-#define TYPING_MODE (vLanguage ? (vMixedEnglish ? 2 : 1) : 0)
+#define TYPING_MODE (vLanguage ? ((vTwoModesOnly || !vMixedEnglish) ? 1 : 2) : 0)
 extern int vInputType;
 extern int vFreeMark;
 extern int vCodeTable;

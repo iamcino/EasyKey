@@ -203,7 +203,7 @@ void FlyoutWindow::render(const UINT& dpi, const RECT& workArea, const bool& mes
 	COLORREF accent = ThemeHelper::getAccentColor(dark, false);
 	DWORD accentColor = 0xFF000000 | ((DWORD)GetRValue(accent) << 16) | ((DWORD)GetGValue(accent) << 8) | GetBValue(accent);
 
-	wstring title = !vietnamese ? TR("Tiếng Anh", "English") : vMixedEnglish ? TR("Anh–Việt", "English + Vietnamese") : TR("Tiếng Việt", "Vietnamese");
+	wstring title = !vietnamese ? TR("Tiếng Anh", "English") : (!vTwoModesOnly && vMixedEnglish) ? TR("Anh–Việt", "English + Vietnamese") : TR("Tiếng Việt", "Vietnamese");
 	wstring detail;
 	vector<LPCTSTR>& inputTypes = EasyKeyManager::getInputType();
 	wstring inputType = vInputType >= 0 && vInputType < (int)inputTypes.size() ? inputTypes[vInputType] : _T("");
@@ -231,7 +231,7 @@ void FlyoutWindow::render(const UINT& dpi, const RECT& workArea, const bool& mes
 	float titleHeight = pillHeight / 2 + s(1);
 	IDWriteTextFormat* titleFormat = textFormat(DWRITE_FONT_WEIGHT_SEMI_BOLD, s(16));
 	IDWriteTextFormat* detailFormat = textFormat(DWRITE_FONT_WEIGHT_NORMAL, s(12));
-	bool twoLetters = vietnamese && vMixedEnglish && !(message && messageWarning);
+	bool twoLetters = !vTwoModesOnly && vietnamese && vMixedEnglish && !(message && messageWarning);
 	IDWriteTextFormat* badgeFormat = textFormat(DWRITE_FONT_WEIGHT_BOLD, s(twoLetters ? 15 : 17));
 	IDWriteTextLayout* titleLayout = textLayout(title, titleFormat, titleHeight);
 	IDWriteTextLayout* detailLayout = textLayout(detail, detailFormat, pillHeight / 2);

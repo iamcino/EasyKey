@@ -107,6 +107,9 @@ void EasyKeyInit() {
 	vLanguage = vLanguage ? 1 : 0; //older versions could save the code table bits here too
 	APP_GET_DATA(vMixedEnglish, 0);
 	APP_GET_DATA(vMixedFixLast, 0);
+	APP_GET_DATA(vTwoModesOnly, 0);
+	if (vTwoModesOnly && vMixedEnglish)
+		vMixedEnglish = 0;
 	APP_GET_DATA(vInputType, 0);
 	vFreeMark = 0;
 	APP_GET_DATA(vCodeTable, 0);
@@ -506,13 +509,23 @@ bool checkHotKey(int hotKeyData, bool checkKeyCode = true) {
 
 //Vietnamese, English and Vietnamese mixed, English in turn, the order of the Settings buttons
 void switchLanguage() {
-	if (vLanguage == 0) {
-		vLanguage = 1;
-		vMixedEnglish = 0;
-	} else if (!vMixedEnglish) {
-		vMixedEnglish = 1;
+	if (vTwoModesOnly) {
+		if (vLanguage == 0) {
+			vLanguage = 1;
+			vMixedEnglish = 0;
+		} else {
+			vLanguage = 0;
+			vMixedEnglish = 0;
+		}
 	} else {
-		vLanguage = 0;
+		if (vLanguage == 0) {
+			vLanguage = 1;
+			vMixedEnglish = 0;
+		} else if (!vMixedEnglish) {
+			vMixedEnglish = 1;
+		} else {
+			vLanguage = 0;
+		}
 	}
 	if (HAS_BEEP(vSwitchKeyStatus))
 		MessageBeep(MB_OK);
@@ -988,6 +1001,8 @@ VOID CALLBACK winEventProcCallback(HWINEVENTHOOK hWinEventHook, DWORD dwEvent, H
 		if (vUseSmartSwitchKey && (_languageTemp & 0x01) != vLanguage) {
 			if (_languageTemp != -1) {
 				vLanguage = _languageTemp & 0x01; //the other bits hold the code table
+				if (vTwoModesOnly)
+					vMixedEnglish = 0;
 				AppDelegate::getInstance()->onInputMethodChangedFromHotKey();
 			} else {
 				saveSmartSwitchKeyData();

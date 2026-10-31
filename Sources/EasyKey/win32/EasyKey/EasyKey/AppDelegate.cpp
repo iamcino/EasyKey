@@ -40,6 +40,7 @@ static AppDelegate* _instance;
 int vLanguage = 1;
 int vMixedEnglish = 0;
 int vMixedFixLast = 0;
+int vTwoModesOnly = 0;
 int vInputType = 0;
 int vFreeMark = 0;
 int vCodeTable = 0;
@@ -354,6 +355,7 @@ void AppDelegate::onUninstall() {
 void AppDelegate::onDefaultConfig() {
 	APP_SET_DATA(vLanguage, 1);
 	APP_SET_DATA(vMixedEnglish, 0);
+	APP_SET_DATA(vTwoModesOnly, 0);
 	APP_SET_DATA(vInputType, 0);
 	vFreeMark = 0;
 	APP_SET_DATA(vCodeTable, 0);
@@ -395,7 +397,7 @@ void AppDelegate::onDefaultConfig() {
 
 void AppDelegate::onNextTypingMode() {
 	//Vietnamese, English and Vietnamese mixed, English in turn, like the switch key
-	int mode = TYPING_MODE == 1 ? 2 : TYPING_MODE == 2 ? 0 : 1;
+	int mode = vTwoModesOnly ? (TYPING_MODE == 1 ? 0 : 1) : (TYPING_MODE == 1 ? 2 : TYPING_MODE == 2 ? 0 : 1);
 	APP_SET_DATA(vLanguage, mode != 0 ? 1 : 0);
 	if (mode != 0)
 		APP_SET_DATA(vMixedEnglish, mode == 2 ? 1 : 0);
@@ -413,10 +415,13 @@ void AppDelegate::onNextTypingMode() {
 }
 
 void AppDelegate::setTypingMode(const int& mode) {
-	APP_SET_DATA(vLanguage, mode != 0 ? 1 : 0);
-	if (mode != 0) {
+	int actualMode = mode;
+	if (vTwoModesOnly && actualMode == 2)
+		actualMode = 1;
+	APP_SET_DATA(vLanguage, actualMode != 0 ? 1 : 0);
+	if (actualMode != 0) {
 		//English keeps the last Vietnamese mode, the switch key goes back to it
-		APP_SET_DATA(vMixedEnglish, mode == 2 ? 1 : 0);
+		APP_SET_DATA(vMixedEnglish, actualMode == 2 ? 1 : 0);
 	}
 	startNewSession();
 	if (settingsWindow) {
