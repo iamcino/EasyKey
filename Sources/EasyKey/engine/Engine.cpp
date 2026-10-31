@@ -8,7 +8,7 @@
 //  Part of EasyKey, a modified version of OpenKey (https://github.com/tuyenvm/OpenKey).
 //  SPDX-License-Identifier: GPL-3.0-only
 //
-#include <iostream>
+
 #include <algorithm>
 #include "Engine.h"
 #include <string.h>
@@ -148,13 +148,54 @@ static bool _hasMixedLast = false;
 void findAndCalculateVowel(const bool& forGrammar=false);
 void insertMark(const Uint32& markMask, const bool& canModifyFlag=true);
 
-static std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+#ifndef _WIN32
+#include <locale>
+#include <codecvt>
+#endif
 wstring utf8ToWideString(const string& str) {
-    return converter.from_bytes(str.c_str());
+    if (str.empty())
+        return wstring();
+#ifdef _WIN32
+    int len = (int)strlen(str.c_str());
+    if (len <= 0)
+        return wstring();
+    int sizeNeeded = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), len, NULL, 0);
+    if (sizeNeeded <= 0)
+        return wstring();
+    wstring result(sizeNeeded, 0);
+    MultiByteToWideChar(CP_UTF8, 0, str.c_str(), len, &result[0], sizeNeeded);
+    return result;
+#else
+    static std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+    try {
+        return converter.from_bytes(str);
+    } catch (...) {
+        return wstring();
+    }
+#endif
 }
 
 string wideStringToUtf8(const wstring& str) {
-    return converter.to_bytes(str.c_str());
+    if (str.empty())
+        return string();
+#ifdef _WIN32
+    int len = (int)wcslen(str.c_str());
+    if (len <= 0)
+        return string();
+    int sizeNeeded = WideCharToMultiByte(CP_UTF8, 0, str.c_str(), len, NULL, 0, NULL, NULL);
+    if (sizeNeeded <= 0)
+        return string();
+    string result(sizeNeeded, 0);
+    WideCharToMultiByte(CP_UTF8, 0, str.c_str(), len, &result[0], sizeNeeded, NULL, NULL);
+    return result;
+#else
+    static std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+    try {
+        return converter.to_bytes(str);
+    } catch (...) {
+        return string();
+    }
+#endif
 }
 
 void* vKeyInit() {

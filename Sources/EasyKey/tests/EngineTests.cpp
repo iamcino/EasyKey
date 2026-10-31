@@ -449,6 +449,52 @@ static void testConvert() {
     convertToolToCapsEachWord = false;
 }
 
+static void testUtf8Conversion() {
+    total++;
+    if (utf8ToWideString("") != L"" || wideStringToUtf8(L"") != "") {
+        failures++;
+        printf("FAIL [utf8 empty string]\n");
+    }
+
+    total++;
+    string sample = "Tiếng Việt có dấu, 123 @#$";
+    wstring wsample = L"Tiếng Việt có dấu, 123 @#$";
+    if (utf8ToWideString(sample) != wsample || wideStringToUtf8(wsample) != sample) {
+        failures++;
+        printf("FAIL [utf8 roundtrip]: \"%s\"\n", sample.c_str());
+    }
+
+    total++;
+    // Invalid UTF-8 sequence should not throw or crash
+    string invalid = "\xC0\xAF\x80\xFF";
+    try {
+        utf8ToWideString(invalid);
+    } catch (...) {
+        failures++;
+        printf("FAIL [utf8 invalid sequence threw exception]\n");
+    }
+}
+
+static void testMacroFileIO() {
+    total++;
+    addMacro("vn", "Việt Nam");
+    addMacro("hn", "Hà Nội");
+    const char* testFile = "test_easykey_macro_temp.txt";
+    saveToFile(testFile);
+    deleteMacro("vn");
+    deleteMacro("hn");
+    if (hasMacro("vn") || hasMacro("hn")) {
+        failures++;
+        printf("FAIL [macro delete before file read]\n");
+    }
+    readFromFile(testFile, false);
+    if (!hasMacro("vn") || !hasMacro("hn")) {
+        failures++;
+        printf("FAIL [macro readFromFile failed to restore macros]\n");
+    }
+    remove(testFile);
+}
+
 //EngineTests --render: for each word read, print it and what Telex makes of it (tools/make_mixed_words.py uses this)
 static int renderWords() {
     vInputType = vTelex;
@@ -469,6 +515,8 @@ int main(int argc, char** argv) {
     testMixed();
     testVNI();
     testConvert();
+    testUtf8Conversion();
+    testMacroFileIO();
     printf("%d/%d engine tests passed\n", total - failures, total);
     return failures == 0 ? 0 : 1;
 }

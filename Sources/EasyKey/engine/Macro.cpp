@@ -12,9 +12,9 @@
 #include "Macro.h"
 #include "Vietnamese.h"
 #include "Engine.h"
-#include <iostream>
+
 #include <memory.h>
-#include <fstream>
+#include <stdio.h>
 
 using namespace std;
 
@@ -249,26 +249,43 @@ void onTableCodeChange() {
 }
 
 void saveToFile(const string& path) {
-    ofstream myfile;
-    myfile.open(path.c_str());
-    myfile << ";Compatible OpenKey Macro Data file for UniKey*** version=1 ***\n";
+#ifdef _WIN32
+    FILE* myfile = _wfopen(utf8ToWideString(path).c_str(), L"w");
+#else
+    FILE* myfile = fopen(path.c_str(), "w");
+#endif
+    if (!myfile) return;
+
+    fputs(";Compatible OpenKey Macro Data file for UniKey*** version=1 ***\n", myfile);
     for (std::map<vector<Uint32>, MacroData>::iterator it = macroMap.begin(); it != macroMap.end(); ++it) {
-        myfile <<it->second.macroText << ":" << it->second.macroContent<<"\n";
+        fputs(it->second.macroText.c_str(), myfile);
+        fputc(':', myfile);
+        fputs(it->second.macroContent.c_str(), myfile);
+        fputc('\n', myfile);
     }
-    myfile.close();
+    fclose(myfile);
 }
 
 void readFromFile(const string& path, const bool& append) {
-    ifstream myfile(path.c_str());
+#ifdef _WIN32
+    FILE* myfile = _wfopen(utf8ToWideString(path).c_str(), L"r");
+#else
+    FILE* myfile = fopen(path.c_str(), "r");
+#endif
+    char lineBuf[4096];
     string line;
     int k = 0;
     size_t pos = 0;
     string name, content;
-    if (myfile.is_open()) {
+    if (myfile) {
         if (!append) {
             macroMap.clear();
         }
-        while (getline (myfile,line) ) {
+        while (fgets(lineBuf, sizeof(lineBuf), myfile)) {
+            line = lineBuf;
+            while (!line.empty() && (line.back() == '\r' || line.back() == '\n')) {
+                line.pop_back();
+            }
             k++;
             if (k == 1) continue;
             pos = line.find(":");
@@ -291,6 +308,6 @@ void readFromFile(const string& path, const bool& append) {
                 }
             }
         }
-        myfile.close();
+        fclose(myfile);
     }
 }

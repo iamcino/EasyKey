@@ -11,7 +11,7 @@
 
 #include "SmartSwitchKey.h"
 #include <map>
-#include <iostream>
+
 #include <memory.h>
 
 //main data, i use `map` because it has O(Log(n))
