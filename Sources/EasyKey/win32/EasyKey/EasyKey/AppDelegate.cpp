@@ -28,10 +28,10 @@ See LICENSE and NOTICE.
 #pragma comment(lib, "comctl32.lib")
 
 //shown once after updating to this version; change it with each release
-#define WHATS_NEW_VI L"• Tuỳ chọn mới: chỉ dùng 2 chế độ Anh và Việt (Nâng cao › Gõ).\n" \
-	L"• Xoá lùi qua dấu cách rồi gõ tiếp không còn làm mất từ trước."
-#define WHATS_NEW_EN L"• New option: only 2 modes, English and Vietnamese (Advanced › Typing).\n" \
-	L"• Backspacing over a space and typing on no longer loses the word before."
+#define WHATS_NEW_VI L"• EasyKey nhẹ hơn khoảng 32% (636 KB).\n" \
+	L"• Không còn bị tắt ngang khi file gõ tắt có chữ UTF-8 hỏng."
+#define WHATS_NEW_EN L"• EasyKey is about 32% smaller (636 KB).\n" \
+	L"• No more crash when a shortcut file has invalid UTF-8."
 
 //6 hours
 #define UPDATE_CHECK_INTERVAL (6 * 60 * 60 * 1000)
