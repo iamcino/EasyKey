@@ -8,11 +8,11 @@
 //  Part of EasyKey, a modified version of OpenKey (https://github.com/tuyenvm/OpenKey).
 //  SPDX-License-Identifier: GPL-3.0-only
 //
-#include <locale>
-#include <codecvt>
+#include <cwctype>
+
 #include "ConvertTool.h"
 #include "Engine.h"
-#include <iostream>
+
 #include <memory.h>
 #include <algorithm>
 

@@ -12,9 +12,9 @@
 #include "Macro.h"
 #include "Vietnamese.h"
 #include "Engine.h"
-#include <iostream>
+
 #include <memory.h>
-#include <fstream>
+#include <stdio.h>
 
 using namespace std;
 
@@ -249,48 +249,85 @@ void onTableCodeChange() {
 }
 
 void saveToFile(const string& path) {
-    ofstream myfile;
-    myfile.open(path.c_str());
-    myfile << ";Compatible OpenKey Macro Data file for UniKey*** version=1 ***\n";
+#ifdef _WIN32
+    FILE* myfile = NULL;
+    if (_wfopen_s(&myfile, utf8ToWideString(path).c_str(), L"w") != 0 || !myfile)
+        return;
+#else
+    FILE* myfile = fopen(path.c_str(), "w");
+    if (!myfile)
+        return;
+#endif
+
+    fputs(";Compatible OpenKey Macro Data file for UniKey*** version=1 ***\n", myfile);
     for (std::map<vector<Uint32>, MacroData>::iterator it = macroMap.begin(); it != macroMap.end(); ++it) {
-        myfile <<it->second.macroText << ":" << it->second.macroContent<<"\n";
+        fputs(it->second.macroText.c_str(), myfile);
+        fputc(':', myfile);
+        fputs(it->second.macroContent.c_str(), myfile);
+        fputc('\n', myfile);
     }
-    myfile.close();
+    fclose(myfile);
 }
 
 void readFromFile(const string& path, const bool& append) {
-    ifstream myfile(path.c_str());
-    string line;
-    int k = 0;
-    size_t pos = 0;
-    string name, content;
-    if (myfile.is_open()) {
-        if (!append) {
-            macroMap.clear();
-        }
-        while (getline (myfile,line) ) {
-            k++;
-            if (k == 1) continue;
-            pos = line.find(":");
-            if (string::npos != pos) {
-                name = line.substr(0, pos);
-                content = line.substr(pos + 1, line.length() - pos - 1);
-				while (name.compare("") == 0 && content.compare("") != 0) {
-					pos = content.find(":");
-					if (string::npos != pos) {
-						name += ":";
-						name += content.substr(0, pos);
-						content = content.substr(pos + 1, line.length() - pos - 1);
-					} else {
-						break;
-					}
-				}
+#ifdef _WIN32
+    FILE* myfile = NULL;
+    if (_wfopen_s(&myfile, utf8ToWideString(path).c_str(), L"r") != 0 || !myfile)
+        return;
+#else
+    FILE* myfile = fopen(path.c_str(), "r");
+    if (!myfile)
+        return;
+#endif
 
-                if (name.compare("") != 0 && !hasMacro(name)) {
-                    addMacro(name, content);
+    if (!append) {
+        macroMap.clear();
+    }
+
+    auto parseLine = [](int lineNum, const string& line) {
+        if (lineNum <= 1) return;
+        size_t pos = line.find(":");
+        if (string::npos != pos) {
+            string name = line.substr(0, pos);
+            string content = line.substr(pos + 1);
+            while (name.empty() && !content.empty()) {
+                pos = content.find(":");
+                if (string::npos != pos) {
+                    name += ":";
+                    name += content.substr(0, pos);
+                    content = content.substr(pos + 1);
+                } else {
+                    break;
                 }
             }
+
+            if (!name.empty() && !hasMacro(name)) {
+                addMacro(name, content);
+            }
         }
-        myfile.close();
+    };
+
+    string line;
+    int k = 0;
+    int ch;
+    while ((ch = fgetc(myfile)) != EOF) {
+        if (ch == '\n') {
+            if (!line.empty() && line.back() == '\r') {
+                line.pop_back();
+            }
+            k++;
+            parseLine(k, line);
+            line.clear();
+        } else {
+            line.push_back((char)ch);
+        }
     }
+    if (!line.empty()) {
+        if (line.back() == '\r') {
+            line.pop_back();
+        }
+        k++;
+        parseLine(k, line);
+    }
+    fclose(myfile);
 }

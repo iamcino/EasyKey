@@ -2,6 +2,12 @@
 
 [Tiếng Việt](CHANGELOG.md) · **English**
 
+## 1.0.16 (Windows 11 x64)
+- `EasyKey.exe` is about 32% smaller, from 939 KB to 636 KB: text conversion and file reading/writing now use built-in Windows APIs instead of heavier C++ components.
+- Fixed a crash that could happen when a shortcut file contains invalid UTF-8. Malformed bytes now show as "�" and the shortcuts still load.
+- Rewrote shortcut file reading and writing, with no limit on line length. Existing shortcut data keeps working as before, no conversion needed.
+- Telex, VNI, Simple Telex and Mixed mode typing are unchanged.
+
 ## 1.0.15 (Windows 11 x64)
 - New **Only 2 modes (English and Vietnamese)** option in Settings › Advanced › Typing: for users who only want to toggle between Vietnamese and English. When enabled, Mixed mode is completely hidden from the UI, hotkey (Alt + Z), tray icon clicks, and the flyout popup only cycle between the 2 modes.
 - Fixed an issue where using Backspace and Space after mistyping swallowed the previous word or dropped characters in the typing sequence.

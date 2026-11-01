@@ -2,6 +2,12 @@
 
 **Tiếng Việt** · [English](CHANGELOG.en.md)
 
+## 1.0.16 (Windows 11 x64)
+- `EasyKey.exe` nhẹ hơn khoảng 32%, từ 939 KB xuống 636 KB: phần chuyển mã chữ và đọc/ghi file dùng API có sẵn của Windows thay cho các thành phần C++ nặng.
+- Sửa lỗi ứng dụng có thể bị tắt ngang khi file gõ tắt có chuỗi UTF-8 hỏng. Giờ ký tự hỏng hiện thành "�" và gõ tắt vẫn được nạp.
+- Viết lại phần đọc/ghi file gõ tắt, không giới hạn độ dài mỗi dòng. Dữ liệu gõ tắt cũ vẫn dùng được như trước, không cần chuyển đổi.
+- Cách gõ Telex, VNI, Simple Telex và chế độ Anh–Việt không đổi.
+
 ## 1.0.15 (Windows 11 x64)
 - Thêm tuỳ chọn **Chỉ dùng 2 chế độ Anh và Việt** trong Cài đặt › Nâng cao › Gõ: dành cho người chỉ muốn chuyển đổi qua lại giữa Tiếng Việt và Tiếng Anh thuần tuý. Khi bật, chế độ Anh–Việt được ẩn hoàn toàn khỏi giao diện, phím tắt (Alt + Z), biểu tượng khay và popup chỉ xoay vòng giữa 2 chế độ.
 - Sửa lỗi gõ sai rồi dùng phím Backspace / phím cách (Space) làm nuốt mất từ trước đó hoặc làm mất chữ trong chuỗi phím.
