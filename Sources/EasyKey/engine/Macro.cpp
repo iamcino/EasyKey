@@ -250,11 +250,14 @@ void onTableCodeChange() {
 
 void saveToFile(const string& path) {
 #ifdef _WIN32
-    FILE* myfile = _wfopen(utf8ToWideString(path).c_str(), L"w");
+    FILE* myfile = NULL;
+    if (_wfopen_s(&myfile, utf8ToWideString(path).c_str(), L"w") != 0 || !myfile)
+        return;
 #else
     FILE* myfile = fopen(path.c_str(), "w");
+    if (!myfile)
+        return;
 #endif
-    if (!myfile) return;
 
     fputs(";Compatible OpenKey Macro Data file for UniKey*** version=1 ***\n", myfile);
     for (std::map<vector<Uint32>, MacroData>::iterator it = macroMap.begin(); it != macroMap.end(); ++it) {
@@ -268,46 +271,63 @@ void saveToFile(const string& path) {
 
 void readFromFile(const string& path, const bool& append) {
 #ifdef _WIN32
-    FILE* myfile = _wfopen(utf8ToWideString(path).c_str(), L"r");
+    FILE* myfile = NULL;
+    if (_wfopen_s(&myfile, utf8ToWideString(path).c_str(), L"r") != 0 || !myfile)
+        return;
 #else
     FILE* myfile = fopen(path.c_str(), "r");
+    if (!myfile)
+        return;
 #endif
-    char lineBuf[4096];
+
+    if (!append) {
+        macroMap.clear();
+    }
+
+    auto parseLine = [](int lineNum, const string& line) {
+        if (lineNum <= 1) return;
+        size_t pos = line.find(":");
+        if (string::npos != pos) {
+            string name = line.substr(0, pos);
+            string content = line.substr(pos + 1);
+            while (name.empty() && !content.empty()) {
+                pos = content.find(":");
+                if (string::npos != pos) {
+                    name += ":";
+                    name += content.substr(0, pos);
+                    content = content.substr(pos + 1);
+                } else {
+                    break;
+                }
+            }
+
+            if (!name.empty() && !hasMacro(name)) {
+                addMacro(name, content);
+            }
+        }
+    };
+
     string line;
     int k = 0;
-    size_t pos = 0;
-    string name, content;
-    if (myfile) {
-        if (!append) {
-            macroMap.clear();
-        }
-        while (fgets(lineBuf, sizeof(lineBuf), myfile)) {
-            line = lineBuf;
-            while (!line.empty() && (line.back() == '\r' || line.back() == '\n')) {
+    int ch;
+    while ((ch = fgetc(myfile)) != EOF) {
+        if (ch == '\n') {
+            if (!line.empty() && line.back() == '\r') {
                 line.pop_back();
             }
             k++;
-            if (k == 1) continue;
-            pos = line.find(":");
-            if (string::npos != pos) {
-                name = line.substr(0, pos);
-                content = line.substr(pos + 1, line.length() - pos - 1);
-				while (name.compare("") == 0 && content.compare("") != 0) {
-					pos = content.find(":");
-					if (string::npos != pos) {
-						name += ":";
-						name += content.substr(0, pos);
-						content = content.substr(pos + 1, line.length() - pos - 1);
-					} else {
-						break;
-					}
-				}
-
-                if (name.compare("") != 0 && !hasMacro(name)) {
-                    addMacro(name, content);
-                }
-            }
+            parseLine(k, line);
+            line.clear();
+        } else {
+            line.push_back((char)ch);
         }
-        fclose(myfile);
     }
+    if (!line.empty()) {
+        if (line.back() == '\r') {
+            line.pop_back();
+        }
+        k++;
+        parseLine(k, line);
+    }
+    fclose(myfile);
 }

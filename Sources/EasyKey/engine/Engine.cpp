@@ -168,7 +168,7 @@ wstring utf8ToWideString(const string& str) {
 #else
     static std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
     try {
-        return converter.from_bytes(str);
+        return converter.from_bytes(str.c_str());
     } catch (...) {
         return wstring();
     }
@@ -191,7 +191,7 @@ string wideStringToUtf8(const wstring& str) {
 #else
     static std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
     try {
-        return converter.to_bytes(str);
+        return converter.to_bytes(str.c_str());
     } catch (...) {
         return string();
     }

@@ -492,6 +492,21 @@ static void testMacroFileIO() {
         failures++;
         printf("FAIL [macro readFromFile failed to restore macros]\n");
     }
+
+    // Test large macro > 4 KB (e.g. long paragraph or template)
+    total++;
+    string longContent(5000, 'A');
+    for (size_t i = 0; i < 5000; i += 50) {
+        longContent[i] = ' ';
+    }
+    addMacro("longp", longContent);
+    saveToFile(testFile);
+    deleteMacro("longp");
+    readFromFile(testFile, false);
+    if (!hasMacro("longp")) {
+        failures++;
+        printf("FAIL [macro long (>4KB) readFromFile failed to restore]\n");
+    }
     remove(testFile);
 }
 
