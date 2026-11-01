@@ -2,6 +2,12 @@
 
 [Tiếng Việt](CHANGELOG.md) · **English**
 
+## 1.0.17 (Windows 11 x64)
+- More compact Settings window: tighter spacing and type sizes, single-line **Vietnamese** · **Mixed** · **English** mode buttons with centered badge and label (both in 3-mode and 2-mode layouts), a flat input method tab bar with an accent underline, and a slimmer **Advanced** header.
+- The **EV** badge in Settings, the switch flyout and the tray icon is sized to fit with clear margins at every scale; at 16 px the three bars of E stay separate.
+- Shorter labels: **Shortcut** › **Edit** (was "Switch with › Change"), tray menu items **Vietnamese** and **Mixed**, plus a separator above **Shortcut list…**.
+- Mixed mode: typing `dư dả` or `già dả` no longer turns "dả" into "dar".
+
 ## 1.0.16 (Windows 11 x64)
 - `EasyKey.exe` is about 32% smaller, from 939 KB to 636 KB: text conversion and file reading/writing now use built-in Windows APIs instead of heavier C++ components.
 - Fixed a crash that could happen when a shortcut file contains invalid UTF-8. Malformed bytes now show as "�" and the shortcuts still load.

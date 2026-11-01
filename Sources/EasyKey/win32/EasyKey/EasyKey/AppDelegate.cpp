@@ -28,10 +28,10 @@ See LICENSE and NOTICE.
 #pragma comment(lib, "comctl32.lib")
 
 //shown once after updating to this version; change it with each release
-#define WHATS_NEW_VI L"• EasyKey nhẹ hơn khoảng 32% (636 KB).\n" \
-	L"• Không còn bị tắt ngang khi file gõ tắt có chữ UTF-8 hỏng."
-#define WHATS_NEW_EN L"• EasyKey is about 32% smaller (636 KB).\n" \
-	L"• No more crash when a shortcut file has invalid UTF-8."
+#define WHATS_NEW_VI L"• Cửa sổ Cài đặt và biểu tượng EV gọn hơn, cân đối ở cả chế độ 2 nút và 3 nút.\n" \
+	L"• Chế độ Anh–Việt: gõ \"dư dả\", \"già dả\" không còn bị đổi thành \"dar\"."
+#define WHATS_NEW_EN L"• More compact Settings window and better-proportioned EV badge and tray icon.\n" \
+	L"• Mixed mode: \"dư dả\" and \"già dả\" no longer turn into \"dar\"."
 
 //6 hours
 #define UPDATE_CHECK_INTERVAL (6 * 60 * 60 * 1000)
