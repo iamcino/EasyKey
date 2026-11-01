@@ -2,7 +2,7 @@
 
 **Tiếng Việt** · [English](DESIGN.en.md)
 
-> Phiên bản 1.0.11 · Windows 11 x64 · C++ / Win32, Direct2D, DirectWrite
+> Phiên bản 1.0.17 · Windows 11 x64 · C++ / Win32, Direct2D, DirectWrite
 
 Tài liệu này giải thích EasyKey hoạt động thế nào và mã nguồn được tổ chức ra sao. Đối tượng là người muốn đọc, sửa hoặc đóng góp mã. Hướng dẫn dùng nằm ở [README](../README.md), cách build ở [BUILD](BUILD.md), quy tắc đóng góp ở [CONTRIBUTING](../CONTRIBUTING.md).
 
@@ -107,21 +107,21 @@ Cả hai bỏ qua khi cửa sổ đang ở trước chạy quyền Admin, vì l�
 
 Test engine ở `Sources/EasyKey/tests/EngineTests.cpp` (Telex, VNI, chuyển mã, Anh–Việt). Khi sửa engine, thêm ca test cho lỗi vừa sửa.
 
-**Chế độ Anh–Việt** (`vMixedEnglish`, chỉ có tác dụng khi `vLanguage` = 1). Engine vẫn bỏ dấu như thường trong lúc gõ. Khi từ kết thúc (dấu cách, dấu câu), `checkMixedEnglish` tra các phím đã gõ (cả phím gõ đôi để bỏ dấu, như "ff" trong "different") trong danh sách khoảng 3.300 từ: mỗi từ có độ phổ biến (Zipf × 10) trong tiếng Anh và của chữ Việt mà Telex tạo ra từ cùng các phím. Từ được coi là tiếng Anh khi điểm Anh − điểm Việt − 5 (nghiêng về tiếng Việt) cộng độ lệch ngữ cảnh (tối đa ±20, theo ngôn ngữ các từ vừa gõ) lớn hơn 0; khi đó engine xoá chữ Việt và gửi lại phím gốc. Từ có dấu không nằm trong danh sách được tính là tiếng Việt. Một từ rõ ràng (chênh từ 20 điểm) còn sửa lại từ ngay trước nó nếu hai từ chỉ cách nhau một dấu cách: "Thể are" thành "There are", "The cả was" thành "The car was" (không làm với VNI Windows và Unicode tổ hợp vì số phím xoá không chắc chắn). Danh sách lấy từ dữ liệu [wordfreq](https://github.com/rspeer/wordfreq) (CC BY-SA 4.0); muốn đổi ngưỡng thì sửa đồng thời `Engine.cpp` và `tools/make_mixed_words.py`, rồi chạy lại script.
+**Chế độ Anh–Việt** (`vMixedEnglish`, chỉ có tác dụng khi `vLanguage` = 1). Engine vẫn bỏ dấu như thường trong lúc gõ. Khi từ kết thúc (dấu cách, dấu câu), `checkMixedEnglish` tra các phím đã gõ (cả phím gõ đôi để bỏ dấu, như "ff" trong "different") trong danh sách 3.315 từ: mỗi từ có độ phổ biến (Zipf × 10) trong tiếng Anh và của chữ Việt mà Telex tạo ra từ cùng các phím. Từ được coi là tiếng Anh khi điểm Anh − điểm Việt − 5 (nghiêng về tiếng Việt) cộng độ lệch ngữ cảnh (tối đa ±20, theo ngôn ngữ các từ vừa gõ) lớn hơn 0; khi đó engine xoá chữ Việt và gửi lại phím gốc. Từ có dấu không nằm trong danh sách (`!listed && changed`) được tính là tiếng Việt. Để tránh các danh từ riêng/viết tắt ngắn trong corpus tiếng Anh nhưng có `vi = 0` trong corpus đơn từ tiếng Việt (ví dụ `dar` từ "Dar es Salaam" đè `dả` trong `dư dả`, `già dả`), `tools/make_mixed_words.py` lọc bỏ từ nhiễu này ngay lúc sinh bảng. Một từ rõ ràng (chênh từ 20 điểm) còn sửa lại từ ngay trước nó nếu hai từ chỉ cách nhau một dấu cách: "Thể are" thành "There are", "The cả was" thành "The car was" (không làm với VNI Windows và Unicode tổ hợp vì số phím xoá không chắc chắn). Danh sách lấy từ dữ liệu [wordfreq](https://github.com/rspeer/wordfreq) (CC BY-SA 4.0); muốn đổi ngưỡng thì sửa đồng thời `Engine.cpp` và `tools/make_mixed_words.py`, rồi chạy lại script.
 
 ## 8. Giao diện
-Giao diện không dùng hộp thoại Win32 cổ điển mà tự vẽ để giống Windows 11:
+Giao diện không dùng hộp thoại Win32 cổ điển mà tự vẽ để giống Windows 11, mật độ hiển thị gọn (chiều cao tối thiểu 210px, các nút chế độ `V` · `EV` · `E` 1 dòng tự cân lại 2 nút khi bật `vTwoModesOnly`, thanh kiểu gõ dạng tab gạch chân 2px):
 
 | File | Vai trò |
 |---|---|
 | `FluentWindow` | Lớp nền cho cửa sổ: Mica, thanh tiêu đề tối/sáng, DPI theo màn hình, vẽ nút, công tắc, ô chọn. |
-| `FluentText` | Vẽ chữ bằng DirectWrite (nét mịn ở mọi mức phóng to), font Be Vietnam Pro nhúng trong exe. |
+| `FluentText` | Vẽ chữ bằng DirectWrite (nét mịn ở mọi mức phóng to), tự co cỡ chữ vừa khung có ngưỡng sàn (`createFluentFontFit`), font Be Vietnam Pro nhúng trong exe. |
 | `FluentUi` | Màu, bo góc, kích thước dùng chung. |
 | `ThemeHelper` | Đọc chế độ sáng/tối và màu nhấn của Windows, bảng màu nhấn có sẵn, tính tương phản. |
 | `SettingsWindow` | Cửa sổ Cài đặt: màn hình chính và phần Nâng cao (danh sách mục khai báo ở đầu file). |
-| `FlyoutWindow` | Popup nhỏ khi chuyển Việt/Anh và các thông báo, vẽ bằng Direct2D. |
+| `FlyoutWindow` | Popup nhỏ khi chuyển Việt/Anh và các thông báo, vẽ bằng Direct2D (ô hiệu `EV` tự co vừa theo `IDWriteTextLayout::GetMetrics`). |
 | `MessageWindow` | Hộp thoại hỏi/thông báo cùng phong cách. |
-| `SystemTrayHelper`, `TrayGlyph` | Biểu tượng khay (phím bo góc như biểu tượng ứng dụng, vẽ đúng cỡ pixel theo DPI) và menu chuột phải. |
+| `SystemTrayHelper`, `TrayGlyph` | Biểu tượng khay (phím bo góc như biểu tượng ứng dụng, vẽ đúng cỡ pixel theo DPI cho `V`/`EV`/`E`) và menu chuột phải. |
 | `AboutWindow`, `MacroWindow`, `ConvertToolWindow` | Giới thiệu, Bảng gõ tắt, Công cụ chuyển mã. |
 
 Chữ trên giao diện có hai ngôn ngữ, chọn bằng macro `TR("tiếng Việt", "English")` hoặc cặp `_T()` trong bảng mục của `SettingsWindow`.

@@ -61,8 +61,8 @@ static NOTIFYICONDATA nid;
 
 static LPCTSTR menuText(const UINT& command) {
 	switch (command) {
-	case POPUP_VIET_ON_OFF: return TR("Gõ tiếng Việt", "Type Vietnamese");
-	case POPUP_MIXED: return TR("Gõ Anh–Việt", "Type English and Vietnamese");
+	case POPUP_VIET_ON_OFF: return TR("Tiếng Việt", "Vietnamese");
+	case POPUP_MIXED: return TR("Anh–Việt", "Mixed");
 	case POPUP_TELEX: return _T("Telex");
 	case POPUP_VNI: return _T("VNI");
 	case POPUP_SIMPLE_TELEX: return _T("Simple Telex");
@@ -268,6 +268,7 @@ void SystemTrayHelper::createPopupMenu() {
 	AppendMenu(menuCodeTable, MF_UNCHECKED, POPUP_VNI_WINDOWS, menuText(POPUP_VNI_WINDOWS));
 	AppendMenu(popupMenu, MF_POPUP, (UINT_PTR)menuCodeTable, TR("Bảng mã", "Character encoding"));
 	AppendMenu(popupMenu, MF_STRING, POPUP_GAME_MODE, TR("Chế độ game", "Game mode")); //named after the app by updateGameItem
+	AppendMenu(popupMenu, MF_SEPARATOR, 0, 0);
 
 	//text only, checkmarks show what is in use
 	AppendMenu(popupMenu, MF_STRING, POPUP_MACRO_TABLE, menuText(POPUP_MACRO_TABLE));

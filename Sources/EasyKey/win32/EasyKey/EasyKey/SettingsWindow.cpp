@@ -34,9 +34,9 @@ See LICENSE and NOTICE.
 #define SETTINGS_CLASS _T("EasyKeySettingsWindow")
 #define WINDOW_STYLE (WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_THICKFRAME)
 #define WINDOW_WIDTH 440 //client width in DIPs
-#define MIN_WINDOW_HEIGHT 240
+#define MIN_WINDOW_HEIGHT 210
 #define MAX_FIT_HEIGHT 640 //opening Nâng cao grows the window up to this, then it scrolls
-#define SIDE 16 //space left and right of the cards
+#define SIDE 14 //space left and right of the cards
 #define SPELLING_GUIDE_URL _T("https://github.com/iamcino/EasyKey#ki%E1%BB%83m-tra-ch%C3%ADnh-t%E1%BA%A3-ti%E1%BA%BFng-vi%E1%BB%87t")
 
 enum ItemKind {
@@ -241,16 +241,17 @@ void SettingsWindow::applyTheme() {
 
 void SettingsWindow::createFonts() {
 	freeFonts();
-	fontBody = createFluentFont(false, (float)s(14));
+	fontBody = createFluentFont(false, (float)s(13));
 	fontCaption = createFluentFont(false, (float)s(12));
-	fontSmall = createFluentFont(false, (float)s(13));
+	fontSmall = createFluentFont(false, (float)s(12));
 	fontStrong = createFluentFont(true, (float)s(13));
-	fontTitle = createFluentFont(true, (float)s(15));
-	fontBadge = createFluentFont(false, (float)s(15), true);
+	fontTitle = createFluentFont(true, (float)s(14));
+	fontBadge = createFluentFont(false, (float)s(14), true);
+	fontBadgeEV = createFluentFontFit(false, (float)s(13), (float)s(10), L"EV", s(18), true);
 }
 
 void SettingsWindow::freeFonts() {
-	FluentFont** fonts[] = { &fontBody, &fontCaption, &fontSmall, &fontStrong, &fontTitle, &fontBadge };
+	FluentFont** fonts[] = { &fontBody, &fontCaption, &fontSmall, &fontStrong, &fontTitle, &fontBadge, &fontBadgeEV };
 	for (FluentFont** font : fonts)
 		freeFluentFont(*font);
 }
@@ -294,43 +295,42 @@ void SettingsWindow::layout() {
 	};
 
 	//Vietnamese, mixed or English (TYPING_MODE 1, 2, 0), three big buttons and the hotkey below them
-	int pad = s(4), gap = s(4);
+	int pad = s(4), gap = s(4), btnH = s(44), hotH = s(28);
 	int inner = right - left - pad * 2;
-	heroArea = makeRect(left, y, right - left, pad + s(56) + gap + s(32) + pad);
+	heroArea = makeRect(left, y, right - left, pad + btnH + gap + hotH + pad);
 	if (vTwoModesOnly) {
 		int half = (inner - gap) / 2;
-		push(K_LANG, 1, T(_T("Tiếng Việt"), _T("Vietnamese")), NULL, makeRect(left + pad, y + pad, half, s(56)));
-		push(K_LANG, 0, T(_T("Tiếng Anh"), _T("English")), NULL, makeRect(left + pad + half + gap, y + pad, inner - half - gap, s(56)));
+		push(K_LANG, 1, T(_T("Tiếng Việt"), _T("Vietnamese")), NULL, makeRect(left + pad, y + pad, half, btnH));
+		push(K_LANG, 0, T(_T("Tiếng Anh"), _T("English")), NULL, makeRect(left + pad + half + gap, y + pad, inner - half - gap, btnH));
 	} else {
 		int third = (inner - gap * 2) / 3;
-		push(K_LANG, 1, T(_T("Tiếng Việt"), _T("Vietnamese")), NULL, makeRect(left + pad, y + pad, third, s(56)));
-		push(K_LANG, 2, T(_T("Anh–Việt"), _T("Mixed")), NULL, makeRect(left + pad + third + gap, y + pad, third, s(56)));
-		push(K_LANG, 0, T(_T("Tiếng Anh"), _T("English")), NULL, makeRect(left + pad + (third + gap) * 2, y + pad, inner - (third + gap) * 2, s(56)));
+		push(K_LANG, 1, T(_T("Tiếng Việt"), _T("Vietnamese")), NULL, makeRect(left + pad, y + pad, third, btnH));
+		push(K_LANG, 2, T(_T("Anh–Việt"), _T("Mixed")), NULL, makeRect(left + pad + third + gap, y + pad, third, btnH));
+		push(K_LANG, 0, T(_T("Tiếng Anh"), _T("English")), NULL, makeRect(left + pad + (third + gap) * 2, y + pad, inner - (third + gap) * 2, btnH));
 	}
-	int i = push(K_HOTKEY, 0, T(_T("Chuyển nhanh"), _T("Switch with")), NULL, makeRect(left + pad, y + pad + s(56) + gap, inner, s(32)));
+	int i = push(K_HOTKEY, 0, T(_T("Phím chuyển"), _T("Shortcut")), NULL, makeRect(left + pad, y + pad + btnH + gap, inner, hotH));
 	items[i].linkAction = ACT_CAPTURE;
-	LPCTSTR linkText = capturing && captureTarget == 0 ? T(_T("Huỷ"), _T("Cancel")) : T(_T("Đổi phím"), _T("Change"));
-	int linkWidth = textWidth(fontSmall, linkText) + s(16);
-	items[i].link = makeRect(items[i].rc.right - linkWidth, centerY(items[i].rc) - s(13), linkWidth, s(26));
-	y = heroArea.bottom + s(14);
+	LPCTSTR linkText = capturing && captureTarget == 0 ? T(_T("Huỷ"), _T("Cancel")) : T(_T("Đổi"), _T("Edit"));
+	int linkWidth = textWidth(fontSmall, linkText) + s(12);
+	items[i].link = makeRect(items[i].rc.right - linkWidth, centerY(items[i].rc) - s(12), linkWidth, s(24));
+	y = heroArea.bottom + s(10);
 
-	//input type as a segmented control
-	add(K_SECTION, 0, T(_T("Kiểu gõ"), _T("Input method")), NULL, s(18));
-	y += s(6);
+	//input type as a flat tab bar
+	add(K_SECTION, 0, T(_T("Kiểu gõ"), _T("Input method")), NULL, s(16));
+	y += s(4);
 	vector<LPCTSTR>& inputTypes = EasyKeyManager::getInputType();
-	int segment = add(K_SEGMENT, 0, NULL, NULL, s(36));
+	int segment = add(K_SEGMENT, 0, NULL, NULL, s(30));
 	int count = (int)inputTypes.size();
-	int segmentWidth = (right - left - s(6) - s(3) * (count - 1)) / max(1, count);
+	int segmentWidth = (right - left - s(4) - s(2) * (count - 1)) / max(1, count);
 	for (int t = 0; t < count; t++) {
-		int x = left + s(3) + t * (segmentWidth + s(3));
-		int w = t == count - 1 ? right - s(3) - x : segmentWidth;
-		push(K_SEGBUTTON, t, inputTypes[t], NULL, makeRect(x, items[segment].rc.top + s(3), w, s(30)));
+		int x = left + s(2) + t * (segmentWidth + s(2));
+		int w = t == count - 1 ? right - s(2) - x : segmentWidth;
+		push(K_SEGBUTTON, t, inputTypes[t], NULL, makeRect(x, items[segment].rc.top + s(2), w, s(26)));
 	}
-	y += s(14);
+	y += s(10);
 
-	//everything else is folded into one expander
-	int expander = add(K_EXPANDER, ACT_EXPAND, T(_T("Nâng cao"), _T("Advanced")),
-		T(_T("Gõ, giao diện, bảng mã, hệ thống"), _T("Typing, appearance, encoding, system")), s(48));
+	//everything else is folded into one expander (compact single-line header)
+	int expander = add(K_EXPANDER, ACT_EXPAND, T(_T("Nâng cao"), _T("Advanced")), NULL, s(38));
 	items[expander].ctl = makeRect(items[expander].rc.right - s(14) - s(16), centerY(items[expander].rc) - s(8), s(16), s(16));
 	items[expander].textRight = items[expander].ctl.left - s(12);
 	if (expanded) {
@@ -348,7 +348,7 @@ void SettingsWindow::layout() {
 			if (row.kind == K_GROUP) {
 				//each group folds; its header is a row with a chevron
 				groupOpen = (openGroups & (1 << row.id)) != 0;
-				i = add(row.kind, row.id, T(row.vi, row.en), NULL, s(44));
+				i = add(row.kind, row.id, T(row.vi, row.en), NULL, s(38));
 				items[i].ctl = makeRect(items[i].rc.right - s(14) - s(16), centerY(items[i].rc) - s(8), s(16), s(16));
 				items[i].textRight = items[i].ctl.left - s(12);
 				afterLabel = groupOpen;
@@ -359,12 +359,12 @@ void SettingsWindow::layout() {
 			if (row.kind == K_SUBLABEL) {
 				//display language and color mode: three choices each in a small segmented control
 				auto addChoices = [&](const int& id, const int& kind, LPCTSTR label, LPCTSTR* names) {
-					i = add(K_SUBSEG, id, label, NULL, s(44));
+					i = add(K_SUBSEG, id, label, NULL, s(38));
 					items[i].afterLabel = afterLabel;
 					afterLabel = false;
 					int widths[3], total = s(4);
 					for (int n = 0; n < 3; n++) {
-						widths[n] = textWidth(fontCaption, names[n]) + s(16);
+						widths[n] = textWidth(fontCaption, names[n]) + s(12);
 						total += widths[n] + s(2);
 					}
 					items[i].ctl = makeRect(items[i].rc.right - s(14) - total, centerY(items[i].rc) - s(15), total, s(30));
@@ -407,7 +407,7 @@ void SettingsWindow::layout() {
 				afterLabel = false;
 				continue;
 			}
-			i = add(row.kind, row.id, T(row.vi, row.en), T(row.hintVi, row.hintEn), s(row.hintVi ? 52 : 40));
+			i = add(row.kind, row.id, T(row.vi, row.en), T(row.hintVi, row.hintEn), s(row.hintVi ? 46 : 36));
 			items[i].afterLabel = afterLabel;
 			afterLabel = false;
 			if (row.kind == K_SUBTOGGLE)
@@ -416,32 +416,32 @@ void SettingsWindow::layout() {
 				placeField(items[i], row.kind == K_SUBCOMBO ? comboWidth : buttonWidth);
 			if (row.id == OPT_INPUT_HOTKEY && vSwitchInputType) {
 				//the keys, with a link to change them, under the switch
-				i = add(K_HOTKEY, 1, T(_T("Phím tắt"), _T("Keys")), NULL, s(40));
+				i = add(K_HOTKEY, 1, T(_T("Phím tắt"), _T("Keys")), NULL, s(36));
 				items[i].linkAction = ACT_CAPTURE_INPUT;
-				LPCTSTR text = capturing && captureTarget == 1 ? T(_T("Huỷ"), _T("Cancel")) : T(_T("Đổi phím"), _T("Change"));
-				int width = textWidth(fontSmall, text) + s(16);
-				items[i].link = makeRect(items[i].rc.right - s(8) - width, centerY(items[i].rc) - s(13), width, s(26));
+				LPCTSTR text = capturing && captureTarget == 1 ? T(_T("Huỷ"), _T("Cancel")) : T(_T("Đổi"), _T("Edit"));
+				int width = textWidth(fontSmall, text) + s(12);
+				items[i].link = makeRect(items[i].rc.right - s(8) - width, centerY(items[i].rc) - s(12), width, s(24));
 			}
 		}
-		y += s(6);
+		y += s(4);
 		expandArea = makeRect(left, items[expander].rc.top, right - left, y - items[expander].rc.top);
 	}
-	y += s(10);
+	y += s(8);
 
 	//footer; the shortcut list and the converter open from the tray menu
 	LPCTSTR about = T(_T("Giới thiệu"), _T("About"));
-	push(K_LINK, ACT_ABOUT, about, NULL, makeRect(left + s(2), y, textWidth(fontSmall, about), s(28)));
+	push(K_LINK, ACT_ABOUT, about, NULL, makeRect(left + s(2), y, textWidth(fontSmall, about), s(24)));
 	if (!Updater::availableVersion().empty()) {
 		//a background check found a newer version: offer it where the version number sits
 		static wstring update;
 		update = T(_T("↑ Cập nhật lên "), _T("↑ Update to ")) + utf8ToWideString(Updater::availableVersion());
 		int w = textWidth(fontSmall, update.c_str());
-		push(K_LINK, ACT_UPDATE, update.c_str(), NULL, makeRect(right - s(2) - w, y, w, s(28)));
-		y += s(28);
+		push(K_LINK, ACT_UPDATE, update.c_str(), NULL, makeRect(right - s(2) - w, y, w, s(24)));
+		y += s(24);
 	} else {
-		add(K_VERSION, 0, NULL, NULL, s(28));
+		add(K_VERSION, 0, NULL, NULL, s(24));
 	}
-	y += s(10);
+	y += s(8);
 	contentHeight = y;
 
 	if (focusItem >= (int)items.size() || (focusItem >= 0 && !isInteractive(focusItem, focusPart)))
@@ -663,24 +663,24 @@ void SettingsWindow::paintItem(Gdiplus::Graphics& g, const Item& item, const int
 	case K_LANG: {
 		bool on = TYPING_MODE == item.id;
 		if (on)
-			fillRound(g, rc, (float)s(9), pal.accent);
+			fillRound(g, rc, (float)s(8), pal.accent);
 		else if (hot)
-			fillRound(g, rc, (float)s(9), pressed ? pal.cardPressed : pal.cardHover);
-		RECT badge = makeRect(rc.left + s(8), cy - s(14), s(28), s(28));
+			fillRound(g, rc, (float)s(8), pressed ? pal.cardPressed : pal.cardHover);
+		int groupW = s(26) + s(7) + textWidth(fontTitle, item.label);
+		int x = rc.left + max(s(7), (rc.right - rc.left - groupW) / 2);
+		RECT badge = makeRect(x, cy - s(13), s(26), s(26));
 		if (on)
-			fillRound(g, badge, (float)s(8), pal.onAccent == 0xFFFFFFFF ? fade(0xFFFFFFFF, 22) : 0x24000000);
+			fillRound(g, badge, (float)s(7), pal.onAccent == 0xFFFFFFFF ? fade(0xFFFFFFFF, 22) : 0x24000000);
 		else
-			fillRound(g, badge, (float)s(8), pal.field, pal.stroke);
+			fillRound(g, badge, (float)s(7), pal.field, pal.stroke);
 		DWORD color = on ? pal.onAccent : pal.text;
-		//EV: the upright E reads heavier than the slanted V, so the pair looks centered a bit to the right
+		//EV: auto-fitted via IDWriteTextLayout::GetMetrics() with floor; shifted slightly right for optical balance
 		RECT letters = badge;
 		if (item.id == 2)
 			OffsetRect(&letters, s(1), 0);
-		drawText(g, item.id == 2 ? _T("EV") : item.id ? _T("V") : _T("E"), letters, item.id == 2 ? fontCaption : fontBadge, color, 1, 3);
-		RECT title = { badge.right + s(8), rc.top, rc.right - s(4), cy + s(2) };
-		drawText(g, item.label, title, fontTitle, color, 0, 2);
-		RECT state = { title.left, cy + s(2), title.right, rc.bottom };
-		drawText(g, on ? T(_T("Đang dùng"), _T("In use")) : T(_T("Bấm để chọn"), _T("Click to use")), state, fontCaption, fade(color, 80), 0, 0);
+		drawText(g, item.id == 2 ? _T("EV") : item.id ? _T("V") : _T("E"), letters, item.id == 2 ? fontBadgeEV : fontBadge, color, 1, 3);
+		RECT title = { badge.right + s(7), rc.top, rc.right - s(4), rc.bottom };
+		drawText(g, item.label, title, fontTitle, color, 0, 1);
 		break;
 	}
 	case K_HOTKEY: {
@@ -710,21 +710,24 @@ void SettingsWindow::paintItem(Gdiplus::Graphics& g, const Item& item, const int
 		bool linkHot = index == hotItem && hotPart == 1;
 		if (linkHot)
 			fillRound(g, link, (float)s(6), pal.cardHover);
-		drawText(g, mine ? T(_T("Huỷ"), _T("Cancel")) : T(_T("Đổi phím"), _T("Change")), link, fontSmall, linkHot ? pal.linkHover : pal.link, 1, 1);
+		drawText(g, mine ? T(_T("Huỷ"), _T("Cancel")) : T(_T("Đổi"), _T("Edit")), link, fontSmall, linkHot ? pal.linkHover : pal.link, 1, 1);
 		break;
 	}
 	case K_SECTION:
 		drawText(g, item.label, makeRect(rc.left + s(2), rc.top, rc.right - rc.left, rc.bottom - rc.top), fontStrong, pal.text, 0, 2);
 		break;
 	case K_SEGMENT:
-		fillRound(g, rc, (float)s(10), pal.track, pal.stroke);
+		fillRound(g, rc, (float)s(8), pal.card, pal.stroke);
 		break;
 	case K_SEGBUTTON: {
 		bool on = item.id == vInputType;
-		if (on)
-			fillRound(g, rc, (float)s(7), pal.field, pal.stroke);
-		else if (hot)
-			fillRound(g, rc, (float)s(7), pressed ? pal.cardPressed : pal.cardHover);
+		if (on) {
+			fillRound(g, rc, (float)s(6), pal.field);
+			RECT bar = { rc.left + s(12), rc.bottom - s(2), rc.right - s(12), rc.bottom };
+			fillRound(g, bar, (float)s(1), pal.accent);
+		} else if (hot) {
+			fillRound(g, rc, (float)s(6), pressed ? pal.cardPressed : pal.cardHover);
+		}
 		drawText(g, item.label, rc, on ? fontStrong : fontSmall, on || hot ? pal.text : pal.sub, 1, 1);
 		break;
 	}

@@ -189,6 +189,18 @@ FluentFont* createFluentFont(const bool& strong, const float& pixels, const bool
 	return font;
 }
 
+FluentFont* createFluentFontFit(const bool& strong, const float& maxPixels, const float& minPixels, const wstring& text, const int& maxWidth, const bool& bold) {
+	float pixels = maxPixels;
+	float floorPixels = min(maxPixels, max(minPixels, 1.0f));
+	FluentFont* font = createFluentFont(strong, pixels, bold);
+	while (pixels > floorPixels && fluentTextWidth(font, text) > maxWidth) {
+		freeFluentFont(font);
+		pixels = max(floorPixels, pixels - 0.5f);
+		font = createFluentFont(strong, pixels, bold);
+	}
+	return font;
+}
+
 void freeFluentFont(FluentFont*& font) {
 	if (!font)
 		return;
