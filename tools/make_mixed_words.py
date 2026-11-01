@@ -37,6 +37,12 @@ CURATED_WHITELIST = {
     'fix', 'fixed', 'fixes', 'fixing'
 }
 
+# Proper nouns/acronyms in the English list whose Telex form is a real Vietnamese compound syllable
+# that has vi=0 in single-word counts (e.g. "dar" -> "dả" in "dư dả", "già dả")
+JUNK_PROPER_NOUNS = {
+    'dar',
+}
+
 # a Vietnamese syllable without marks; an English word that isn't one ("you", "are") is no Vietnamese word,
 # whatever the Vietnamese counts say (they come from text that mixes in English)
 SYLLABLE = re.compile('^(ngh|ng|gh|gi|kh|nh|ph|qu|th|tr|ch|[bcdghklmnprstvx])?'
@@ -53,6 +59,8 @@ telex = dict(line.split('\t') for line in out.splitlines())
 
 words = {}
 for w in english:
+    if w in JUNK_PROPER_NOUNS:
+        continue
     en, typed = zipf(w, 'en'), telex[w]
     if typed != w:
         vi = zipf(typed, 'vi')  # 0 when Telex made no Vietnamese word of it ("different" -> "diferent")

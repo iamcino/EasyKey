@@ -395,6 +395,24 @@ static void testMixed() {
     expectTyping("Backspace across space", "dungf back<<<<<space ", L"dungfspace ");
     vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
     expectTyping("Backspace across dot EV", "abc. <<d ", L"abcd ");
+    // Vietnamese compound syllable "dả" ("dư dả", "già dả") must not be overwritten by "dar"
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed dư dả", "duw dar ", L"d\u01b0 d\u1ea3 ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed già dả", "giaf dar ", L"gi\u00e0 d\u1ea3 ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed dade", "dade ", L"dade ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed dara", "dara ", L"dara ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed darrell", "darrell ", L"darrell ");
+    // English words that change under Telex must remain English in Vietnamese context
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed guard how", "tooi bieets how to do ", L"t\u00f4i bi\u1ebft how to do ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed guard now", "ngay now ", L"ngay now ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("Mixed guard see", "tooi see ", L"t\u00f4i see ");
     vMixedEnglish = 0;
     vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
 }
@@ -420,6 +438,11 @@ static void testVNI() {
     expectTyping("VNI", "me5 ", L"mẹ ");
     expectTyping("VNI", "la2 ", L"là ");
     expectTyping("VNI", "ba2 ", L"bà ");
+    vMixedEnglish = 1;
+    expectTyping("VNI EV me5", "me5 ", L"m\u1eb9 ");
+    expectTyping("VNI EV la2", "la2 ", L"l\u00e0 ");
+    expectTyping("VNI EV user_id", "user_id ", L"user_id ");
+    vMixedEnglish = 0;
 }
 
 static void expectConvert(const char* name, const string& input, const string& expected) {
