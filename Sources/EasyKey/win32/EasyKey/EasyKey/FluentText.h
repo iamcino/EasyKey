@@ -28,6 +28,7 @@ LPCWSTR fluentGdiFontFace(); //for GDI controls, NULL when GDI could not take it
 
 //strong is semibold, bold asks for more but gets semibold, the heaviest weight EasyKey carries
 FluentFont* createFluentFont(const bool& strong, const float& pixels, const bool& bold = false);
+FluentFont* createFluentFontFit(const bool& strong, const float& maxPixels, const float& minPixels, const wstring& text, const int& maxWidth, const bool& bold = false);
 void freeFluentFont(FluentFont*& font);
 
 int fluentTextWidth(FluentFont* font, const wstring& text);

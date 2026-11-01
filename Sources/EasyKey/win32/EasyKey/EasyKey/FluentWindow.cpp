@@ -340,7 +340,7 @@ int FluentWindow::addHotKeyRow(const int& id, const wstring& label, const int& h
 	c.hotKey = hotKey;
 	c.rc = rc;
 	c.divider = divider;
-	wstring link = capturing == id ? TR("Huỷ", "Cancel") : TR("Đổi phím", "Change");
+	wstring link = capturing == id ? TR("Huỷ", "Cancel") : TR("Đổi", "Edit");
 	int linkWidth = textWidth(fontSmall, link) + s(16);
 	c.ctl = makeRect(rc.right - s(8) - linkWidth, centerY(rc) - s(13), linkWidth, s(26));
 	return add(c);
@@ -640,7 +640,7 @@ void FluentWindow::paintControl(Gdiplus::Graphics& g, const Control& c, const in
 		bool linkHot = isHot;
 		if (linkHot)
 			fillRound(g, c.ctl, (float)s(6), pal.cardHover);
-		drawText(g, capturing == c.id ? TR("Huỷ", "Cancel") : TR("Đổi phím", "Change"), c.ctl, fontSmall,
+		drawText(g, capturing == c.id ? TR("Huỷ", "Cancel") : TR("Đổi", "Edit"), c.ctl, fontSmall,
 			linkHot ? pal.linkHover : pal.link, 1, 1);
 		break;
 	}

@@ -68,21 +68,23 @@ void drawTrayGlyph(const int& size, const int& letters,
 
 	//E: three bars and two gaps of about one stroke each, and its middle bar has to land on whole pixels too.
 	//Next to V it is narrower, so both fit the cap with room around them
-	int height = (int)floorf(capHeight * 0.6f + 0.5f);
+	int height = (int)floorf(capHeight * (two ? 0.5f : 0.6f) + 0.5f);
 	int stroke = (int)floorf(height / 5.0f + 0.5f);
-	if (stroke < 2)
+	if (stroke < 1)
+		stroke = 1;
+	else if (stroke < 2 && height >= 7)
 		stroke = 2;
 	if ((height - stroke) % 2)
 		height++;
 	int top = tileTop + (capHeight - height) / 2;
-	int eWidth = (int)floorf(height * (two ? 0.62f : 0.7f) + 0.5f);
+	int eWidth = (int)floorf(height * (two ? 0.56f : 0.7f) + 0.5f);
 
 	//V: two strokes with round ends meeting at the foot, like the app icon
 	float vHeight = two ? (float)height : capHeight * 0.64f;
 	float vStroke = two ? height * 0.24f : capHeight * 0.17f;
 	if (vStroke < 1.6f)
 		vStroke = 1.6f;
-	float vWidth = two ? vHeight * 0.8f : vHeight; //alone, the V is as wide as it is tall
+	float vWidth = two ? vHeight * 0.72f : vHeight; //alone, the V is as wide as it is tall
 	float vTop = two ? (float)top : tileTop + (capHeight - vHeight) / 2.0f;
 
 	//alone each letter sits in the middle of the cap; EV is centered as a pair, a stroke apart

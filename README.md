@@ -106,7 +106,7 @@ tiếng (lập trình, công việc, học tập):
   (thí), "test" (tét), "mix" (mĩ).
 - Xét theo ngữ cảnh: "tôi sẽ đi" vẫn là tiếng Việt, còn "There are" không
   thành "Thể are".
-- Bật bằng nút **Anh–Việt** (badge EV) trong Cài đặt hoặc mục **Gõ Anh–Việt**
+- Bật bằng nút **Anh–Việt** (badge EV) trong Cài đặt hoặc mục **Anh–Việt**
   ở menu khay. **Alt + Z** hay bấm vào biểu tượng khay lần lượt
   chuyển qua cả ba chế độ: Việt, Anh–Việt, Anh. Nếu muốn bàn phím chỉ xoay vòng giữa Tiếng Việt và Tiếng Anh (không dùng chế độ Anh–Việt), bạn có thể bật tuỳ chọn **Chỉ dùng 2 chế độ Anh và Việt** trong Cài đặt › Nâng cao › Gõ.
 
@@ -183,18 +183,18 @@ tra cập nhật…** để kiểm tra ngay.
 
 1. Chạy EasyKey. Biểu tượng xuất hiện ở khay hệ thống (góc phải thanh tác vụ).
 2. Gõ thử trong bất kỳ ứng dụng nào. Bấm **Alt + Z** để chuyển Việt/Anh.
-3. Hay gõ lẫn tiếng Anh? Bấm phải vào biểu tượng › **Gõ Anh–Việt**.
+3. Hay gõ lẫn tiếng Anh? Bấm phải vào biểu tượng › **Anh–Việt**.
 4. Bấm đúp vào biểu tượng để mở Cài đặt và chọn kiểu gõ, màu, phím tắt.
 
 | Muốn làm gì | Cách làm |
 |---|---|
 | Chuyển Việt → Anh–Việt → Anh | Bấm **Alt + Z**, hoặc bấm vào biểu tượng ở khay |
-| Gõ lẫn tiếng Anh trong câu tiếng Việt | Bấm phải vào biểu tượng ở khay › Gõ Anh–Việt, hoặc chọn Anh–Việt trong Cài đặt |
+| Gõ lẫn tiếng Anh trong câu tiếng Việt | Bấm phải vào biểu tượng ở khay › Anh–Việt, hoặc chọn Anh–Việt trong Cài đặt |
 | Mở Cài đặt | Bấm đúp vào biểu tượng ở khay, hoặc bấm phải › Cài đặt… |
 | Đổi kiểu gõ, bảng mã | Bấm phải vào biểu tượng ở khay › Kiểu gõ / Bảng mã, hoặc trong Cài đặt |
 | Lấy lại phím vừa gõ khi bị bỏ dấu nhầm | Bấm **Esc** ngay sau từ đó (việt → vieejt) |
 | Bật chế độ game cho game đang chơi | Khi đang ở trong game, bấm phải vào biểu tượng ở khay › Chế độ game cho … |
-| Đổi phím tắt chuyển Việt/Anh | Cài đặt › Chuyển nhanh › Đổi phím |
+| Đổi phím tắt chuyển Việt/Anh | Cài đặt › Phím chuyển › Đổi |
 | Sửa bảng gõ tắt | Cài đặt › Nâng cao › Gõ › Bảng gõ tắt |
 
 ## Cách hoạt động

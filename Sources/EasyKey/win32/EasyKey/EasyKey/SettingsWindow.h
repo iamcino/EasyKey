@@ -47,7 +47,7 @@ private:
 	UINT dpi = USER_DEFAULT_SCREEN_DPI;
 	FluentPalette pal;
 	bool translucent = false;
-	FluentFont *fontBody = NULL, *fontCaption = NULL, *fontSmall = NULL, *fontStrong = NULL, *fontTitle = NULL, *fontBadge = NULL;
+	FluentFont *fontBody = NULL, *fontCaption = NULL, *fontSmall = NULL, *fontStrong = NULL, *fontTitle = NULL, *fontBadge = NULL, *fontBadgeEV = NULL;
 	FluentTextBatch textBatch;
 
 	vector<Item> items;

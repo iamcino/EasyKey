@@ -2,6 +2,12 @@
 
 **Tiếng Việt** · [English](CHANGELOG.en.md)
 
+## 1.0.17 (Windows 11 x64)
+- Cửa sổ Cài đặt gọn hơn: thu gọn khoảng cách và cỡ chữ, ba nút chế độ **Tiếng Việt** · **Anh–Việt** · **Tiếng Anh** nằm trên một dòng và tự căn giữa cụm chữ (cả khi dùng 2 chế độ), thanh kiểu gõ chuyển sang dạng tab phẳng có vạch màu nhấn bên dưới, phần **Nâng cao** mở gọn hơn.
+- Chữ **EV** ở nút chế độ, popup khi chuyển chế độ và biểu tượng khay được cân lại kích thước cho vừa khung, không chạm viền ở mọi mức phóng to; ở biểu tượng khay cỡ nhỏ (16px) chữ E vẫn tách rõ ba vạch ngang.
+- Nhãn ngắn gọn hơn: **Phím chuyển** › **Đổi** (thay cho "Chuyển nhanh › Đổi phím"), menu chuột phải ở khay dùng **Tiếng Việt** và **Anh–Việt**, thêm vạch ngăn trước mục **Bảng gõ tắt…**.
+- Chế độ Anh–Việt: gõ `dư dả`, `già dả` không còn bị đổi nhầm thành "dư dar", "già dar".
+
 ## 1.0.16 (Windows 11 x64)
 - `EasyKey.exe` nhẹ hơn khoảng 32%, từ 939 KB xuống 636 KB: phần chuyển mã chữ và đọc/ghi file dùng API có sẵn của Windows thay cho các thành phần C++ nặng.
 - Sửa lỗi ứng dụng có thể bị tắt ngang khi file gõ tắt có chuỗi UTF-8 hỏng. Giờ ký tự hỏng hiện thành "�" và gõ tắt vẫn được nạp.

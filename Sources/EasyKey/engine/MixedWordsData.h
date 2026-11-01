@@ -7,7 +7,7 @@
 //  SPDX-License-Identifier: GPL-3.0-only AND CC-BY-SA-4.0
 //
 
-#define MIXED_WORD_COUNT 3316
+#define MIXED_WORD_COUNT 3315
 
 static const char MIXED_WORDS[] =
     "azh\naaX0\naaaVS\naacN0\naapS0\nabilityb0\nablef0\naboutp0\naboved0\nabsolutelyb0\nacaS0\naccessb0\naccordinge0\n"
@@ -82,7 +82,7 @@ static const char MIXED_WORDS[] =
     "createdb0\ncreatorZ0\ncreditb0\ncrossb0\ncuT]\ncuffS0\ncuffsP0\ncultureb0\ncung@j\ncuomoQ0\ncupca\ncupsY\\\n"
     "curranN0\ncurrenciesT0\ncurrency\\0\ncurrente0\ncurrentlyc0\ncurrentsT0\ncurriculaN0\ncurricularO0\ncurriculumY0\n"
     "currieON\ncurryX0\ncursesP0\ncursorO0\ncuspN\\\ncutdR\ncuts\\V\ncystO0\ndg0\nda]f\ndacaN0\ndadbh\ndadaO0\n"
-    "daddy\\0\ndadeP0\ndailyc0\ndamnc0\ndandyP0\ndanhAj\ndansQ[\ndaoNb\ndarQ0\ndaraN0\ndarfurN0\ndarkb0\ndarnT0\n"
+    "daddy\\0\ndadeP0\ndailyc0\ndamnc0\ndandyP0\ndanhAj\ndansQ[\ndaoNb\ndaraN0\ndarfurN0\ndarkb0\ndarnT0\n"
     "darrellP0\ndarrenV0\ndarrylQU\ndasU0\ndatae0\ndated0\ndaughterc0\ndavidc0\ndawO0\ndawn[0\ndayl]\ndaysh0\n"
     "ddU]\nded`\ndeadd0\ndeale0\ndeathf0\ndebugM0\ndecemberc0\ndecidedc0\ndecisionc0\ndedicateS0\ndedicated^0\n"
     "dedicatingN0\ndedicationX0\ndeduceN0\ndeductO0\ndeductedP0\ndeductibleR0\ndeductionS0\ndeductionsQ0\n"

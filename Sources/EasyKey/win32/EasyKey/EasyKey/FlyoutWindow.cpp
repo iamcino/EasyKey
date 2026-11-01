@@ -232,10 +232,20 @@ void FlyoutWindow::render(const UINT& dpi, const RECT& workArea, const bool& mes
 	IDWriteTextFormat* titleFormat = textFormat(DWRITE_FONT_WEIGHT_SEMI_BOLD, s(16));
 	IDWriteTextFormat* detailFormat = textFormat(DWRITE_FONT_WEIGHT_NORMAL, s(12));
 	bool twoLetters = !vTwoModesOnly && vietnamese && vMixedEnglish && !(message && messageWarning);
-	IDWriteTextFormat* badgeFormat = textFormat(DWRITE_FONT_WEIGHT_BOLD, s(twoLetters ? 15 : 17));
+	wstring badgeText = message && messageWarning ? _T("!") : !vietnamese ? _T("E") : twoLetters ? _T("EV") : _T("V");
+	float badgeFontPx = s(twoLetters ? 14.5f : 17.0f);
+	float badgeFloorPx = s(11.0f);
+	IDWriteTextFormat* badgeFormat = textFormat(DWRITE_FONT_WEIGHT_BOLD, badgeFontPx);
 	IDWriteTextLayout* titleLayout = textLayout(title, titleFormat, titleHeight);
 	IDWriteTextLayout* detailLayout = textLayout(detail, detailFormat, pillHeight / 2);
-	IDWriteTextLayout* badgeLayout = textLayout(message && messageWarning ? _T("!") : !vietnamese ? _T("E") : twoLetters ? _T("EV") : _T("V"), badgeFormat, s(40));
+	IDWriteTextLayout* badgeLayout = textLayout(badgeText, badgeFormat, s(40.0f));
+	while (twoLetters && badgeFontPx > badgeFloorPx && textWidthOf(badgeLayout) > s(26.0f)) {
+		if (badgeLayout) badgeLayout->Release();
+		if (badgeFormat) badgeFormat->Release();
+		badgeFontPx = max(badgeFloorPx, badgeFontPx - 0.5f);
+		badgeFormat = textFormat(DWRITE_FONT_WEIGHT_BOLD, badgeFontPx);
+		badgeLayout = textLayout(badgeText, badgeFormat, s(40.0f));
+	}
 	if (titleLayout)
 		titleLayout->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_FAR);
 	if (badgeLayout) {

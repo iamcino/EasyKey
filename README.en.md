@@ -108,8 +108,8 @@ languages (coding, work, study):
   (thí), "test" (tét), "mix" (mĩ).
 - It reads the context: "tôi sẽ đi" stays Vietnamese, and "There are" does not
   become "Thể are".
-- Turn it on with the **Mixed** button (EV badge) in Settings or **Type English
-  and Vietnamese** in the tray menu. **Alt + Z** or a click on the tray icon goes
+- Turn it on with the **Mixed** button (EV badge) in Settings or **Mixed** in
+  the tray menu. **Alt + Z** or a click on the tray icon goes
   through the three modes in turn: Vietnamese, Mixed, English. If you prefer cycling only between Vietnamese and English (hiding Mixed mode entirely), enable **Only 2 modes (English and Vietnamese)** under Settings › Advanced › Typing.
 
 ### Per app
@@ -191,20 +191,20 @@ restarts. Right-click › **Check for updates…** to check right away.
 1. Run EasyKey. Its icon appears in the notification area (the right end of
    the taskbar).
 2. Type in any app. Press **Alt + Z** to switch between Vietnamese and English.
-3. Mix in English often? Right-click the icon › **Type English and
-   Vietnamese**.
+3. Mix in English often? Right-click the icon › **Mixed**, or pick Mixed in
+   Settings.
 4. Double-click the icon to open Settings and pick your input method, colors
    and keys.
 
 | To do this | Do this |
 |---|---|
 | Switch Vietnamese → Mixed → English | Press **Alt + Z**, or click the tray icon |
-| Mix English words into Vietnamese | Right-click the tray icon › Type English and Vietnamese, or pick Mixed in Settings |
+| Mix English words into Vietnamese | Right-click the tray icon › Mixed, or pick Mixed in Settings |
 | Open Settings | Double-click the tray icon, or right-click › Settings… |
 | Change input method or encoding | Right-click the tray icon › Input method / Character encoding, or use Settings |
 | Undo the marks EasyKey just added | Press **Esc** right after the word (việt → vieejt) |
 | Turn on game mode for a game | While in the game, right-click the tray icon › Game mode for … |
-| Change the switch keys | Settings › Switch with › Change |
+| Change the switch keys | Settings › Shortcut › Edit |
 | Edit your shortcuts | Settings › Advanced › Typing › Shortcut list |
 
 ## How it works

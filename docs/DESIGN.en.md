@@ -2,7 +2,7 @@
 
 [Tiếng Việt](DESIGN.md) · **English**
 
-> Version 1.0.11 · Windows 11 x64 · C++ / Win32, Direct2D, DirectWrite
+> Version 1.0.17 · Windows 11 x64 · C++ / Win32, Direct2D, DirectWrite
 
 This document explains how EasyKey works and how its source code is organized. It is for anyone who wants to read, change or contribute to the code. How to use EasyKey is in the [README](../README.en.md), how to build it in [BUILD](BUILD.en.md), contribution rules in [CONTRIBUTING](../CONTRIBUTING.md).
 
@@ -107,21 +107,21 @@ Both skip the check while an elevated window is in front, because the hook not s
 
 Engine tests are in `Sources/EasyKey/tests/EngineTests.cpp` (Telex, VNI, conversion, mixed mode). When you fix an engine bug, add a test for it.
 
-**Mixed English and Vietnamese mode** (`vMixedEnglish`, only while `vLanguage` is 1). The engine adds marks as usual while typing. When the word ends (space, punctuation), `checkMixedEnglish` looks up the keys as typed (including a doubled key that undid a mark, like "ff" in "different") in a list of about 3,300 words: each has how common it is (Zipf × 10) in English, and how common the Vietnamese word is that Telex makes of the same keys. The word counts as English when English − Vietnamese − 5 (a lean towards Vietnamese) plus a context bias (up to ±20, from the language of the last words) is above 0; the engine then deletes the Vietnamese and sends the original keys. A word with marks that is not in the list counts as Vietnamese. A clear word (20 points or more apart) also fixes the word right before it when only one space is between them: "Thể are" becomes "There are", "The cả was" becomes "The car was" (not with VNI Windows and Unicode combining, where the number of backspaces is not certain). The list comes from [wordfreq](https://github.com/rspeer/wordfreq) data (CC BY-SA 4.0); to change a threshold, change both `Engine.cpp` and `tools/make_mixed_words.py`, then run the script again.
+**Mixed English and Vietnamese mode** (`vMixedEnglish`, only while `vLanguage` is 1). The engine adds marks as usual while typing. When the word ends (space, punctuation), `checkMixedEnglish` looks up the keys as typed (including a doubled key that undid a mark, like "ff" in "different") in a list of 3,315 words: each has how common it is (Zipf × 10) in English, and how common the Vietnamese word is that Telex makes of the same keys. The word counts as English when English − Vietnamese − 5 (a lean towards Vietnamese) plus a context bias (up to ±20, from the language of the last words) is above 0; the engine then deletes the Vietnamese and sends the original keys. A word with marks that is not in the list (`!listed && changed`) counts as Vietnamese. To prevent short proper nouns or acronyms in the English corpus that have `vi = 0` in single-token Vietnamese counts (for example `dar` from "Dar es Salaam" overriding `dả` in `dư dả`, `già dả`), `tools/make_mixed_words.py` filters out that noise entry at generation time. A clear word (20 points or more apart) also fixes the word right before it when only one space is between them: "Thể are" becomes "There are", "The cả was" becomes "The car was" (not with VNI Windows and Unicode combining, where the number of backspaces is not certain). The list comes from [wordfreq](https://github.com/rspeer/wordfreq) data (CC BY-SA 4.0); to change a threshold, change both `Engine.cpp` and `tools/make_mixed_words.py`, then run the script again.
 
 ## 8. User interface
-The interface doesn't use classic Win32 dialogs; it is custom drawn to look like Windows 11:
+The interface doesn't use classic Win32 dialogs; it is custom drawn to look like Windows 11 with a compact layout (210px minimum height, single-line `V` · `EV` · `E` mode buttons that rebalance to 2 buttons when `vTwoModesOnly` is on, and a flat input method tab bar with a 2px accent underline):
 
 | File | Role |
 |---|---|
 | `FluentWindow` | Base for windows: Mica, dark/light title bar, per-monitor DPI, buttons, toggles, choice boxes. |
-| `FluentText` | Text drawn with DirectWrite (smooth at every scale), with the Be Vietnam Pro font embedded in the exe. |
+| `FluentText` | Text drawn with DirectWrite (smooth at every scale), measure-to-fit font sizing with floor (`createFluentFontFit`), with the Be Vietnam Pro font embedded in the exe. |
 | `FluentUi` | Shared colors, corner radii, sizes. |
 | `ThemeHelper` | Reads Windows light/dark mode and accent color, accent presets, contrast checks. |
 | `SettingsWindow` | The Settings window: main screen and Advanced (the item list is declared at the top of the file). |
-| `FlyoutWindow` | The small popup when switching Vietnamese/English and for notices, drawn with Direct2D. |
+| `FlyoutWindow` | The small popup when switching Vietnamese/English and for notices, drawn with Direct2D (the `EV` badge shrinks to fit via `IDWriteTextLayout::GetMetrics`). |
 | `MessageWindow` | Question and notice dialogs in the same style. |
-| `SystemTrayHelper`, `TrayGlyph` | The tray icon (a rounded key like the app icon, drawn at the exact pixel size for the DPI) and the right-click menu. |
+| `SystemTrayHelper`, `TrayGlyph` | The tray icon (a rounded key like the app icon, drawn at the exact pixel size for the DPI for `V`/`EV`/`E`) and the right-click menu. |
 | `AboutWindow`, `MacroWindow`, `ConvertToolWindow` | About, Shortcut list, Convert text. |
 
 Interface text comes in two languages, picked with the `TR("Vietnamese", "English")` macro or the `_T()` pairs in the `SettingsWindow` item table.
