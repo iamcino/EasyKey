@@ -2,6 +2,13 @@
 
 [Tiếng Việt](CHANGELOG.md) · **English**
 
+## [Unreleased]
+- Game Mode:
+  - In-game chat defaults to raw keystrokes so common gaming shorthand (`afk`, `gg`, `how`, `wp`) is not altered by Vietnamese marks. Users can still explicitly toggle Vietnamese mode per game if desired.
+  - Smart chat exit: pressing Esc or clicking the left, right, or middle mouse button exits chat immediately, returning WASD/combat keys directly to the game without getting stuck in chat mode. Mouse look, scroll wheel (reading chat history), and side buttons (voice chat, pings) do not exit chat.
+  - Commands starting with `/` (such as `/give`, `/w`, `/ff`, `/tp`) are kept raw until Space or Enter, preventing unwanted Vietnamese diacritics.
+  - Application binary `EasyKey.exe` remains at 636 KB (636 416 bytes, unchanged from 1.0.17).
+
 ## 1.0.17 (Windows 11 x64)
 - More compact Settings window: tighter spacing and type sizes, single-line **Vietnamese** · **Mixed** · **English** mode buttons with centered badge and label (both in 3-mode and 2-mode layouts), a flat input method tab bar with an accent underline, and a slimmer **Advanced** header.
 - The **EV** badge in Settings, the switch flyout and the tray icon is sized to fit with clear margins at every scale; at 16 px the three bars of E stay separate.

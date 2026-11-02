@@ -1,4 +1,4 @@
-/*----------------------------------------------------------
+﻿/*----------------------------------------------------------
 EasyKey - Vietnamese input for Windows 11.
 Copyright (C) 2026 Cino
 
@@ -80,6 +80,8 @@ static bool _hasJustUsedHotKey = false;
 static vector<string> _gameApps;
 static bool _inGame = false;   //the foreground app is in game mode
 static bool _gameChat = false; //Enter opened the chat in it
+static bool _chatRawCommand = false; //token starting with / in game chat is passed raw
+static bool _chatTokenStart = true;
 //Esc that put back the typed keys: its key up is swallowed too, web chats (Facebook...) act on it
 static bool _escapeRestored = false;
 
@@ -272,7 +274,25 @@ void setGameApp(const string& exe, const bool& on) {
 	EasyKeyHelper::setRegBinary(_T("gameApps"), (BYTE*)list.data(), (int)list.size());
 	//the app is in the background while the tray menu is open, it applies when it comes back
 	_inGame = false;
+	exitGameChat();
+}
+
+void exitGameChat() {
+	bool wasGameChat = _gameChat;
+
 	_gameChat = false;
+	_chatRawCommand = false;
+	_chatTokenStart = true;
+
+	if (!wasGameChat)
+		return;
+
+	startNewSession();
+	vStartSentence();
+
+	if (IS_DOUBLE_CODE(vCodeTable)) {
+		_syncKey.clear();
+	}
 }
 
 void saveSmartSwitchKeyData() {
@@ -857,14 +877,44 @@ LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 
 	//game mode: keys go straight to the game (skills on Q, W, E, R...) until Enter opens the chat;
 	//Enter (send) or Esc (close) ends the chat
-	if (_inGame && vLanguage && (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN)) {
+	if (_inGame && (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN)) {
 		if ((_keycode == VK_RETURN || _keycode == VK_ESCAPE) && !(_flag & (MASK_ALT | MASK_CONTROL))) { //not Alt + Enter
-			_gameChat = _keycode == VK_RETURN && !_gameChat;
-			startNewSession();
+			if (_keycode == VK_RETURN) {
+				if (_gameChat)
+					exitGameChat();
+				else {
+					_gameChat = true;
+					_chatRawCommand = false;
+					_chatTokenStart = true;
+					startNewSession();
+				}
+			} else {
+				exitGameChat();
+			}
 			return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
 		}
 		if (!_gameChat)
 			return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
+
+		//game chat: / prefix passes entire command raw until space or enter
+		if (_chatRawCommand) {
+			if (_keycode == VK_SPACE) {
+				_chatRawCommand = false;
+				_chatTokenStart = true;
+			}
+			return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
+		} else {
+			if (_keycode == VK_OEM_2 && _chatTokenStart && !(_flag & (MASK_CONTROL | MASK_ALT))) {
+				_chatRawCommand = true;
+				_chatTokenStart = false;
+				return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
+			}
+			if (_keycode == VK_SPACE) {
+				_chatTokenStart = true;
+			} else if (_keycode != VK_SHIFT && _keycode != VK_CAPITAL && _keycode != VK_LSHIFT && _keycode != VK_RSHIFT) {
+				_chatTokenStart = false;
+			}
+		}
 	}
 
 	//if is in english mode
@@ -958,26 +1008,36 @@ LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 }
 
 LRESULT CALLBACK mouseHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
+	if (nCode < 0)
+		return CallNextHookEx(hMouseHook, nCode, wParam, lParam);
 	_lastHookTick = GetTickCount();
 	mouseData = (MSLLHOOKSTRUCT *)lParam;
-	switch (wParam) {
-	case WM_LBUTTONDOWN:
-	
-	case WM_RBUTTONDOWN:
-	case WM_MBUTTONDOWN:
-	case WM_XBUTTONDOWN:
-	case WM_NCXBUTTONDOWN:
-	case WM_LBUTTONUP:
-	case WM_RBUTTONUP:
-	case WM_MBUTTONUP:
-	case WM_XBUTTONUP:
-	case WM_NCXBUTTONUP:
-		//send event signal to Engine
-		vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
-		if (IS_DOUBLE_CODE(vCodeTable)) { //VNI
-			_syncKey.clear();
+
+	//game mode: click to exit chat
+	if (_inGame && _gameChat) {
+		if (wParam == WM_LBUTTONDOWN || wParam == WM_RBUTTONDOWN || wParam == WM_MBUTTONDOWN) {
+			exitGameChat();
 		}
-		break;
+		// In game chat, do not forward other mouse events (XBUTTON, button-up) to typing engine
+	} else {
+		switch (wParam) {
+		case WM_LBUTTONDOWN:
+		case WM_RBUTTONDOWN:
+		case WM_MBUTTONDOWN:
+		case WM_XBUTTONDOWN:
+		case WM_NCXBUTTONDOWN:
+		case WM_LBUTTONUP:
+		case WM_RBUTTONUP:
+		case WM_MBUTTONUP:
+		case WM_XBUTTONUP:
+		case WM_NCXBUTTONUP:
+			//send event signal to Engine
+			vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+			if (IS_DOUBLE_CODE(vCodeTable)) { //VNI
+				_syncKey.clear();
+			}
+			break;
+		}
 	}
 	return CallNextHookEx(hMouseHook, nCode, wParam, lParam);
 }
@@ -989,7 +1049,7 @@ VOID CALLBACK winEventProcCallback(HWINEVENTHOOK hWinEventHook, DWORD dwEvent, H
 	startNewSession();
 	vStartSentence();
 	_inGame = !_gameApps.empty() && hwnd && isGameApp(exeNameOfWindow(hwnd));
-	_gameChat = false;
+	exitGameChat();
 	//smart switch key
 	if (vUseSmartSwitchKey || vRememberCode) {
 		string& exe = EasyKeyHelper::getFrontMostAppExecuteName();
@@ -997,7 +1057,7 @@ VOID CALLBACK winEventProcCallback(HWINEVENTHOOK hWinEventHook, DWORD dwEvent, H
 		//keeps what is on now instead of sharing one entry with every other such app
 		if (!EasyKeyHelper::isRealApp(exe))
 			return;
-		_languageTemp = getAppInputMethodStatus(exe, vLanguage | (vCodeTable << 1));
+		_languageTemp = getAppInputMethodStatus(exe, _inGame ? (0 | (vCodeTable << 1)) : (vLanguage | (vCodeTable << 1)));
 		if (vUseSmartSwitchKey && (_languageTemp & 0x01) != vLanguage) {
 			if (_languageTemp != -1) {
 				vLanguage = _languageTemp & 0x01; //the other bits hold the code table

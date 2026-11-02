@@ -68,6 +68,7 @@ extern void saveSmartSwitchKeyData();
 extern bool isGameApp(const string& exe);
 extern void setGameApp(const string& exe, const bool& on);
 extern const vector<string>& getGameApps();
+extern void exitGameChat();
 extern void checkHooks();
 
 extern int vLanguage;

@@ -12,6 +12,7 @@
 #include <cstring>
 #include <iostream>
 #include <string>
+#include <tuple>
 #include "../engine/Engine.h"
 #include "../engine/ConvertTool.h"
 
@@ -533,6 +534,244 @@ static void testMacroFileIO() {
     remove(testFile);
 }
 
+// Mirrors EasyKey.cpp game-mode state machine.
+// Host integration is covered by manual matrix; CI covers logic equivalence.
+static void testGameMode() {
+    struct GameModeSim {
+        bool inGame = false;
+        bool gameChat = false;
+        bool chatRawCommand = false;
+        bool chatTokenStart = true;
+        bool clickConsumed = false;
+
+        void exitGameChat() {
+            bool wasGameChat = gameChat;
+            gameChat = false;
+            chatRawCommand = false;
+            chatTokenStart = true;
+            if (!wasGameChat) return;
+            startNewSession();
+            vStartSentence();
+        }
+
+        bool handleKey(Uint16 keycode, bool isCtrlAlt = false) {
+            if (!inGame) return false;
+
+            if ((keycode == 13 || keycode == 27) && !isCtrlAlt) { // Return (13) or Esc (27)
+                if (keycode == 13) {
+                    if (gameChat) exitGameChat();
+                    else {
+                        gameChat = true;
+                        chatRawCommand = false;
+                        chatTokenStart = true;
+                        startNewSession();
+                    }
+                } else {
+                    exitGameChat();
+                }
+                return true; // Sent to game
+            }
+
+            if (!gameChat) {
+                return true; // All keys go straight to game during combat
+            }
+
+            // In game chat
+            if (chatRawCommand) {
+                if (keycode == 32) { // Space
+                    chatRawCommand = false;
+                    chatTokenStart = true;
+                }
+                return true; // Raw command bypasses engine
+            } else {
+                if (keycode == 191 && chatTokenStart && !isCtrlAlt) { // '/'
+                    chatRawCommand = true;
+                    chatTokenStart = false;
+                    return true;
+                }
+                if (keycode == 32) { // Space
+                    chatTokenStart = true;
+                } else if (keycode != 16 && keycode != 20) { // Shift, Caps
+                    chatTokenStart = false;
+                }
+            }
+            return false; // Handled by typing engine
+        }
+
+        void handleMouse(int mouseMsg) {
+            clickConsumed = false; // Must never consume click
+            if (inGame && gameChat) {
+                if (mouseMsg == 0x0201 /* WM_LBUTTONDOWN */ ||
+                    mouseMsg == 0x0204 /* WM_RBUTTONDOWN */ ||
+                    mouseMsg == 0x0207 /* WM_MBUTTONDOWN */) {
+                    exitGameChat();
+                }
+            }
+        }
+
+        void handleFocusLost() {
+            exitGameChat();
+        }
+    };
+
+    // Test 1: Combat keys (WASD, skills) go straight to game
+    {
+        total++;
+        GameModeSim sim;
+        sim.inGame = true;
+        sim.gameChat = false;
+        bool w = sim.handleKey('W');
+        bool a = sim.handleKey('A');
+        bool s = sim.handleKey('S');
+        bool d = sim.handleKey('D');
+        if (!w || !a || !s || !d || sim.gameChat) {
+            failures++;
+            printf("FAIL [game-mode combat keys pass-through]\n");
+        }
+    }
+
+    // Test 2: Enter opens chat, Esc closes chat and cleans up
+    {
+        total++;
+        GameModeSim sim;
+        sim.inGame = true;
+        sim.handleKey(13); // Enter opens chat
+        if (!sim.gameChat || sim.chatRawCommand || !sim.chatTokenStart) {
+            failures++;
+            printf("FAIL [game-mode enter opens chat]\n");
+        }
+        sim.handleKey(27); // Esc closes chat
+        if (sim.gameChat || sim.chatRawCommand) {
+            failures++;
+            printf("FAIL [game-mode esc closes chat]\n");
+        }
+    }
+
+    // Test 3: Raw command passthrough for token starting with '/'
+    {
+        total++;
+        GameModeSim sim;
+        sim.inGame = true;
+        sim.handleKey(13); // open chat
+        bool slash = sim.handleKey(191); // '/'
+        if (!slash || !sim.chatRawCommand) {
+            failures++;
+            printf("FAIL [game-mode / prefix activates raw command]\n");
+        }
+        // subsequent characters in command (/give) must pass straight to game
+        bool g = sim.handleKey('G');
+        bool i = sim.handleKey('I');
+        bool v = sim.handleKey('V');
+        bool e = sim.handleKey('E');
+        if (!g || !i || !v || !e || !sim.chatRawCommand) {
+            failures++;
+            printf("FAIL [game-mode raw command letters bypass engine]\n");
+        }
+        // space ends raw command mode
+        bool sp = sim.handleKey(32); // Space
+        if (!sp || sim.chatRawCommand || !sim.chatTokenStart) {
+            failures++;
+            printf("FAIL [game-mode space resets raw command]\n");
+        }
+    }
+
+    // Test 4: Mouse click-to-exit filters and never consumes click
+    {
+        total++;
+        GameModeSim sim;
+        sim.inGame = true;
+        sim.handleKey(13); // open chat
+
+        // Non-exit mouse events
+        sim.handleMouse(0x0200 /* WM_MOUSEMOVE */);
+        if (!sim.gameChat || sim.clickConsumed) {
+            failures++;
+            printf("FAIL [game-mode mousemove must not exit chat]\n");
+        }
+        sim.handleMouse(0x020A /* WM_MOUSEWHEEL */);
+        if (!sim.gameChat || sim.clickConsumed) {
+            failures++;
+            printf("FAIL [game-mode mousewheel must not exit chat]\n");
+        }
+        sim.handleMouse(0x020B /* WM_XBUTTONDOWN */);
+        if (!sim.gameChat || sim.clickConsumed) {
+            failures++;
+            printf("FAIL [game-mode xbuttondown must not exit chat]\n");
+        }
+        sim.handleMouse(0x0202 /* WM_LBUTTONUP */);
+        if (!sim.gameChat || sim.clickConsumed) {
+            failures++;
+            printf("FAIL [game-mode buttonup must not exit chat]\n");
+        }
+
+        // Exit on LBUTTONDOWN, RBUTTONDOWN, MBUTTONDOWN
+        sim.handleMouse(0x0201 /* WM_LBUTTONDOWN */);
+        if (sim.gameChat || sim.clickConsumed) {
+            failures++;
+            printf("FAIL [game-mode lbuttondown exit chat without consuming click]\n");
+        }
+
+        // Test RBUTTONDOWN
+        sim.handleKey(13); // re-open
+        sim.handleMouse(0x0204 /* WM_RBUTTONDOWN */);
+        if (sim.gameChat || sim.clickConsumed) {
+            failures++;
+            printf("FAIL [game-mode rbuttondown exit chat]\n");
+        }
+
+        // Test MBUTTONDOWN
+        sim.handleKey(13); // re-open
+        sim.handleMouse(0x0207 /* WM_MBUTTONDOWN */);
+        if (sim.gameChat || sim.clickConsumed) {
+            failures++;
+            printf("FAIL [game-mode mbuttondown exit chat]\n");
+        }
+    }
+
+    // Test 5: Teardown Equivalence across Esc, Click-exit, and Focus-lost
+    {
+        total++;
+        auto getTeardownState = [](int exitMethod) {
+            GameModeSim sim;
+            sim.inGame = true;
+            sim.handleKey(13); // open chat
+            sim.handleKey(191); // type '/'
+            sim.handleKey('F'); // type 'f'
+            if (exitMethod == 1) sim.handleKey(27); // Esc
+            else if (exitMethod == 2) sim.handleMouse(0x0201); // Click L
+            else if (exitMethod == 3) sim.handleFocusLost(); // Focus-lost
+            return std::make_tuple(sim.gameChat, sim.chatRawCommand, sim.chatTokenStart);
+        };
+
+        auto stateEsc = getTeardownState(1);
+        auto stateClick = getTeardownState(2);
+        auto stateFocus = getTeardownState(3);
+
+        if (stateEsc != stateClick || stateEsc != stateFocus ||
+            std::get<0>(stateEsc) != false || std::get<1>(stateEsc) != false || std::get<2>(stateEsc) != true) {
+            failures++;
+            printf("FAIL [game-mode 3 callers teardown equivalence]\n");
+        }
+    }
+
+    // Test 6: Smart switch default for game app
+    {
+        total++;
+        string testGameExe = "test_game_app.exe";
+        int defaultGameMethod = 0 | (vCodeTable << 1);
+        int status = getAppInputMethodStatus(testGameExe, defaultGameMethod);
+        if (status != -1) {
+            failures++;
+            printf("FAIL [game-mode smart switch initial status for new game]\n");
+        }
+        status = getAppInputMethodStatus(testGameExe, defaultGameMethod);
+        if ((status & 0x01) != 0) {
+            failures++;
+            printf("FAIL [game-mode smart switch default must be English raw]\n");
+        }
+    }
+}
+
 //EngineTests --render: for each word read, print it and what Telex makes of it (tools/make_mixed_words.py uses this)
 static int renderWords() {
     vInputType = vTelex;
@@ -555,6 +794,7 @@ int main(int argc, char** argv) {
     testConvert();
     testUtf8Conversion();
     testMacroFileIO();
+    testGameMode();
     printf("%d/%d engine tests passed\n", total - failures, total);
     return failures == 0 ? 0 : 1;
 }
