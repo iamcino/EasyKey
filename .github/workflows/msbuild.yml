@@ -60,6 +60,18 @@ jobs:
         }
         Write-Host "Key material check: PASS"
 
+    - name: Verify version.json matches EasyKey.rc
+      shell: pwsh
+      run: |
+        $ver = (Get-Content version.json | ConvertFrom-Json).latestWinVersion.versionName
+        $commaVer = ($ver -replace '\.', ',') + ',0'
+        $dotVer = "$ver.0"
+        $rc = Get-Content Sources/EasyKey/win32/EasyKey/EasyKey/EasyKey.rc -Raw
+        if ($rc -notmatch "FILEVERSION\s+$([regex]::Escape($commaVer))" -or $rc -notmatch "PRODUCTVERSION\s+$([regex]::Escape($commaVer))" -or $rc -notmatch "`"FileVersion`",\s*`"$([regex]::Escape($dotVer))`"" -or $rc -notmatch "`"ProductVersion`",\s*`"$([regex]::Escape($dotVer))`"") {
+          throw "EasyKey.rc version does not match version.json ($ver)"
+        }
+        Write-Host "Version consistency check ($ver): PASS"
+
     - name: Add MSBuild to PATH
       uses: microsoft/setup-msbuild@v3
 

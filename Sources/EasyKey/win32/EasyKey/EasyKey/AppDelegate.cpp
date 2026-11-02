@@ -28,10 +28,10 @@ See LICENSE and NOTICE.
 #pragma comment(lib, "comctl32.lib")
 
 //shown once after updating to this version; change it with each release
-#define WHATS_NEW_VI L"• Cửa sổ Cài đặt và biểu tượng EV gọn hơn, cân đối ở cả chế độ 2 nút và 3 nút.\n" \
-	L"• Chế độ Anh–Việt: gõ \"dư dả\", \"già dả\" không còn bị đổi thành \"dar\"."
-#define WHATS_NEW_EN L"• More compact Settings window and better-proportioned EV badge and tray icon.\n" \
-	L"• Mixed mode: \"dư dả\" and \"già dả\" no longer turn into \"dar\"."
+#define WHATS_NEW_VI L"• Tự động gõ phím thô khi nhập vào ô mật khẩu.\n" \
+	L"• Chế độ Game an toàn hơn khi chat (/ff, /w, Esc, click chuột) và ký số Authenticode."
+#define WHATS_NEW_EN L"• Automatically pass through raw keys in password fields.\n" \
+	L"• Safer Game Mode chat handling (/ff, /w, Esc, mouse click) and Authenticode signing."
 
 //6 hours
 #define UPDATE_CHECK_INTERVAL (6 * 60 * 60 * 1000)
