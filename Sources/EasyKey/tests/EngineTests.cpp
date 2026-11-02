@@ -1,4 +1,4 @@
-﻿//
+//
 //  EngineTests.cpp
 //  EasyKey
 //  Copyright (C) 2026 Cino
@@ -8,6 +8,7 @@
 //  vKeyHandleEvent and check the text an application would end up with.
 //
 
+#include <atomic>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
