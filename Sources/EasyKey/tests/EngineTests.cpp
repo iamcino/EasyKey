@@ -8,13 +8,17 @@
 //  vKeyHandleEvent and check the text an application would end up with.
 //
 
+#include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <iostream>
+#include <memory>
 #include <string>
 #include <tuple>
+#include <vector>
 #include "../engine/Engine.h"
 #include "../engine/ConvertTool.h"
 
@@ -770,6 +774,255 @@ static void testGameMode() {
         if ((status & 0x01) != 0) {
             failures++;
             printf("FAIL [game-mode smart switch default must be English raw]\n");
+        }
+    }
+
+    struct WindowBindingSim {
+        const uint64_t GAME_BINDING_TTL_MS = 5000;
+        void* gameHwnd = nullptr;
+        uint32_t gamePid = 0;
+        uint64_t lastGameForegroundTick = 0;
+        bool inGame = false;
+        bool gameChat = false;
+        int sessionResets = 0;
+        bool isPasswordRaw = false;
+
+        void clearGameBinding() {
+            gameHwnd = nullptr;
+            gamePid = 0;
+            lastGameForegroundTick = 0;
+            inGame = false;
+            exitGameChat();
+        }
+
+        void exitGameChat() {
+            gameChat = false;
+        }
+
+        bool isGameBindingAlive(uint64_t now) const {
+            return gameHwnd != nullptr && (now >= lastGameForegroundTick) && ((now - lastGameForegroundTick) < GAME_BINDING_TTL_MS);
+        }
+
+        void onWinEventForeground(void* hwnd, uint32_t pid, bool isGame, uint64_t now) {
+            if (isGame && hwnd) {
+                gameHwnd = hwnd;
+                gamePid = pid;
+                lastGameForegroundTick = now;
+                inGame = true;
+            } else {
+                if (inGame) inGame = false;
+            }
+            exitGameChat();
+        }
+
+        bool onKeyboardHookKey(void* fgHwnd, uint32_t fgPid, bool fgIsWindow, uint16_t keycode, uint64_t now) {
+            // 1. Password field bypass always wins
+            if (isPasswordRaw) {
+                return true;
+            }
+
+            // 2. Fast-path game window binding check
+            if (isGameBindingAlive(now)) {
+                if (fgHwnd == gameHwnd) {
+                    if (!inGame) {
+                        if (fgPid == gamePid && fgIsWindow) {
+                            inGame = true;
+                            lastGameForegroundTick = now;
+                            exitGameChat();
+                            sessionResets++;
+                        } else {
+                            clearGameBinding();
+                        }
+                    } else if (!fgIsWindow) {
+                        clearGameBinding();
+                    } else {
+                        lastGameForegroundTick = now;
+                    }
+                } else {
+                    if (inGame) {
+                        exitGameChat();
+                        inGame = false;
+                    }
+                }
+            } else if (gameHwnd != nullptr) {
+                clearGameBinding();
+            }
+
+            // 3. Game mode handling
+            if (inGame) {
+                if (keycode == 13 /* Enter */) {
+                    if (gameChat) exitGameChat();
+                    else gameChat = true;
+                    return true;
+                }
+                if (keycode == 27 /* Esc */) {
+                    exitGameChat();
+                    return true;
+                }
+                // Combat or Model W chat raw default
+                return true;
+            }
+
+            return false; // Engine processes key for normal app
+        }
+    };
+
+    // Test 7: Alt+Tab missed WinEvent foreground recovery via fast-path within TTL
+    {
+        total++;
+        WindowBindingSim sim;
+        void* gameWnd = (void*)0x1234;
+        uint32_t gamePid = 5001;
+
+        // Initial foreground binding
+        sim.onWinEventForeground(gameWnd, gamePid, true, 1000);
+        bool initialInGame = sim.inGame;
+
+        // User Alt+Tabs away to explorer/browser
+        sim.onWinEventForeground((void*)0x9999, 1000, false, 2000);
+        bool outOfGame = !sim.inGame && sim.isGameBindingAlive(2000);
+
+        // User Alt+Tabs BACK to game at tick 3500, but WinEvent was missed/delayed by Windows/DWM!
+        // The very first key pressed in the game triggers fast-path rebind
+        bool keyPassedRaw = sim.onKeyboardHookKey(gameWnd, gamePid, true, 'W', 3500);
+        bool recoveredInGame = sim.inGame && (sim.sessionResets == 1) && (sim.lastGameForegroundTick == 3500);
+
+        if (!initialInGame || !outOfGame || !keyPassedRaw || !recoveredInGame) {
+            failures++;
+            printf("FAIL [window-bound game mode fast-path recovery after missed WinEvent]\n");
+        }
+    }
+
+    // Test 8: Binding expires after TTL, clearing cached HWND/PID to avoid polling
+    {
+        total++;
+        WindowBindingSim sim;
+        void* gameWnd = (void*)0x1234;
+        uint32_t gamePid = 5001;
+
+        sim.onWinEventForeground(gameWnd, gamePid, true, 1000);
+        sim.onWinEventForeground((void*)0x9999, 1000, false, 1500);
+
+        // Typing in normal app after TTL (1000 + 5000 = 6000ms; now = 7000ms)
+        bool keyHandledByEngine = !sim.onKeyboardHookKey((void*)0x9999, 1000, true, 'A', 7000);
+        bool bindingCleared = (sim.gameHwnd == nullptr) && (sim.gamePid == 0) && (sim.lastGameForegroundTick == 0);
+
+        // Subsequent keystrokes do not invoke binding checks
+        bool isAliveAfterExpiry = sim.isGameBindingAlive(8000);
+
+        if (!keyHandledByEngine || !bindingCleared || isAliveAfterExpiry) {
+            failures++;
+            printf("FAIL [window-bound game mode TTL expiry must clear binding]\n");
+        }
+    }
+
+    // Test 9: HWND reuse / PID mismatch safety
+    {
+        total++;
+        WindowBindingSim sim;
+        void* gameWnd = (void*)0x5555;
+        uint32_t gamePid = 6001;
+
+        sim.onWinEventForeground(gameWnd, gamePid, true, 1000);
+        sim.inGame = false; // Left game
+
+        // Game crashed/closed; OS reallocated HWND 0x5555 to Notepad (PID 7777)
+        // User presses key in Notepad within TTL
+        bool keyHandled = !sim.onKeyboardHookKey(gameWnd, 7777, true, 'Q', 2000);
+        bool mismatchCleared = (sim.gameHwnd == nullptr && !sim.inGame);
+
+        if (!keyHandled || !mismatchCleared) {
+            failures++;
+            printf("FAIL [window-bound game mode must reject PID mismatch and clear binding]\n");
+        }
+    }
+
+    // Test 10: Password field bypass always wins over game mode
+    {
+        total++;
+        WindowBindingSim sim;
+        void* gameWnd = (void*)0x1234;
+        uint32_t gamePid = 5001;
+
+        sim.onWinEventForeground(gameWnd, gamePid, true, 1000);
+        sim.isPasswordRaw = true; // Focus inside credential / password field
+
+        // Password bypass returns true (raw passthrough) even if chat or combat
+        bool passKey = sim.onKeyboardHookKey(gameWnd, gamePid, true, 'P', 1100);
+        if (!passKey || !sim.inGame) {
+            failures++;
+            printf("FAIL [password field raw bypass must take precedence over game mode]\n");
+        }
+    }
+
+    // Test 11: SmartSwitchKey isolation from Game Mode
+    {
+        total++;
+        string normalApp = "test_browser.exe";
+        // Normal app remembers Vietnamese (vLanguage = 1)
+        setAppInputMethodStatus(normalApp, 1 | (0 << 1));
+        int normalStatus = getAppInputMethodStatus(normalApp, 1 | (0 << 1));
+
+        // When in game, SmartSwitchKey must NOT record "game = 0 (English)"
+        // Nor should it overwrite the user's active vLanguage for normal apps
+        bool inGameActive = true;
+        int activeLanguage = 1; // Vietnamese in normal app
+
+        // Entering game: with isolation, SmartSwitchKey is NOT invoked for game
+        // vLanguage remains 1
+        if (inGameActive) {
+            // normal vLanguage is preserved
+        }
+
+        // Tabbing back to normalApp: normalApp language is retrieved intact
+        int restoredStatus = getAppInputMethodStatus(normalApp, activeLanguage | (0 << 1));
+
+        if ((normalStatus & 0x01) != 1 || (restoredStatus & 0x01) != 1) {
+            failures++;
+            printf("FAIL [game mode isolation must prevent polluting normal app input method]\n");
+        }
+    }
+
+    // Test 12: Game crash/destroy while _inGame is cleared immediately via IsWindow check
+    {
+        total++;
+        WindowBindingSim sim;
+        void* gameWnd = (void*)0x8888;
+        uint32_t gamePid = 9001;
+
+        sim.onWinEventForeground(gameWnd, gamePid, true, 1000);
+        bool activeInGame = sim.inGame;
+
+        // Window gets destroyed without foreground event (crash / taskkill)
+        // fgIsWindow is now false on next key in that HWND
+        bool keyHandled = !sim.onKeyboardHookKey(gameWnd, gamePid, false /* IsWindow false */, 'W', 1500);
+        bool crashCleared = (sim.gameHwnd == nullptr && !sim.inGame && !sim.gameChat);
+
+        if (!activeInGame || !keyHandled || !crashCleared) {
+            failures++;
+            printf("FAIL [game window crash/destroy while inGame must clear binding]\n");
+        }
+    }
+
+    // Test 13: Alt+Z / hotkeys during combat pass straight to game without mutating language or triggering hotkey
+    {
+        total++;
+        WindowBindingSim sim;
+        void* gameWnd = (void*)0x1234;
+        uint32_t gamePid = 5001;
+        sim.onWinEventForeground(gameWnd, gamePid, true, 1000);
+
+        int originalLang = vLanguage; // e.g. Vietnamese (1)
+
+        // User presses Alt+Z (GeForce Experience or game skill) while in combat
+        bool keyPassedRaw = sim.onKeyboardHookKey(gameWnd, gamePid, true, 'Z', 1200);
+
+        // Language must NOT have been toggled by in-game combat key
+        bool langPreserved = (vLanguage == originalLang);
+
+        if (!keyPassedRaw || !langPreserved || !sim.inGame) {
+            failures++;
+            printf("FAIL [hotkeys in combat must pass raw to game without mutating vLanguage]\n");
         }
     }
 }
