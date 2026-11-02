@@ -47,6 +47,7 @@ Nguyên tắc:
 - **Nhật ký thay đổi.** Ghi thay đổi người dùng thấy được vào cả
   [CHANGELOG.md](CHANGELOG.md) và [CHANGELOG.en.md](CHANGELOG.en.md), viết cho
   người dùng chứ không phải cho lập trình viên.
+- **Chính sách tài liệu.** Tài liệu công khai mô tả sản phẩm hiện tại, bất biến kiến trúc, hành vi người dùng cần biết, cam kết bảo mật/riêng tư và quy tắc đóng góp. Đặc tả phát triển nội bộ, quy trình agent, kế hoạch nhánh, nhật ký review, checklist phát hành và tài liệu thăm dò không nằm trong repo công khai.
 - **Ghi công.** Giữ nguyên dòng bản quyền OpenKey ở đầu các file có sẵn.
 
 Khi đóng góp, bạn đồng ý rằng phần đóng góp được cấp phép theo
@@ -101,6 +102,7 @@ Guidelines:
 - **Changelog.** Add user-visible changes to both
   [CHANGELOG.md](CHANGELOG.md) and [CHANGELOG.en.md](CHANGELOG.en.md), written
   for users rather than developers.
+- **Documentation policy.** Public documentation describes current product state, architectural invariants, user-facing behavior, security/privacy commitments, and contribution guidelines. Internal development specifications, agent workflows, branch plans, review logs, release checklists, and exploratory design notes do not belong in the public repository.
 - **Credits.** Keep the OpenKey copyright lines at the top of existing files.
 
 By contributing, you agree that your contribution is licensed under the

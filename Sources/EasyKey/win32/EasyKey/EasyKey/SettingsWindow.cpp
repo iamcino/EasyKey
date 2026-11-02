@@ -49,7 +49,7 @@ enum Option {
 	OPT_NONE, OPT_LANGUAGE, OPT_CODE_TABLE,
 	OPT_TWO_MODES,
 	OPT_SPELLING, OPT_MODERN, OPT_MACRO, OPT_RUN_WITH_WINDOWS,
-	OPT_ESCAPE, OPT_INPUT_HOTKEY, OPT_ZWJF,
+	OPT_ESCAPE, OPT_PASSWORD_BYPASS, OPT_INPUT_HOTKEY, OPT_ZWJF,
 	OPT_QUICK_TELEX, OPT_QUICK_START, OPT_QUICK_END, OPT_CAPS_FIRST, OPT_MACRO_ENGLISH, OPT_MACRO_AUTO_CAPS,
 	OPT_SMART_SWITCH, OPT_REMEMBER_CODE,
 	OPT_CLIPBOARD, OPT_FLYOUT, OPT_BEEP,
@@ -80,6 +80,7 @@ static const RowInfo advancedRows[] = {
 	{ K_SUBTOGGLE, OPT_MACRO, _T("Gõ tắt: ko → không"), _T("Shortcuts: ko → không") },
 	{ K_SUBBUTTON, ACT_MACRO_TABLE, _T("Bảng gõ tắt"), _T("Shortcut list") },
 	{ K_SUBTOGGLE, OPT_ESCAPE, _T("Esc trả lại phím vừa gõ: việt → vieejt"), _T("Esc puts back the keys typed: việt → vieejt") },
+	{ K_SUBTOGGLE, OPT_PASSWORD_BYPASS, _T("Tự động gõ thô trong ô mật khẩu"), _T("Auto-raw in password fields"), _T("Tránh đánh dấu tiếng Việt hoặc bung gõ tắt trong ô password"), _T("Prevents Vietnamese marks and macro expansions in password fields") },
 	{ K_SUBTOGGLE, OPT_INPUT_HOTKEY, _T("Đổi kiểu gõ bằng phím tắt"), _T("Switch input method with keys"), _T("Telex → VNI → Simple Telex"), _T("Telex → VNI → Simple Telex") },
 	{ K_GROUP, 2, _T("Giao diện"), _T("Appearance") },
 	{ K_SUBLABEL, 0, NULL, NULL },
@@ -1182,6 +1183,7 @@ bool SettingsWindow::getOption(const int& id) const {
 	case OPT_MACRO: return vUseMacro != 0;
 	case OPT_RUN_WITH_WINDOWS: return vRunWithWindows != 0;
 	case OPT_ESCAPE: return vRestoreOnEscape != 0;
+	case OPT_PASSWORD_BYPASS: return vPasswordFieldBypass != 0;
 	case OPT_WARN_CONFLICT: return vWarnOtherKeyboards != 0;
 	case OPT_ZWJF: return vAllowConsonantZFWJ != 0;
 	case OPT_QUICK_TELEX: return vQuickTelex != 0;
@@ -1250,6 +1252,10 @@ void SettingsWindow::setOption(const int& id, const bool& on) {
 		EasyKeyHelper::registerRunOnStartup(vRunWithWindows);
 		break;
 	case OPT_ESCAPE: APP_SET_DATA(vRestoreOnEscape, val); break;
+	case OPT_PASSWORD_BYPASS:
+		APP_SET_DATA(vPasswordFieldBypass, val);
+		setPasswordFieldBypass(val != 0);
+		break;
 	case OPT_WARN_CONFLICT: APP_SET_DATA(vWarnOtherKeyboards, val); break;
 	case OPT_ZWJF: APP_SET_DATA(vAllowConsonantZFWJ, val); break;
 	case OPT_QUICK_TELEX: APP_SET_DATA(vQuickTelex, val); break;
@@ -1318,6 +1324,8 @@ void SettingsWindow::showDropDown(const Item& item) {
 		return;
 
 	APP_SET_DATA(vCodeTable, command - 1);
+	invalidatePasswordFieldCache();
+	updatePasswordFieldState(GetForegroundWindow());
 	if (vRememberCode) {
 		setAppInputMethodStatus(EasyKeyHelper::getFrontMostAppExecuteName(), vLanguage | (vCodeTable << 1));
 		saveSmartSwitchKeyData();

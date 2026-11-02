@@ -65,6 +65,8 @@ int vQuickEndConsonant = 0;
 int vOtherLanguage = 1;
 int vRememberCode = 1;
 int vRestoreOnEscape = 1;
+int vPasswordFieldBypass = 1;
+int vPasswordFieldUIA = 0;
 int vWarnOtherKeyboards = 1;
 int vLastVersion = 0;
 
@@ -388,6 +390,8 @@ void AppDelegate::onDefaultConfig() {
 	APP_SET_DATA(vRememberCode, 1);
 	APP_SET_DATA(vOtherLanguage, 1);
 	APP_SET_DATA(vRestoreOnEscape, 1);
+	APP_SET_DATA(vPasswordFieldBypass, 1);
+	setPasswordFieldBypass(true);
 	APP_SET_DATA(vWarnOtherKeyboards, 1);
 	APP_SET_DATA(vFixChromiumBrowser, 1);
 
@@ -479,6 +483,8 @@ void AppDelegate::onInputType(const int & type) {
 
 void AppDelegate::onTableCode(const int & code, const bool& showFlyout) {
 	APP_SET_DATA(vCodeTable, code);
+	invalidatePasswordFieldCache();
+	updatePasswordFieldState(GetForegroundWindow());
 	if (settingsWindow) {
 		settingsWindow->fillData();
 	}

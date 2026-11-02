@@ -2,6 +2,21 @@
 
 **Tiếng Việt** · [English](CHANGELOG.en.md)
 
+## 1.0.18 - 2026-11-02
+
+### Added
+- **Game Mode**: bảo vệ phím điều khiển trong game; chat game mặc định dùng phím thô để tránh biến `afk`, `gg`, `wp`, `how`, `as` thành dấu tiếng Việt.
+- **Game Mode**: Esc và click chuột trái/phải/giữa thoát trạng thái chat ngay, trả phím WASD/QWE về game; di chuột, lăn chuột và nút chuột phụ không làm thoát chat.
+- **Game Mode**: lệnh bắt đầu bằng `/` như `/ff`, `/w`, `/give`, `/tp` được giữ nguyên phím thô tới phím cách hoặc Enter.
+- **Password field bypass**: khi focus vào ô mật khẩu được xác định rõ, EasyKey chuyển sang gõ raw để tránh dấu tiếng Việt, gõ tắt, Quick Telex và tự động viết hoa.
+- **Password field bypass**: phát hiện chỉ chạy lúc đổi focus; hook bàn phím/chuột chỉ đọc cờ cache với chi phí không đổi; không đọc nội dung ô nhập, không ghi log phím, không gửi dữ liệu ra ngoài.
+- **Code signing**: bổ sung quy trình ký Authenticode, đóng dấu thời gian, kiểm chứng chữ ký và phát hành chứng chỉ công khai để người dùng kiểm tra tính toàn vẹn binary.
+
+### Notes
+- Password field bypass mặc định bật và có thể tắt trong Cài đặt › Nâng cao › Gõ.
+- Windows logon, UAC secure prompt, secure desktop và một số điều khiển tùy chỉnh có thể nằm ngoài phạm vi hỗ trợ của password field bypass.
+- Game Mode được kiểm chứng logic trạng thái tự động; hành vi thực tế trên từng game thuộc phạm vi kiểm thử thủ công.
+
 ## 1.0.17 (Windows 11 x64)
 - Cửa sổ Cài đặt gọn hơn: thu gọn khoảng cách và cỡ chữ, ba nút chế độ **Tiếng Việt** · **Anh–Việt** · **Tiếng Anh** nằm trên một dòng và tự căn giữa cụm chữ (cả khi dùng 2 chế độ), thanh kiểu gõ chuyển sang dạng tab phẳng có vạch màu nhấn bên dưới, phần **Nâng cao** mở gọn hơn.
 - Chữ **EV** ở nút chế độ, popup khi chuyển chế độ và biểu tượng khay được cân lại kích thước cho vừa khung, không chạm viền ở mọi mức phóng to; ở biểu tượng khay cỡ nhỏ (16px) chữ E vẫn tách rõ ba vạch ngang.

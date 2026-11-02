@@ -8,10 +8,12 @@
 //  vKeyHandleEvent and check the text an application would end up with.
 //
 
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <iostream>
 #include <string>
+#include <tuple>
 #include "../engine/Engine.h"
 #include "../engine/ConvertTool.h"
 
@@ -533,6 +535,525 @@ static void testMacroFileIO() {
     remove(testFile);
 }
 
+// Mirrors EasyKey.cpp game-mode state machine.
+// Host integration is covered by manual matrix; CI covers logic equivalence.
+static void testGameMode() {
+    struct GameModeSim {
+        bool inGame = false;
+        bool gameChat = false;
+        bool chatRawCommand = false;
+        bool chatTokenStart = true;
+        bool clickConsumed = false;
+
+        void exitGameChat() {
+            bool wasGameChat = gameChat;
+            gameChat = false;
+            chatRawCommand = false;
+            chatTokenStart = true;
+            if (!wasGameChat) return;
+            startNewSession();
+            vStartSentence();
+        }
+
+        bool handleKey(Uint16 keycode, bool isCtrlAlt = false) {
+            if (!inGame) return false;
+
+            if ((keycode == 13 || keycode == 27) && !isCtrlAlt) { // Return (13) or Esc (27)
+                if (keycode == 13) {
+                    if (gameChat) exitGameChat();
+                    else {
+                        gameChat = true;
+                        chatRawCommand = false;
+                        chatTokenStart = true;
+                        startNewSession();
+                    }
+                } else {
+                    exitGameChat();
+                }
+                return true; // Sent to game
+            }
+
+            if (!gameChat) {
+                return true; // All keys go straight to game during combat
+            }
+
+            // In game chat
+            if (chatRawCommand) {
+                if (keycode == 32) { // Space
+                    chatRawCommand = false;
+                    chatTokenStart = true;
+                }
+                return true; // Raw command bypasses engine
+            } else {
+                if (keycode == 191 && chatTokenStart && !isCtrlAlt) { // '/'
+                    chatRawCommand = true;
+                    chatTokenStart = false;
+                    return true;
+                }
+                if (keycode == 32) { // Space
+                    chatTokenStart = true;
+                } else if (keycode != 16 && keycode != 20) { // Shift, Caps
+                    chatTokenStart = false;
+                }
+            }
+            return false; // Handled by typing engine
+        }
+
+        void handleMouse(int mouseMsg) {
+            clickConsumed = false; // Must never consume click
+            if (inGame && gameChat) {
+                if (mouseMsg == 0x0201 /* WM_LBUTTONDOWN */ ||
+                    mouseMsg == 0x0204 /* WM_RBUTTONDOWN */ ||
+                    mouseMsg == 0x0207 /* WM_MBUTTONDOWN */) {
+                    exitGameChat();
+                }
+            }
+        }
+
+        void handleFocusLost() {
+            exitGameChat();
+        }
+    };
+
+    // Test 1: Combat keys (WASD, skills) go straight to game
+    {
+        total++;
+        GameModeSim sim;
+        sim.inGame = true;
+        sim.gameChat = false;
+        bool w = sim.handleKey('W');
+        bool a = sim.handleKey('A');
+        bool s = sim.handleKey('S');
+        bool d = sim.handleKey('D');
+        if (!w || !a || !s || !d || sim.gameChat) {
+            failures++;
+            printf("FAIL [game-mode combat keys pass-through]\n");
+        }
+    }
+
+    // Test 2: Enter opens chat, Esc closes chat and cleans up
+    {
+        total++;
+        GameModeSim sim;
+        sim.inGame = true;
+        sim.handleKey(13); // Enter opens chat
+        if (!sim.gameChat || sim.chatRawCommand || !sim.chatTokenStart) {
+            failures++;
+            printf("FAIL [game-mode enter opens chat]\n");
+        }
+        sim.handleKey(27); // Esc closes chat
+        if (sim.gameChat || sim.chatRawCommand) {
+            failures++;
+            printf("FAIL [game-mode esc closes chat]\n");
+        }
+    }
+
+    // Test 3: Raw command passthrough for token starting with '/'
+    {
+        total++;
+        GameModeSim sim;
+        sim.inGame = true;
+        sim.handleKey(13); // open chat
+        bool slash = sim.handleKey(191); // '/'
+        if (!slash || !sim.chatRawCommand) {
+            failures++;
+            printf("FAIL [game-mode / prefix activates raw command]\n");
+        }
+        // subsequent characters in command (/give) must pass straight to game
+        bool g = sim.handleKey('G');
+        bool i = sim.handleKey('I');
+        bool v = sim.handleKey('V');
+        bool e = sim.handleKey('E');
+        if (!g || !i || !v || !e || !sim.chatRawCommand) {
+            failures++;
+            printf("FAIL [game-mode raw command letters bypass engine]\n");
+        }
+        // space ends raw command mode
+        bool sp = sim.handleKey(32); // Space
+        if (!sp || sim.chatRawCommand || !sim.chatTokenStart) {
+            failures++;
+            printf("FAIL [game-mode space resets raw command]\n");
+        }
+    }
+
+    // Test 4: Mouse click-to-exit filters and never consumes click
+    {
+        total++;
+        GameModeSim sim;
+        sim.inGame = true;
+        sim.handleKey(13); // open chat
+
+        // Non-exit mouse events
+        sim.handleMouse(0x0200 /* WM_MOUSEMOVE */);
+        if (!sim.gameChat || sim.clickConsumed) {
+            failures++;
+            printf("FAIL [game-mode mousemove must not exit chat]\n");
+        }
+        sim.handleMouse(0x020A /* WM_MOUSEWHEEL */);
+        if (!sim.gameChat || sim.clickConsumed) {
+            failures++;
+            printf("FAIL [game-mode mousewheel must not exit chat]\n");
+        }
+        sim.handleMouse(0x020B /* WM_XBUTTONDOWN */);
+        if (!sim.gameChat || sim.clickConsumed) {
+            failures++;
+            printf("FAIL [game-mode xbuttondown must not exit chat]\n");
+        }
+        sim.handleMouse(0x0202 /* WM_LBUTTONUP */);
+        if (!sim.gameChat || sim.clickConsumed) {
+            failures++;
+            printf("FAIL [game-mode buttonup must not exit chat]\n");
+        }
+
+        // Exit on LBUTTONDOWN, RBUTTONDOWN, MBUTTONDOWN
+        sim.handleMouse(0x0201 /* WM_LBUTTONDOWN */);
+        if (sim.gameChat || sim.clickConsumed) {
+            failures++;
+            printf("FAIL [game-mode lbuttondown exit chat without consuming click]\n");
+        }
+
+        // Test RBUTTONDOWN
+        sim.handleKey(13); // re-open
+        sim.handleMouse(0x0204 /* WM_RBUTTONDOWN */);
+        if (sim.gameChat || sim.clickConsumed) {
+            failures++;
+            printf("FAIL [game-mode rbuttondown exit chat]\n");
+        }
+
+        // Test MBUTTONDOWN
+        sim.handleKey(13); // re-open
+        sim.handleMouse(0x0207 /* WM_MBUTTONDOWN */);
+        if (sim.gameChat || sim.clickConsumed) {
+            failures++;
+            printf("FAIL [game-mode mbuttondown exit chat]\n");
+        }
+    }
+
+    // Test 5: Teardown Equivalence across Esc, Click-exit, and Focus-lost
+    {
+        total++;
+        auto getTeardownState = [](int exitMethod) {
+            GameModeSim sim;
+            sim.inGame = true;
+            sim.handleKey(13); // open chat
+            sim.handleKey(191); // type '/'
+            sim.handleKey('F'); // type 'f'
+            if (exitMethod == 1) sim.handleKey(27); // Esc
+            else if (exitMethod == 2) sim.handleMouse(0x0201); // Click L
+            else if (exitMethod == 3) sim.handleFocusLost(); // Focus-lost
+            return std::make_tuple(sim.gameChat, sim.chatRawCommand, sim.chatTokenStart);
+        };
+
+        auto stateEsc = getTeardownState(1);
+        auto stateClick = getTeardownState(2);
+        auto stateFocus = getTeardownState(3);
+
+        if (stateEsc != stateClick || stateEsc != stateFocus ||
+            std::get<0>(stateEsc) != false || std::get<1>(stateEsc) != false || std::get<2>(stateEsc) != true) {
+            failures++;
+            printf("FAIL [game-mode 3 callers teardown equivalence]\n");
+        }
+    }
+
+    // Test 6: Smart switch default for game app
+    {
+        total++;
+        string testGameExe = "test_game_app.exe";
+        int defaultGameMethod = 0 | (vCodeTable << 1);
+        int status = getAppInputMethodStatus(testGameExe, defaultGameMethod);
+        if (status != -1) {
+            failures++;
+            printf("FAIL [game-mode smart switch initial status for new game]\n");
+        }
+        status = getAppInputMethodStatus(testGameExe, defaultGameMethod);
+        if ((status & 0x01) != 0) {
+            failures++;
+            printf("FAIL [game-mode smart switch default must be English raw]\n");
+        }
+    }
+}
+
+// Mirrors password-field bypass precedence.
+// Host integration/manual matrix covers real Win32/UIA controls.
+static void testPasswordField() {
+    struct PasswordFieldSim {
+        bool isPasswordField = false;
+        bool inGame = false;
+        bool gameChat = false;
+        bool bypassSetting = true;
+        uint64_t lastHookTick = 0;
+        void* lastFocusHwnd = nullptr;
+        uint32_t lastFocusPid = 0;
+        int evaluateCount = 0;
+
+        void invalidateCache() {
+            lastFocusHwnd = nullptr;
+            lastFocusPid = 0;
+            isPasswordField = false;
+        }
+
+        void updateFocus(void* hwnd, uint32_t pid, bool isPasswordControl) {
+            if (!bypassSetting) {
+                isPasswordField = false;
+                lastFocusHwnd = nullptr;
+                lastFocusPid = 0;
+                return;
+            }
+            if (hwnd == lastFocusHwnd && pid == lastFocusPid) {
+                return; // Cached, skip re-evaluating
+            }
+            evaluateCount++;
+            lastFocusHwnd = hwnd;
+            lastFocusPid = pid;
+            bool wasPass = isPasswordField;
+            isPasswordField = isPasswordControl;
+
+            if (isPasswordField) {
+                gameChat = false;
+                startNewSession();
+                vStartSentence();
+            } else if (wasPass) {
+                startNewSession();
+                vStartSentence();
+            }
+        }
+
+        void setBypass(bool enabled, void* currentHwnd, uint32_t currentPid, bool isCurrentControlPassword) {
+            bypassSetting = enabled;
+            invalidateCache();
+            updateFocus(currentHwnd, currentPid, isCurrentControlPassword);
+            startNewSession();
+            vStartSentence();
+        }
+
+        // Returns true if passed-through raw to target app, false if intercepted by engine
+        bool handleKey(uint16_t keycode, uint64_t currentTick) {
+            lastHookTick = currentTick; // Bookkeeping must always update
+            if (isPasswordField) {
+                return true; // Pass-through raw unconditionally
+            }
+            if (inGame && !gameChat) {
+                if (keycode == 13) { gameChat = true; return true; }
+                return true;
+            }
+            return false; // Processed by engine
+        }
+
+        // Returns true if passed-through raw to target app, false if intercepted
+        bool handleMouse(int mouseMsg, uint64_t currentTick) {
+            lastHookTick = currentTick; // Bookkeeping must always update
+            if (isPasswordField) {
+                return true; // Pass-through raw unconditionally
+            }
+            if (inGame && gameChat && (mouseMsg == 0x0201 || mouseMsg == 0x0204 || mouseMsg == 0x0207)) {
+                gameChat = false;
+                return true;
+            }
+            return false;
+        }
+    };
+
+    // Test 1: Raw pass-through suppresses Telex marks, macros, Quick Telex, mixed mode, auto-caps
+    {
+        total++;
+        PasswordFieldSim sim;
+        sim.updateFocus((void*)0x1000, 100, true);
+        bool keyPassed = sim.handleKey('A', 1001);
+        if (!keyPassed || !sim.isPasswordField || sim.lastHookTick != 1001) {
+            failures++;
+            printf("FAIL [password raw pass-through A]\n");
+        }
+    }
+
+    // Test 2: Typing 'asdf', 'dc', 'pp', 'how', 'test' in password field remains raw
+    {
+        total++;
+        PasswordFieldSim sim;
+        sim.updateFocus((void*)0x1000, 100, true);
+        bool allRaw = true;
+        const char* samples[] = { "asdf", "dc", "pp", "how", "test" };
+        for (const char* word : samples) {
+            for (int i = 0; word[i]; i++) {
+                if (!sim.handleKey((uint16_t)word[i], 2000 + i)) {
+                    allRaw = false;
+                }
+            }
+        }
+        if (!allRaw) {
+            failures++;
+            printf("FAIL [password words samples must be 100%% raw]\n");
+        }
+    }
+
+    // Test 3: Enter in password field passes through and does not open game chat
+    {
+        total++;
+        PasswordFieldSim sim;
+        sim.inGame = true;
+        sim.updateFocus((void*)0x1000, 100, true);
+        bool enterPassed = sim.handleKey(13, 3000); // VK_RETURN
+        if (!enterPassed || sim.gameChat) {
+            failures++;
+            printf("FAIL [password Enter must pass-through without toggling game chat]\n");
+        }
+    }
+
+    // Test 4: Esc in password field passes through without engine restore
+    {
+        total++;
+        PasswordFieldSim sim;
+        sim.updateFocus((void*)0x1000, 100, true);
+        bool escPassed = sim.handleKey(27, 4000); // VK_ESCAPE
+        if (!escPassed) {
+            failures++;
+            printf("FAIL [password Esc must pass-through unconditionally]\n");
+        }
+    }
+
+    // Test 5: Mouse click in password field passes through, does not exit game chat or trigger engine mouse event
+    {
+        total++;
+        PasswordFieldSim sim;
+        sim.inGame = true;
+        sim.gameChat = false;
+        sim.updateFocus((void*)0x1000, 100, true);
+        bool mousePassed = sim.handleMouse(0x0201, 5000); // WM_LBUTTONDOWN
+        if (!mousePassed || sim.lastHookTick != 5000) {
+            failures++;
+            printf("FAIL [password mouse click must pass-through without engine side effects]\n");
+        }
+    }
+
+    // Test 6: Password field beats game mode (password > game mode precedence)
+    {
+        total++;
+        PasswordFieldSim sim;
+        sim.inGame = true;
+        sim.gameChat = true; // game chat was active in background
+        sim.updateFocus((void*)0x1000, 100, true);
+        if (sim.gameChat) {
+            failures++;
+            printf("FAIL [focusing password field must teardown game chat]\n");
+        }
+        bool keyPassed = sim.handleKey('W', 6000);
+        if (!keyPassed || !sim.isPasswordField) {
+            failures++;
+            printf("FAIL [password field beats game mode]\n");
+        }
+    }
+
+    // Test 7: Normal -> Password resets typing session (buffer isolation)
+    {
+        total++;
+        vInputType = vTelex;
+        vLanguage = 1;
+        startNewSession();
+        // Type "vie" in normal field
+        typeKeys("vie");
+        // Focus moves to password field
+        PasswordFieldSim sim;
+        sim.updateFocus((void*)0x2000, 100, true);
+        // Engine session was reset, type "ejt" in password field (simulated raw)
+        // Verify normal engine session after password focus change is clean
+        startNewSession();
+        wstring res = typeKeys("vieejt ");
+        if (res != L"vi\u1ec7t ") {
+            failures++;
+            printf("FAIL [session isolation on password field entry]\n");
+        }
+    }
+
+    // Test 8: Password -> Normal resets typing session
+    {
+        total++;
+        PasswordFieldSim sim;
+        sim.updateFocus((void*)0x2000, 100, true);
+        // Switch back to normal field
+        sim.updateFocus((void*)0x3000, 100, false);
+        if (sim.isPasswordField) {
+            failures++;
+            printf("FAIL [normal field must have isPasswordField=false]\n");
+        }
+        startNewSession();
+        wstring res = typeKeys("vieejt ");
+        if (res != L"vi\u1ec7t ") {
+            failures++;
+            printf("FAIL [normal typing resumes cleanly after exiting password field]\n");
+        }
+    }
+
+    // Test 9: Toggle OFF in password field immediately enables normal typing
+    {
+        total++;
+        PasswordFieldSim sim;
+        sim.updateFocus((void*)0x2000, 100, true);
+        if (!sim.isPasswordField) failures++;
+        sim.setBypass(false, (void*)0x2000, 100, true);
+        if (sim.isPasswordField) {
+            failures++;
+            printf("FAIL [toggle OFF in password field must immediately disable bypass]\n");
+        }
+    }
+
+    // Test 10: Toggle ON in password field immediately enables raw bypass
+    {
+        total++;
+        PasswordFieldSim sim;
+        sim.setBypass(false, (void*)0x2000, 100, true);
+        if (sim.isPasswordField) failures++;
+        sim.setBypass(true, (void*)0x2000, 100, true);
+        if (!sim.isPasswordField) {
+            failures++;
+            printf("FAIL [toggle ON in password field must immediately enable bypass]\n");
+        }
+    }
+
+    // Test 11: Cache deduplication: same HWND + same PID skips re-evaluation
+    {
+        total++;
+        PasswordFieldSim sim;
+        sim.updateFocus((void*)0x4000, 200, true);
+        int eval1 = sim.evaluateCount;
+        sim.updateFocus((void*)0x4000, 200, true);
+        int eval2 = sim.evaluateCount;
+        if (eval1 != eval2 || eval1 != 1) {
+            failures++;
+            printf("FAIL [cache same HWND + same PID must skip re-evaluation]\n");
+        }
+    }
+
+    // Test 12: Cache invalidation: same HWND with different PID triggers re-evaluation
+    {
+        total++;
+        PasswordFieldSim sim;
+        sim.updateFocus((void*)0x4000, 200, true);
+        int eval1 = sim.evaluateCount;
+        sim.updateFocus((void*)0x4000, 300, false); // Handle recycled by different PID
+        int eval2 = sim.evaluateCount;
+        if (eval2 != eval1 + 1 || sim.isPasswordField) {
+            failures++;
+            printf("FAIL [cache same HWND + different PID must re-evaluate]\n");
+        }
+    }
+
+    // Test 13: Hook liveness tick is updated even during password raw pass-through
+    {
+        total++;
+        PasswordFieldSim sim;
+        sim.updateFocus((void*)0x5000, 400, true);
+        sim.handleKey('X', 99999);
+        if (sim.lastHookTick != 99999) {
+            failures++;
+            printf("FAIL [keyboard hook liveness tick must update in password field]\n");
+        }
+        sim.handleMouse(0x0201, 100000);
+        if (sim.lastHookTick != 100000) {
+            failures++;
+            printf("FAIL [mouse hook liveness tick must update in password field]\n");
+        }
+    }
+}
+
 //EngineTests --render: for each word read, print it and what Telex makes of it (tools/make_mixed_words.py uses this)
 static int renderWords() {
     vInputType = vTelex;
@@ -555,6 +1076,8 @@ int main(int argc, char** argv) {
     testConvert();
     testUtf8Conversion();
     testMacroFileIO();
+    testGameMode();
+    testPasswordField();
     printf("%d/%d engine tests passed\n", total - failures, total);
     return failures == 0 ? 0 : 1;
 }

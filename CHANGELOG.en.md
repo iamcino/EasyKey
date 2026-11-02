@@ -2,6 +2,21 @@
 
 [Tiếng Việt](CHANGELOG.md) · **English**
 
+## 1.0.18 - 2026-11-02
+
+### Added
+- **Game Mode**: protect control keys while playing; game chat defaults to raw input to avoid turning fast chat words such as `afk`, `gg`, `wp`, `how`, or `as` into Vietnamese marks.
+- **Game Mode**: Esc and left/right/middle mouse click exit chat state immediately, returning WASD/QWE control to the game; mouse movement, wheel, and extra mouse buttons do not exit chat.
+- **Game Mode**: commands starting with `/`, such as `/ff`, `/w`, `/give`, and `/tp`, are preserved as raw input until space or Enter.
+- **Password field bypass**: when focus enters a clearly identified password field, EasyKey switches to raw typing to avoid Vietnamese marks, macros, Quick Telex, and auto-capitalization.
+- **Password field bypass**: detection runs only on focus change; keyboard and mouse hooks read a cached flag with constant cost; field contents are not read, keystrokes are not logged, and no data is sent off-device.
+- **Code signing**: add Authenticode signing, timestamping, signature verification, and a public certificate for binary integrity checks.
+
+### Notes
+- Password field bypass is enabled by default and can be turned off in Settings › Advanced › Typing.
+- Windows logon, UAC secure prompts, secure desktop, and some custom controls may be outside the supported scope of password field bypass.
+- Game Mode state-machine logic is covered by automated tests; real-world behavior in individual games is covered by manual testing.
+
 ## 1.0.17 (Windows 11 x64)
 - More compact Settings window: tighter spacing and type sizes, single-line **Vietnamese** · **Mixed** · **English** mode buttons with centered badge and label (both in 3-mode and 2-mode layouts), a flat input method tab bar with an accent underline, and a slimmer **Advanced** header.
 - The **EV** badge in Settings, the switch flyout and the tray icon is sized to fit with clear margins at every scale; at 16 px the three bars of E stay separate.
