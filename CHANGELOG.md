@@ -1,6 +1,18 @@
-﻿# Nhật ký thay đổi
+# Nhật ký thay đổi
 
 **Tiếng Việt** · [English](CHANGELOG.en.md)
+
+## 1.0.20 - 2026-11-03
+
+### Added
+- **Game Mode window binding**: Game Mode liên kết trực tiếp theo cửa sổ (`HWND` + PID) của game đang kích hoạt; giữ nguyên phím thô trong game và tự động khôi phục chế độ nhớ theo ứng dụng (SmartSwitchKey) khi Alt+Tab sang ứng dụng khác; fast-path rebind trong 5 giây mà không làm chậm hook bàn phím.
+- **Game window picker**: Tự động gợi ý Top 3 cửa sổ game đang chạy trên menu khay hệ thống và Cài đặt, tính điểm ưu tiên cửa sổ foreground gần nhất và toàn màn hình đa màn hình; hỗ trợ duyệt file `.exe` thực thi của trận đấu; đảm bảo ranh giới phân quyền an toàn và bảo mật thông tin (tiêu đề cửa sổ chỉ lưu tạm trong RAM khi mở menu, không ghi đĩa, không gửi mạng).
+- **VirusTotal Reference Sidecar**: Tích hợp quy trình kiểm tra mã độc độc lập qua VirusTotal API v3 downstream sau khi phát hành bản dựng, xác thực tính toàn vẹn bằng `SHA256SUMS.txt`, đính kèm báo cáo JSON chi tiết `virustotal-<tag>.json` vào release.
+
+### Notes
+- Game Mode nhận diện theo tên file thực thi cơ sở (`exeBaseName`); nếu các game khác nhau dùng chung tên file exe, cấu hình sẽ áp dụng chung.
+- Một số tựa game UWP / Microsoft Store hoặc game chạy qua host đặc thù (`ApplicationFrameHost.exe`) có thể cần duyệt file `.exe` thủ công nếu Windows cho phép truy cập.
+- EasyKey không đọc nội dung game hay ô nhập liệu, không can thiệp bộ nhớ tiến trình và không gửi dữ liệu ra ngoài thiết bị.
 
 ## 1.0.19 - 2026-11-02
 

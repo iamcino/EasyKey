@@ -18,3 +18,8 @@ note_for_agent.md
 *.p12
 *.pvk
 *.key
+
+# Python bytecode (VirusTotal sidecar)
+__pycache__/
+*.py[cod]
+*.class
