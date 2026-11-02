@@ -65,11 +65,11 @@ thư viện cài thêm, và gỡ sạch bằng một nút.
 |--------|-----------------|
 | **Một file, chưa tới 1 MB** | Không trình cài đặt, không DLL, không runtime. Chép đi đâu cũng chạy, bỏ vào USB cũng được. |
 | **Gõ Anh–Việt trong cùng một câu** | Chế độ Anh–Việt tự nhận ra từ tiếng Anh và trả lại phím gốc khi bạn gõ xong từ, kể cả từ trùng với chữ Việt như "this" (thí), "test" (tét). Không phải bấm chuyển chế độ giữa câu. |
-| **Gõ ổn định ở nơi bộ gõ hay lỗi** | Không lặp chữ ở thanh địa chỉ Chrome, Edge, Brave; tự gắn lại hook khi Windows gỡ mất (lỗi "chaats" ở Discord); chế độ game để phím kỹ năng đi thẳng vào game. |
+| **Gõ ổn định ở nơi bộ gõ hay lỗi** | Không lặp chữ ở thanh địa chỉ Chrome, Edge, Brave; tự gắn lại hook khi Windows gỡ mất (lỗi "chaats" ở Discord); chế độ game thông minh gắn kết theo cửa sổ để phím kỹ năng đi thẳng vào game. |
 | **Nhớ theo từng ứng dụng** | Mỗi ứng dụng giữ chế độ Việt/Anh và bảng mã riêng, kể cả ứng dụng Microsoft Store. Mở Word dùng TCVN3, quay lại Chrome vẫn là Unicode. |
 | **Giao diện Windows 11 thật sự** | Mica, sáng/tối theo Windows, màu nhấn tuỳ chọn, chữ DirectWrite sắc nét ở mọi mức phóng to, font Be Vietnam Pro nhúng sẵn. Giao diện tiếng Việt hoặc tiếng Anh. |
 | **Không ô ENG/VIE trên thanh tác vụ** | Windows vẫn chỉ có một bàn phím, nên không có ô ngôn ngữ chiếm chỗ hay nhảy lung tung. |
-| **Cập nhật an toàn** | Chỉ tải qua HTTPS từ trang phát hành của dự án, đối chiếu mã SHA-256, luôn hỏi trước khi cài. Mỗi bản phát hành được build công khai trên GitHub Actions kèm chứng thực nguồn gốc. |
+| **Cập nhật & kiểm chứng an toàn** | Chỉ tải qua HTTPS từ trang phát hành của dự án, đối chiếu mã SHA-256 (`SHA256SUMS.txt`), luôn hỏi trước khi cài. Bản phát hành build công khai trên GitHub Actions kèm chứng thực nguồn gốc, hỗ trợ ký số Authenticode và đính kèm báo cáo quét mã độc minh bạch qua VirusTotal API v3. |
 | **Riêng tư** | Không tài khoản, không thu thập dữ liệu, không ghi lại phím bạn gõ. Kết nối duy nhất là kiểm tra bản mới trên GitHub. |
 | **Mã nguồn mở** | GPL v3. Engine gõ có bộ test chạy trên cả Windows và Linux mỗi lần đổi mã. |
 
@@ -116,9 +116,8 @@ tiếng (lập trình, công việc, học tập):
   theo, menu khay luôn đánh dấu đúng bảng mã của ứng dụng đang dùng. Ứng dụng
   Microsoft Store được nhớ theo tên riêng của nó; ứng dụng không đọc được tên
   thì giữ nguyên lựa chọn hiện tại thay vì ghi nhầm sang ứng dụng khác.
-- **Chế độ game:** bật cho từng game từ menu khay khi đang chơi. Phím Q, W, E,
-  R… đi thẳng vào game; bấm Enter mở khung chat thì gõ được tiếng Việt, Enter
-  hoặc Esc thì trở lại.
+- **Chế độ game (Window-Bound Game Mode):** tự động gợi ý Top 3 cửa sổ game đang chạy hoặc duyệt file `.exe`, gắn kết trực tiếp theo cửa sổ game (HWND + PID) để không ảnh hưởng ứng dụng khác khi Alt+Tab. Các phím điều khiển (WASD, QWER) đi thẳng vào game; chat game mặc định dùng phím thô (tránh biến `afk`, `gg`, `wp`, `how`, `as` thành dấu tiếng Việt), bấm Enter chuyển sang gõ tiếng Việt, bấm Esc hoặc click chuột để trở lại game ngay lập tức.
+- **Tự động bỏ qua ô mật khẩu (Password field bypass):** nhận diện các ô mật khẩu chuẩn trong ứng dụng Win32 và trình duyệt hiện đại (Chrome, Edge, Firefox, Electron), tự động chuyển sang gõ phím thô để tránh dấu tiếng Việt và gõ tắt. Hoạt động trên luồng nền bất đồng bộ, không làm chậm phím.
 - **Không lặp chữ** ở thanh địa chỉ Chrome, Edge, Brave và các ô có gợi ý tự
   động.
 - **Ứng dụng quyền Admin:** EasyKey báo khi bạn mở một ứng dụng như vậy, và có
@@ -193,7 +192,7 @@ tra cập nhật…** để kiểm tra ngay.
 | Mở Cài đặt | Bấm đúp vào biểu tượng ở khay, hoặc bấm phải › Cài đặt… |
 | Đổi kiểu gõ, bảng mã | Bấm phải vào biểu tượng ở khay › Kiểu gõ / Bảng mã, hoặc trong Cài đặt |
 | Lấy lại phím vừa gõ khi bị bỏ dấu nhầm | Bấm **Esc** ngay sau từ đó (việt → vieejt) |
-| Bật chế độ game cho game đang chơi | Khi đang ở trong game, bấm phải vào biểu tượng ở khay › Chế độ game cho … |
+| Bật chế độ game cho game đang chơi | Bấm phải vào biểu tượng ở khay › Chế độ game › chọn từ Top 3 gợi ý hoặc duyệt file .exe |
 | Đổi phím tắt chuyển Việt/Anh | Cài đặt › Phím chuyển › Đổi |
 | Sửa bảng gõ tắt | Cài đặt › Nâng cao › Gõ › Bảng gõ tắt |
 
@@ -278,23 +277,17 @@ bạn tự bật nhật ký phím để báo lỗi (xem [Gõ ra chữ sai](#gõ-
 **Có bản cho macOS, Linux hay ARM64 không?**
 Chưa. EasyKey hiện chỉ tập trung cho Windows 11 x64 cho tới khi thật ổn định.
 
-### Cảnh báo của Windows
+### Xác thực nguồn gốc và kiểm tra mã độc
 
-EasyKey **chưa có chữ ký số**. Vì vậy SmartScreen có thể hiện "Windows
-protected your PC" (bấm **More info** › **Run anyway**), và phần mềm diệt virus
-có thể chặn `EasyKey.exe`. Bộ gõ nào cũng phải đọc phím bấm để bỏ dấu, nên dễ
-bị nghi ngờ khi chưa ký số.
+Mỗi bản phát hành của EasyKey được build công khai trên GitHub Actions kèm chứng thực nguồn gốc (build provenance attestation), hỗ trợ ký số Authenticode và được kiểm tra mã độc độc lập qua VirusTotal API v3:
 
-Mã nguồn công khai. Mỗi bản phát hành được build trên GitHub Actions kèm chứng
-thực nguồn gốc (build provenance). Kiểm tra bằng
-[GitHub CLI](https://cli.github.com):
-
-```
-gh attestation verify EasyKey<phiên bản>-Windows.zip --repo iamcino/EasyKey
-```
-
-Nếu tin tưởng, bạn có thể thêm thư mục EasyKey vào danh sách loại trừ của phần
-mềm diệt virus.
+- **Báo cáo VirusTotal:** Mỗi bản phát hành đi kèm file `virustotal-<phiên bản>.json` chứa liên kết đối chiếu trực tiếp trên VirusTotal và kết quả phân tích từ hơn 70 engine diệt virus.
+- **Mã kiểm tra toàn vẹn:** Đi kèm file `SHA256SUMS.txt` và `<file>.sha256` để kiểm tra mã băm trước khi chạy.
+- **Chứng thực nguồn gốc:** Kiểm tra bằng [GitHub CLI](https://cli.github.com):
+  ```
+  gh attestation verify EasyKey<phiên bản>-Windows.zip --repo iamcino/EasyKey
+  ```
+- **Cảnh báo SmartScreen:** Nếu Windows hiện "Windows protected your PC", bấm **More info** › **Run anyway**. Bộ gõ sử dụng hook bàn phím mức thấp để bắt phím và bỏ dấu nên có thể bị các phần mềm bảo mật cảnh báo nhận nhầm (false positive). Bạn có thể kiểm tra chữ ký hoặc đối chiếu mã băm với bản quét VirusTotal đi kèm.
 
 ### Kiểm tra chính tả tiếng Việt
 
