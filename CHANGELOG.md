@@ -1,6 +1,19 @@
-# Nhật ký thay đổi
+﻿# Nhật ký thay đổi
 
 **Tiếng Việt** · [English](CHANGELOG.en.md)
+
+## 1.0.19 - 2026-11-02
+
+### Added
+- **Browser password field bypass**: EasyKey có thể nhận diện các ô nhập mật khẩu chuẩn trong Chrome, Edge, Firefox và Electron, sau đó chuyển sang gõ phím thô để tránh dấu tiếng Việt, gõ tắt, Quick Telex và tự động viết hoa.
+- **Non-blocking detection**: nhận diện ô mật khẩu hiện đại chạy bất đồng bộ trên luồng nền; luồng hook chỉ đọc trạng thái đã cache, không làm chậm phím.
+- **Sticky password**: khi một ô đã được xác nhận là mật khẩu, EasyKey giữ phím thô cho tới khi focus rời khỏi ô đó, kể cả khi người dùng bấm “Hiện mật khẩu”.
+- **Kill switch**: có thể tắt phát hiện trình duyệt qua registry `vPasswordFieldUIA = 0`; ô mật khẩu Win32 chuẩn vẫn hoạt động.
+
+### Notes
+- Hỗ trợ ở mức best-effort cho các password control chuẩn. Canvas input, virtual keyboard, shadow DOM phức tạp, iframe khác nguồn hoặc control tùy chỉnh có thể không được nhận diện.
+- Việc truy vấn accessibility API có thể khiến trình duyệt kích hoạt accessibility tree, làm tăng tài nguyên cục bộ.
+- EasyKey không đọc nội dung ô nhập, không ghi nhật ký phím và không gửi dữ liệu ra ngoài.
 
 ## 1.0.18 - 2026-11-02
 

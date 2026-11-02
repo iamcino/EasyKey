@@ -91,7 +91,7 @@ Both skip the check while an elevated window is in front, because the hook not s
 | Elevated apps | Windows doesn't let normal apps send keys to them. EasyKey tells the user once per app. The run-as-administrator option uses Task Scheduler to start with Windows without a UAC prompt. | `onElevatedWindow`, `registerAdminTask` |
 | Shortcuts with Alt or Win | The hook eats the letter of the shortcut, so the app thinks Alt/Win was pressed alone and opens its menu or Start. EasyKey sends an extra no-op key 0xE8 to prevent that. | `maskMenuKey` |
 | Game mode | For games on the list, keys go straight to the game. Game chat defaults to raw input. Enter opens or closes chat; Esc or mouse click exits chat immediately; commands starting with `/` remain raw until Space or Enter. | `_inGame`, `_gameChat`, `exitGameChat` |
-| Password field bypass | When focus enters a recognized password field, EasyKey switches to absolute raw typing: disables all diacritics, macros, auto-capitalization, and buffer restoration. Does not read field contents. | `_isPasswordField`, `updatePasswordFieldState` |
+| Password field bypass | When focus enters a recognized password field (Win32, Chrome/Edge/Firefox, Electron), EasyKey switches to absolute raw typing: disables all diacritics, macros, auto-capitalization, and buffer restoration. Uses a 3-tier lock-free async architecture with sticky password; never reads field contents. | `_passwordStateWord`, `updatePasswordFieldState`, `passwordProbeWorkerProc` |
 | Per app memory | When the foreground window changes (`EVENT_SYSTEM_FOREGROUND`), load the Vietnamese/English mode and encoding saved for that exe and update the ticks in the tray menu. The exe name is read with `PROCESS_QUERY_LIMITED_INFORMATION`, which also works for apps that refuse memory reads. Store apps hosted in `ApplicationFrameHost.exe` are remembered by the process that owns the `CoreWindow` inside the frame. When the name can't be read, the current choice stays instead of being saved for the previous app. | `winEventProcCallback`, `getFrontMostAppExecuteName`, `SmartSwitchKey.cpp` |
 | Mouse click | Start a new word, since the caret may have moved. | `mouseHookProcess` |
 
@@ -141,22 +141,27 @@ Known limitations:
 - Some fullscreen exclusive games, custom overlays, or proprietary input paths may behave differently.
 - Game Mode does not read game content, inspect process memory, or send data off-device.
 
-### Password Field Bypass
+### Password Field Bypass (Browser & Win32)
 
 When focus is in a clearly identified password input, EasyKey switches to absolute raw typing.
 
 The goal is to prevent password characters from being converted into Vietnamese marks, expanded by macros, auto-capitalized, or affected by Mixed mode.
 
-- Password-field detection runs only on focus change.
+- 3-Tier Lock-Free Architecture:
+  1. Win32 Fast Path (0 ms): Detected immediately via `ES_PASSWORD` on standard Win32 `Edit` controls.
+  2. Async Probe Worker (COM MTA): Asynchronous probe via Windows UI Automation (`UIA_IsPasswordPropertyId`), automatic fallback to MSAA (`STATE_SYSTEM_PROTECTED`). Zero telemetry, zero text reading.
+  3. 32-bit Atomic State Machine: `PW_NORMAL`, `PW_PASSWORD`, `PW_PENDING` (60 ms timeout protecting the first keystroke from accents). Monotonic generation barrier prevents stale probe overwrite.
+  4. Sticky Password: Keeps bypass active when user clicks Show/Hide Password toggle on the same focus key.
+  5. Continuous Typing Protection & Mouse-Up Reprobe: Suppresses probes during continuous typing `< 150 ms` (protects Omnibox / search boxes); reprobes on `WM_LBUTTONUP` in web contexts with 100 ms throttle and 40 ms debounce.
 - Keyboard and mouse hooks read a cached state flag with constant cost.
 - Inside a password field, EasyKey disables Telex/VNI marking, Mixed mode, macros, Quick Telex, auto-capitalization, and buffer restoration mechanisms.
 - Esc and Enter are passed through to the application.
 - EasyKey does not read field contents, does not log keystrokes, does not store password-field state per application, and does not send data off-device.
-- The feature can be enabled or disabled in Settings › Advanced and is enabled by default.
+- The feature can be enabled or disabled in Settings › Advanced (`vPasswordFieldBypass` and `vPasswordFieldUIA`) and is enabled by default.
 
 Known limitations:
 - Windows logon, UAC secure prompts, and credential screens running on the secure desktop may be outside the supported scope.
-- Some custom controls that do not use standard Windows password semantics may not be detected.
+- Certain custom controls, deeply nested shadow DOM, or cross-origin iframes that do not expose password semantics to UIA/MSAA may not be detected.
 - EasyKey is not a password manager and does not interact with clipboard, autofill, or page content.
 
 ### Testing and Fixtures

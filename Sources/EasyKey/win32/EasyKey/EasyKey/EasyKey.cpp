@@ -17,8 +17,14 @@ See LICENSE and NOTICE.
 #include "stdafx.h"
 #include "AppDelegate.h"
 #include <algorithm>
+#include <atomic>
+#include <cstdint>
+#include <ole2.h>
+#include <UIAutomation.h>
+#include <oleacc.h>
 
 #pragma comment(lib, "imm32")
+#pragma comment(lib, "oleacc.lib")
 #define IMC_GETOPENSTATUS 0x0005
 
 #define MASK_SHIFT				0x01
@@ -57,7 +63,34 @@ static DWORD _lastHookTick = 0; //last time either hook ran, see checkHooks
 static DWORD _rawKeyDowns = 0, _hookKeyDowns = 0;
 static HWINEVENTHOOK hSystemEvent;
 static HWINEVENTHOOK hFocusEvent;
-static volatile bool _isPasswordField = false;
+enum PasswordStateSource {
+	PW_SRC_NONE = 0,
+	PW_SRC_WIN32 = 1,
+	PW_SRC_UIA = 2,
+	PW_SRC_MSAA = 3
+};
+
+inline uint32_t makePasswordStateWord(int state, int source) {
+	return (static_cast<uint32_t>(state) & 0xFF) | ((static_cast<uint32_t>(source) & 0xFF) << 8);
+}
+inline int getPasswordState(uint32_t word) {
+	return static_cast<int>(word & 0xFF);
+}
+inline int getPasswordSource(uint32_t word) {
+	return static_cast<int>((word >> 8) & 0xFF);
+}
+
+static std::atomic<uint32_t> _passwordStateWord{ makePasswordStateWord(PW_NORMAL, PW_SRC_NONE) };
+
+static std::atomic<uint64_t> _probeGen{ 0 };
+static std::atomic<uint64_t> _pendingDeadlineTick{ 0 };
+static std::atomic<bool> _passwordStateDirty{ false };
+static HANDLE _probeThread = NULL;
+static HANDLE _probeWakeEvent = NULL;
+static HANDLE _probeStopEvent = NULL;
+static constexpr uint64_t PW_PENDING_TIMEOUT_MS = 60;
+static constexpr DWORD PW_WORKER_SHUTDOWN_TIMEOUT_MS = 200;
+static void stopPasswordProbeWorker();
 static KBDLLHOOKSTRUCT* keyboardData;
 static MSLLHOOKSTRUCT* mouseData;
 static vKeyHookState* pData;
@@ -103,6 +136,8 @@ static void watchRawKeyboard();
 static void syncModifierMask();
 
 void EasyKeyFree() {
+	stopPasswordProbeWorker();
+	applyPasswordFeatureConfigChanges();
 	UnhookWindowsHookEx(hMouseHook);
 	UnhookWindowsHookEx(hKeyboardHook);
 	UnhookWinEvent(hSystemEvent);
@@ -154,7 +189,7 @@ void EasyKeyInit() {
 	APP_GET_DATA(vRestoreOnEscape, 1);
 	APP_GET_DATA(vWarnOtherKeyboards, 1);
 	APP_GET_DATA(vPasswordFieldBypass, 1);
-	APP_GET_DATA(vPasswordFieldUIA, 0);
+	APP_GET_DATA(vPasswordFieldUIA, 1);
 	APP_GET_DATA(vLastVersion, 0);
 	//the browser fixes are always on; vFixBrowserOff = 1 in the registry turns them off for an app they break
 	int vFixBrowserOff;
@@ -287,7 +322,7 @@ void setGameApp(const string& exe, const bool& on) {
 }
 
 bool isPasswordFieldActive() {
-	return _isPasswordField;
+	return getPasswordState(_passwordStateWord.load(std::memory_order_acquire)) != PW_NORMAL;
 }
 
 static HWND getFocusedControlHandle(HWND foregroundHwnd) {
@@ -329,20 +364,510 @@ static bool isWin32PasswordField(HWND hwnd) {
 	return false;
 }
 
-static HWND _lastFocusHwnd = NULL;
-static DWORD _lastFocusPid = 0;
 
-void invalidatePasswordFieldCache() {
-	_lastFocusHwnd = NULL;
-	_lastFocusPid = 0;
-	_isPasswordField = false;
+struct PasswordFocusKey {
+	HWND hwnd = NULL;
+	DWORD pid = 0;
+	LONG idObject = 0;
+	LONG idChild = 0;
+
+	bool operator==(const PasswordFocusKey& other) const {
+		return hwnd == other.hwnd &&
+			pid == other.pid &&
+			idObject == other.idObject &&
+			idChild == other.idChild;
+	}
+
+	bool operator!=(const PasswordFocusKey& other) const {
+		return !(*this == other);
+	}
+};
+
+static constexpr uint64_t PW_TYPING_SUPPRESS_MS = 150;
+static constexpr uint64_t PW_NAVIGATION_SIGNAL_TTL_MS = 250;
+static constexpr uint64_t PW_MOUSE_REPROBE_THROTTLE_MS = 100;
+static constexpr DWORD PW_MOUSE_REPROBE_DEBOUNCE_MS = 40;
+static constexpr DWORD PW_PROBE_RETRY_DELAY_MS = 10;
+static PasswordFocusKey _lastFocusKey{};
+static PasswordFocusKey _lastCharFocusKey{};
+static uint64_t _lastCharKeyTick = 0;
+static bool _webInputContext = false;
+static bool _hadNavigationSignal = false;
+static uint64_t _lastNavigationTick = 0;
+static uint64_t _lastProbeTick = 0;
+static std::atomic<uintptr_t> _probeTargetHwnd{ 0 };
+static std::atomic<LONG> _probeTargetObjectId{ 0 };
+static std::atomic<LONG> _probeTargetChildId{ 0 };
+static std::atomic<DWORD> _probePreDelayMs{ 0 };
+
+static void recordNavigationSignal(uint64_t nowTick) {
+	_hadNavigationSignal = true;
+	_lastNavigationTick = nowTick;
 }
 
-void updatePasswordFieldState(HWND hwnd) {
+static void clearNavigationSignal() {
+	_hadNavigationSignal = false;
+	_lastNavigationTick = 0;
+}
+
+static bool hasFreshNavigationSignal(uint64_t nowTick) {
+	return _hadNavigationSignal &&
+		nowTick >= _lastNavigationTick &&
+		(nowTick - _lastNavigationTick) < PW_NAVIGATION_SIGNAL_TTL_MS;
+}
+
+static bool isAcceptedFocusObjectId(LONG idObject) {
+	return idObject == OBJID_WINDOW ||
+		idObject == OBJID_CLIENT ||
+		idObject < -12;
+}
+
+static bool isKnownWebContentWidgetClass(HWND hwnd) {
+	if (!hwnd || !IsWindow(hwnd))
+		return false;
+
+	TCHAR cls[64] = { 0 };
+	if (!GetClassName(hwnd, cls, 64))
+		return false;
+
+	return _tcsicmp(cls, _T("Chrome_RenderWidgetHostHWND")) == 0 ||
+		_tcsicmp(cls, _T("MozillaWindowClass")) == 0;
+}
+
+static bool isKnownWebBrowserContainerClass(HWND hwnd) {
+	if (!hwnd || !IsWindow(hwnd))
+		return false;
+
+	TCHAR cls[64] = { 0 };
+	if (!GetClassName(hwnd, cls, 64))
+		return false;
+
+	return _tcsicmp(cls, _T("Chrome_WidgetWin_1")) == 0 ||
+		_tcsicmp(cls, _T("Chrome_WidgetWin_0")) == 0;
+}
+
+static bool isWebInputContextForKey(const PasswordFocusKey& key) {
+	if (!isAcceptedFocusObjectId(key.idObject))
+		return false;
+
+	// 1. Dedicated content widget (Chrome_RenderWidgetHostHWND or MozillaWindowClass)
+	if (isKnownWebContentWidgetClass(key.hwnd))
+		return true;
+
+	// 2. Container window (Chrome_WidgetWin_1/0) with explicit DOM element indicators:
+	//    - idObject < -12 (Chromium internal accessibility node ID)
+	//    - OR idChild != CHILDID_SELF and idChild != 0 (DOM child element index)
+	if (isKnownWebBrowserContainerClass(key.hwnd)) {
+		if (key.idObject < -12)
+			return true;
+		if (key.idChild != CHILDID_SELF && key.idChild != 0)
+			return true;
+	}
+
+	return false;
+}
+
+static bool isFocusNavigationKey(DWORD vkCode) {
+	switch (vkCode) {
+	case VK_TAB:
+	case VK_RETURN:
+	case VK_ESCAPE:
+	case VK_UP:
+	case VK_DOWN:
+	case VK_LEFT:
+	case VK_RIGHT:
+	case VK_PRIOR:
+	case VK_NEXT:
+	case VK_HOME:
+	case VK_END:
+		return true;
+	default:
+		return false;
+	}
+}
+
+static bool isPrintableContentKey(DWORD vkCode) {
+	if (vkCode >= '0' && vkCode <= '9') return true;
+	if (vkCode >= 'A' && vkCode <= 'Z') return true;
+	if (vkCode >= VK_NUMPAD0 && vkCode <= VK_DIVIDE) return true;
+	if (vkCode >= VK_OEM_1 && vkCode <= VK_OEM_3) return true;
+	if (vkCode >= VK_OEM_4 && vkCode <= VK_OEM_8) return true;
+	if (vkCode == VK_SPACE || vkCode == VK_BACK) return true;
+	return false;
+}
+
+static HRESULT queryUIAIsPassword(IUIAutomation* pUIA, IUIAutomationCacheRequest* pCacheReq, bool* outIsPass) {
+	*outIsPass = false;
+	if (!pUIA)
+		return E_POINTER;
+
+	IUIAutomationElement* pEl = NULL;
+	HRESULT hr = E_FAIL;
+	if (pCacheReq) {
+		hr = pUIA->GetFocusedElementBuildCache(pCacheReq, &pEl);
+		if (SUCCEEDED(hr) && pEl) {
+			BOOL isPass = FALSE;
+			if (SUCCEEDED(pEl->get_CachedIsPassword(&isPass)) && isPass) {
+				*outIsPass = true;
+			}
+			pEl->Release();
+			return hr;
+		}
+	}
+	hr = pUIA->GetFocusedElement(&pEl);
+	if (SUCCEEDED(hr) && pEl) {
+		BOOL isPass = FALSE;
+		if (SUCCEEDED(pEl->get_CurrentIsPassword(&isPass)) && isPass) {
+			*outIsPass = true;
+		}
+		pEl->Release();
+	}
+	return hr;
+}
+
+static HRESULT queryMSAAProtected(HWND hwnd, LONG idObject, LONG idChild, bool* outIsPass) {
+	*outIsPass = false;
+	if (!hwnd || !IsWindow(hwnd))
+		return E_INVALIDARG;
+
+	IAccessible* pAcc = NULL;
+	VARIANT varChild;
+	VariantInit(&varChild);
+	HRESULT hr = AccessibleObjectFromEvent(hwnd, idObject, idChild, &pAcc, &varChild);
+	if (SUCCEEDED(hr) && pAcc) {
+		VARIANT varState;
+		VariantInit(&varState);
+		hr = pAcc->get_accState(varChild, &varState);
+		if (SUCCEEDED(hr) && varState.vt == VT_I4) {
+			if ((varState.lVal & STATE_SYSTEM_PROTECTED) != 0) {
+				*outIsPass = true;
+			}
+		}
+		VariantClear(&varState);
+		pAcc->Release();
+	}
+	VariantClear(&varChild);
+	return hr;
+}
+
+static void applyPasswordProbeResultFromWorker(uint64_t resultGen, bool isPass, PasswordStateSource source) {
+	if (resultGen != _probeGen.load(std::memory_order_acquire))
+		return;
+
+	uint32_t oldWord = _passwordStateWord.load(std::memory_order_acquire);
+	for (;;) {
+		int oldState = getPasswordState(oldWord);
+		if (oldState == PW_PENDING) {
+			int nextState = isPass ? PW_PASSWORD : PW_NORMAL;
+			int nextSource = isPass ? source : PW_SRC_NONE;
+			uint32_t nextWord = makePasswordStateWord(nextState, nextSource);
+			if (_passwordStateWord.compare_exchange_weak(oldWord, nextWord, std::memory_order_acq_rel)) {
+				if (nextState == PW_NORMAL) {
+					_passwordStateDirty.store(true, std::memory_order_release);
+				}
+				break;
+			}
+		} else if (oldState == PW_NORMAL && isPass) {
+			uint32_t nextWord = makePasswordStateWord(PW_PASSWORD, source);
+			if (_passwordStateWord.compare_exchange_weak(oldWord, nextWord, std::memory_order_acq_rel)) {
+				_passwordStateDirty.store(true, std::memory_order_release);
+				break;
+			}
+		} else {
+			// oldState == PW_PASSWORD: sticky password on same focus key/generation, do not downgrade
+			break;
+		}
+	}
+}
+
+// Note: UIA GetFocusedElementBuildCache and MSAA AccessibleObjectFromEvent are synchronous
+// cross-process COM calls on this background worker thread. If a target accessibility provider
+// hangs, this worker thread may block on IPC; however, the keyboard hook thread never blocks
+// and automatically expires PW_PENDING -> PW_NORMAL after PW_PENDING_TIMEOUT_MS (60 ms),
+// incrementing _probeGen so any late worker completion is safely discarded.
+static DWORD WINAPI passwordProbeWorkerProc(LPVOID) {
+	HRESULT hrCom = CoInitializeEx(NULL, COINIT_MULTITHREADED);
+	bool comInitialized = SUCCEEDED(hrCom);
+
+	IUIAutomation* pUIA = NULL;
+	IUIAutomationCacheRequest* pCacheReq = NULL;
+	if (comInitialized) {
+		if (SUCCEEDED(CoCreateInstance(CLSID_CUIAutomation, NULL, CLSCTX_INPROC_SERVER, IID_IUIAutomation, (void**)&pUIA)) && pUIA) {
+			if (SUCCEEDED(pUIA->CreateCacheRequest(&pCacheReq)) && pCacheReq) {
+				pCacheReq->AddProperty(UIA_IsPasswordPropertyId);
+				pCacheReq->put_TreeScope(TreeScope_Element);
+				pCacheReq->put_AutomationElementMode(AutomationElementMode_None);
+			}
+		}
+	}
+
+	HANDLE waitHandles[2] = { _probeStopEvent, _probeWakeEvent };
+	for (;;) {
+		DWORD waitResult = WaitForMultipleObjects(2, waitHandles, FALSE, INFINITE);
+		if (waitResult == WAIT_OBJECT_0 || waitResult != WAIT_OBJECT_0 + 1) {
+			break;
+		}
+
+		uint64_t gen = _probeGen.load(std::memory_order_acquire);
+		DWORD preDelayMs = _probePreDelayMs.exchange(0, std::memory_order_acq_rel);
+		if (preDelayMs > 0) {
+			if (WaitForSingleObject(_probeStopEvent, preDelayMs) == WAIT_OBJECT_0) {
+				break;
+			}
+			// Coalesce with any newer probe scheduled during the debounce window
+			gen = _probeGen.load(std::memory_order_acquire);
+		}
+
+		HWND targetHwnd = (HWND)_probeTargetHwnd.load(std::memory_order_acquire);
+		LONG targetObj = _probeTargetObjectId.load(std::memory_order_acquire);
+		LONG targetChild = _probeTargetChildId.load(std::memory_order_acquire);
+
+		bool isPass = false;
+		PasswordStateSource passSource = PW_SRC_NONE;
+		for (int attempt = 0; attempt < 2; attempt++) {
+			if (gen != _probeGen.load(std::memory_order_acquire))
+				break;
+
+			bool uiaPass = false;
+			HRESULT hrUia = queryUIAIsPassword(pUIA, pCacheReq, &uiaPass);
+			if (SUCCEEDED(hrUia) && uiaPass) {
+				isPass = true;
+				passSource = PW_SRC_UIA;
+				break;
+			}
+
+			// When UIA returns false (or error) in web context, always fall back to MSAA STATE_SYSTEM_PROTECTED
+			bool msaaPass = false;
+			HRESULT hrMsaa = queryMSAAProtected(targetHwnd, targetObj, targetChild, &msaaPass);
+			if (SUCCEEDED(hrMsaa) && msaaPass) {
+				isPass = true;
+				passSource = PW_SRC_MSAA;
+				break;
+			}
+
+			if (SUCCEEDED(hrUia) || SUCCEEDED(hrMsaa)) {
+				break; // Definitive non-password result
+			}
+
+			// Both UIA and MSAA failed with error: retry once after short wait unless stopped
+			if (attempt == 0 && WaitForSingleObject(_probeStopEvent, PW_PROBE_RETRY_DELAY_MS) == WAIT_OBJECT_0) {
+				break;
+			}
+		}
+
+		applyPasswordProbeResultFromWorker(gen, isPass, passSource);
+	}
+
+	if (pCacheReq) {
+		pCacheReq->Release();
+	}
+	if (pUIA) {
+		pUIA->Release();
+	}
+	if (comInitialized) {
+		CoUninitialize();
+	}
+	return 0;
+}
+
+static void startPasswordProbeWorkerIfNeeded() {
+	if (!vPasswordFieldBypass || !vPasswordFieldUIA)
+		return;
+	if (_probeThread != NULL)
+		return;
+	if (!_probeStopEvent)
+		_probeStopEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+	else
+		ResetEvent(_probeStopEvent);
+	if (!_probeWakeEvent)
+		_probeWakeEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+	else
+		ResetEvent(_probeWakeEvent);
+	if (_probeStopEvent && _probeWakeEvent) {
+		_probeThread = CreateThread(NULL, 0, passwordProbeWorkerProc, NULL, 0, NULL);
+	}
+}
+
+static void stopPasswordProbeWorker() {
+	_probeGen.fetch_add(1, std::memory_order_acq_rel);
+	uint32_t prevWord = _passwordStateWord.exchange(makePasswordStateWord(PW_NORMAL, PW_SRC_NONE), std::memory_order_acq_rel);
+	if (getPasswordState(prevWord) != PW_NORMAL) {
+		_passwordStateDirty.store(true, std::memory_order_release);
+	}
+	if (_probeThread) {
+		if (_probeStopEvent) {
+			SetEvent(_probeStopEvent);
+		}
+		WaitForSingleObject(_probeThread, PW_WORKER_SHUTDOWN_TIMEOUT_MS);
+		CloseHandle(_probeThread);
+		_probeThread = NULL;
+	}
+	if (_probeWakeEvent) {
+		CloseHandle(_probeWakeEvent);
+		_probeWakeEvent = NULL;
+	}
+	if (_probeStopEvent) {
+		CloseHandle(_probeStopEvent);
+		_probeStopEvent = NULL;
+	}
+}
+
+static void resetTypingSessionOnHookThread() {
+	exitGameChat();
+	_escapeRestored = false;
+	_lastFlag = 0;
+	_hasJustUsedHotKey = false;
+	startNewSession();
+	vStartSentence();
+	if (IS_DOUBLE_CODE(vCodeTable)) {
+		_syncKey.clear();
+	}
+}
+
+static bool isPasswordRawActiveOnHookThread(uint64_t nowTick) {
+	uint32_t word = _passwordStateWord.load(std::memory_order_acquire);
+	int state = getPasswordState(word);
+	if (state == PW_PENDING) {
+		uint64_t deadline = _pendingDeadlineTick.load(std::memory_order_acquire);
+		if (nowTick >= deadline) {
+			uint32_t expected = word;
+			uint32_t normalWord = makePasswordStateWord(PW_NORMAL, PW_SRC_NONE);
+			if (_passwordStateWord.compare_exchange_strong(expected, normalWord, std::memory_order_acq_rel)) {
+				_probeGen.fetch_add(1, std::memory_order_acq_rel);
+				_passwordStateDirty.store(true, std::memory_order_release);
+				state = PW_NORMAL;
+			} else {
+				state = getPasswordState(_passwordStateWord.load(std::memory_order_acquire));
+			}
+		}
+	}
+	if (_passwordStateDirty.exchange(false, std::memory_order_acq_rel)) {
+		resetTypingSessionOnHookThread();
+	}
+	return state != PW_NORMAL;
+}
+
+void applyPasswordFeatureConfigChanges() {
+	static uint64_t _lastRegCheckTick = 0;
+	uint64_t now = GetTickCount64();
+	if (_lastRegCheckTick == 0 || (now - _lastRegCheckTick) > 200) {
+		_lastRegCheckTick = now;
+		vPasswordFieldUIA = EasyKeyHelper::getRegInt(_T("vPasswordFieldUIA"), 1);
+		vPasswordFieldBypass = EasyKeyHelper::getRegInt(_T("vPasswordFieldBypass"), 1);
+	}
+
 	if (!vPasswordFieldBypass) {
-		_isPasswordField = false;
-		_lastFocusHwnd = NULL;
-		_lastFocusPid = 0;
+		stopPasswordProbeWorker();
+		invalidatePasswordFieldCache();
+		return;
+	}
+
+	if (!vPasswordFieldUIA) {
+		stopPasswordProbeWorker();
+		uint32_t oldWord = _passwordStateWord.load(std::memory_order_acquire);
+		for (;;) {
+			int state = getPasswordState(oldWord);
+			int src = getPasswordSource(oldWord);
+			if (state == PW_PENDING || (state == PW_PASSWORD && src != PW_SRC_WIN32)) {
+				uint32_t normalWord = makePasswordStateWord(PW_NORMAL, PW_SRC_NONE);
+				if (_passwordStateWord.compare_exchange_weak(oldWord, normalWord, std::memory_order_acq_rel)) {
+					_probeGen.fetch_add(1, std::memory_order_acq_rel);
+					_passwordStateDirty.store(true, std::memory_order_release);
+					break;
+				}
+			} else {
+				break;
+			}
+		}
+	}
+}
+
+static bool schedulePasswordProbeIfNeeded(const PasswordFocusKey& key, bool force, DWORD preDelayMs = 0) {
+	if (!vPasswordFieldBypass || !vPasswordFieldUIA)
+		return false;
+	if (!isWebInputContextForKey(key))
+		return false;
+
+	startPasswordProbeWorkerIfNeeded();
+	if (!_probeThread || !_probeWakeEvent)
+		return false;
+
+	int oldState = getPasswordState(_passwordStateWord.load(std::memory_order_acquire));
+	if (!force && oldState == PW_PASSWORD) {
+		// Sticky password on same focus key: do not downgrade
+		return true;
+	}
+
+	uint64_t nowTick = GetTickCount64();
+	_lastProbeTick = nowTick;
+	_probeTargetHwnd.store((uintptr_t)key.hwnd, std::memory_order_release);
+	_probeTargetObjectId.store(key.idObject, std::memory_order_release);
+	_probeTargetChildId.store(key.idChild, std::memory_order_release);
+	_probePreDelayMs.store(preDelayMs, std::memory_order_release);
+	_pendingDeadlineTick.store(nowTick + PW_PENDING_TIMEOUT_MS, std::memory_order_release);
+	_probeGen.fetch_add(1, std::memory_order_acq_rel);
+
+	uint32_t pendingWord = makePasswordStateWord(PW_PENDING, PW_SRC_NONE);
+	uint32_t prevWord = _passwordStateWord.exchange(pendingWord, std::memory_order_acq_rel);
+	if (getPasswordState(prevWord) != PW_PENDING) {
+		_passwordStateDirty.store(true, std::memory_order_release);
+	}
+
+	SetEvent(_probeWakeEvent);
+	return true;
+}
+
+static void scheduleMouseUpReprobeIfNeeded(uint64_t nowTick, POINT pt) {
+	if (!vPasswordFieldBypass || !vPasswordFieldUIA)
+		return;
+
+	// Sticky password on same focus key: never downgrade on mouse click (e.g. "Show password")
+	if (getPasswordState(_passwordStateWord.load(std::memory_order_acquire)) == PW_PASSWORD)
+		return;
+
+	// Throttle mouse-up reprobes to at most 1 per PW_MOUSE_REPROBE_THROTTLE_MS (100 ms)
+	if (_lastProbeTick != 0 && nowTick >= _lastProbeTick &&
+		(nowTick - _lastProbeTick) < PW_MOUSE_REPROBE_THROTTLE_MS) {
+		return;
+	}
+
+	HWND hClicked = WindowFromPoint(pt);
+	if (!hClicked || !IsWindow(hClicked))
+		return;
+
+	// Reject clicks on browser toolbars, tabs, menus (Chrome_WidgetWin_1 itself)
+	// ONLY probe if clicked directly on a web content widget
+	if (!isKnownWebContentWidgetClass(hClicked))
+		return;
+
+	DWORD pid = 0;
+	GetWindowThreadProcessId(hClicked, &pid);
+	PasswordFocusKey targetKey{ hClicked, pid, OBJID_CLIENT, 0 };
+
+	schedulePasswordProbeIfNeeded(targetKey, false, PW_MOUSE_REPROBE_DEBOUNCE_MS);
+}
+
+void invalidatePasswordFieldCache() {
+	_lastFocusKey = PasswordFocusKey{};
+	_lastCharFocusKey = PasswordFocusKey{};
+	_lastCharKeyTick = 0;
+	_lastProbeTick = 0;
+	_webInputContext = false;
+	clearNavigationSignal();
+	_probePreDelayMs.store(0, std::memory_order_release);
+	_probeGen.fetch_add(1, std::memory_order_acq_rel);
+	uint32_t normalWord = makePasswordStateWord(PW_NORMAL, PW_SRC_NONE);
+	uint32_t prevWord = _passwordStateWord.exchange(normalWord, std::memory_order_acq_rel);
+	if (getPasswordState(prevWord) != PW_NORMAL) {
+		_passwordStateDirty.store(true, std::memory_order_release);
+	}
+}
+
+void updatePasswordFieldState(HWND hwnd, LONG idObject, LONG idChild, bool isForegroundChange) {
+	applyPasswordFeatureConfigChanges();
+
+	if (!vPasswordFieldBypass) {
+		invalidatePasswordFieldCache();
 		return;
 	}
 
@@ -351,48 +876,77 @@ void updatePasswordFieldState(HWND hwnd) {
 	if (focusedControl) {
 		GetWindowThreadProcessId(focusedControl, &pid);
 	}
-	if (focusedControl == _lastFocusHwnd && pid == _lastFocusPid)
+
+	PasswordFocusKey currentKey{ focusedControl, pid, idObject, idChild };
+	if (!isForegroundChange && currentKey == _lastFocusKey)
 		return;
 
-	_lastFocusHwnd = focusedControl;
-	_lastFocusPid = pid;
-	bool wasPass = _isPasswordField;
-	bool isPass = isWin32PasswordField(focusedControl);
-
-	if (!isPass && vPasswordFieldUIA) {
-		// Modern UIA detection reserved behind hidden flag vPasswordFieldUIA (default 0)
+	bool isWin32Pass = isWin32PasswordField(focusedControl);
+	if (isWin32Pass) {
+		_lastFocusKey = currentKey;
+		_webInputContext = false;
+		clearNavigationSignal();
+		_probeGen.fetch_add(1, std::memory_order_acq_rel);
+		uint32_t win32PassWord = makePasswordStateWord(PW_PASSWORD, PW_SRC_WIN32);
+		uint32_t prevWord = _passwordStateWord.exchange(win32PassWord, std::memory_order_acq_rel);
+		if (getPasswordState(prevWord) != PW_PASSWORD) {
+			_passwordStateDirty.store(false, std::memory_order_release);
+			resetTypingSessionOnHookThread();
+		}
+		return;
 	}
 
-	_isPasswordField = isPass;
+	bool isWebCtx = isWebInputContextForKey(currentKey);
+	_webInputContext = isWebCtx;
 
-	if (_isPasswordField) {
-		exitGameChat();
-		_escapeRestored = false;
-		_lastFlag = 0;
-		_hasJustUsedHotKey = false;
-		startNewSession();
-		vStartSentence();
-		if (IS_DOUBLE_CODE(vCodeTable)) {
-			_syncKey.clear();
+	uint64_t nowTick = GetTickCount64();
+	bool sameHostWindow = (_lastCharFocusKey.hwnd != NULL &&
+		focusedControl == _lastCharFocusKey.hwnd &&
+		pid == _lastCharFocusKey.pid);
+	bool suppressContinuousTyping = !isForegroundChange &&
+		!hasFreshNavigationSignal(nowTick) &&
+		isWebCtx &&
+		sameHostWindow &&
+		_lastCharKeyTick != 0 &&
+		nowTick >= _lastCharKeyTick &&
+		(nowTick - _lastCharKeyTick) < PW_TYPING_SUPPRESS_MS;
+
+	_lastFocusKey = currentKey;
+	if (suppressContinuousTyping) {
+		return;
+	}
+
+	clearNavigationSignal();
+
+	if (isWebCtx && vPasswordFieldUIA) {
+		if (schedulePasswordProbeIfNeeded(currentKey, true)) {
+			return;
 		}
-	} else if (wasPass) {
-		startNewSession();
-		vStartSentence();
-		if (IS_DOUBLE_CODE(vCodeTable)) {
-			_syncKey.clear();
-		}
+	}
+
+	_probeGen.fetch_add(1, std::memory_order_acq_rel);
+	uint32_t normalWord = makePasswordStateWord(PW_NORMAL, PW_SRC_NONE);
+	uint32_t prevWord = _passwordStateWord.exchange(normalWord, std::memory_order_acq_rel);
+	if (getPasswordState(prevWord) != PW_NORMAL) {
+		_passwordStateDirty.store(false, std::memory_order_release);
+		resetTypingSessionOnHookThread();
 	}
 }
 
 void setPasswordFieldBypass(bool enabled) {
 	vPasswordFieldBypass = enabled ? 1 : 0;
+	applyPasswordFeatureConfigChanges();
 	invalidatePasswordFieldCache();
 	HWND fg = GetForegroundWindow();
-	updatePasswordFieldState(fg);
-	startNewSession();
-	vStartSentence();
-	if (IS_DOUBLE_CODE(vCodeTable)) {
-		_syncKey.clear();
+	updatePasswordFieldState(fg, OBJID_WINDOW, CHILDID_SELF, true);
+	resetTypingSessionOnHookThread();
+}
+
+void setPasswordFieldUIA(bool enabled) {
+	vPasswordFieldUIA = enabled ? 1 : 0;
+	applyPasswordFeatureConfigChanges();
+	if (vPasswordFieldBypass && vPasswordFieldUIA && _webInputContext && _lastFocusKey.hwnd != NULL) {
+		schedulePasswordProbeIfNeeded(_lastFocusKey, true);
 	}
 }
 
@@ -909,7 +1463,18 @@ LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 		return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
 	}
 
-	if (_isPasswordField) {
+	uint64_t nowTick = GetTickCount64();
+	if ((wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN) && !(keyboardData->flags & LLKHF_INJECTED)) {
+		if (isFocusNavigationKey(keyboardData->vkCode)) {
+			recordNavigationSignal(nowTick);
+		} else if (!(OTHER_CONTROL_KEY) && isPrintableContentKey(keyboardData->vkCode)) {
+			_lastCharKeyTick = nowTick;
+			_lastCharFocusKey = _lastFocusKey;
+			clearNavigationSignal();
+		}
+	}
+
+	if (isPasswordRawActiveOnHookThread(nowTick)) {
 		return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
 	}
 	
@@ -1140,7 +1705,15 @@ LRESULT CALLBACK mouseHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 	_lastHookTick = GetTickCount();
 	mouseData = (MSLLHOOKSTRUCT *)lParam;
 
-	if (_isPasswordField)
+	uint64_t nowTick = GetTickCount64();
+	if (wParam == WM_LBUTTONDOWN || wParam == WM_RBUTTONDOWN || wParam == WM_MBUTTONDOWN || wParam == WM_LBUTTONUP) {
+		recordNavigationSignal(nowTick);
+	}
+	if (wParam == WM_LBUTTONUP) {
+		scheduleMouseUpReprobeIfNeeded(nowTick, mouseData->pt);
+	}
+
+	if (isPasswordRawActiveOnHookThread(nowTick))
 		return CallNextHookEx(hMouseHook, nCode, wParam, lParam);
 
 	//game mode: click to exit chat
@@ -1181,7 +1754,8 @@ VOID CALLBACK winEventProcCallback(HWINEVENTHOOK hWinEventHook, DWORD dwEvent, H
 		vStartSentence();
 		_inGame = !_gameApps.empty() && hwnd && isGameApp(exeNameOfWindow(hwnd));
 		exitGameChat();
-		updatePasswordFieldState(hwnd);
+		recordNavigationSignal(GetTickCount64());
+		updatePasswordFieldState(hwnd, OBJID_WINDOW, CHILDID_SELF, true);
 		//smart switch key
 		if (vUseSmartSwitchKey || vRememberCode) {
 			string& exe = EasyKeyHelper::getFrontMostAppExecuteName();
@@ -1210,8 +1784,8 @@ VOID CALLBACK winEventProcCallback(HWINEVENTHOOK hWinEventHook, DWORD dwEvent, H
 			}
 		}
 	} else if (dwEvent == EVENT_OBJECT_FOCUS) {
-		if (idObject == OBJID_CLIENT || idObject == OBJID_WINDOW || idObject == 0) {
-			updatePasswordFieldState(hwnd);
+		if (isAcceptedFocusObjectId(idObject)) {
+			updatePasswordFieldState(hwnd, idObject, idChild, false);
 		}
 	}
 }

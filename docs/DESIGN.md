@@ -91,7 +91,7 @@ Cả hai bỏ qua khi cửa sổ đang ở trước chạy quyền Admin, vì l�
 | Ứng dụng quyền Admin | Windows không cho ứng dụng thường gửi phím vào. EasyKey báo một lần cho mỗi ứng dụng. Tuỳ chọn chạy quyền Admin dùng Task Scheduler để khởi động cùng Windows mà không hỏi UAC. | `onElevatedWindow`, `registerAdminTask` |
 | Phím tắt có Alt hoặc Win | Hook ăn mất phím chữ của phím tắt, nên ứng dụng tưởng Alt/Win được bấm riêng và mở menu hay Start. EasyKey gửi thêm phím trống 0xE8 để tránh việc này. | `maskMenuKey` |
 | Chế độ game | Với game trong danh sách, phím đi thẳng vào game. Khung chat mặc định dùng phím thô. Enter mở/đóng chat; Esc hoặc click chuột thoát chat ngay tức thì; lệnh bắt đầu bằng `/` giữ nguyên dạng phím thô cho tới phím cách hoặc Enter. | `_inGame`, `_gameChat`, `exitGameChat` |
-| Bỏ qua ô mật khẩu | Khi con trỏ ở ô mật khẩu (nhận diện lúc đổi focus), EasyKey chuyển sang phím thô tuyệt đối: tắt toàn bộ bỏ dấu, gõ tắt, tự động viết hoa và phục hồi đệm. Không đọc nội dung ô nhập. | `_isPasswordField`, `updatePasswordFieldState` |
+| Bỏ qua ô mật khẩu | Khi con trỏ ở ô mật khẩu (Win32, trình duyệt Chrome/Edge/Firefox, Electron), EasyKey chuyển sang phím thô tuyệt đối: tắt toàn bộ bỏ dấu, gõ tắt, tự động viết hoa và phục hồi đệm. Cơ chế 3 tầng bất đồng bộ không khóa, sticky password, không đọc nội dung ô nhập. | `_passwordStateWord`, `updatePasswordFieldState`, `passwordProbeWorkerProc` |
 | Nhớ theo ứng dụng | Khi đổi cửa sổ (`EVENT_SYSTEM_FOREGROUND`), đọc lại Việt/Anh và bảng mã đã lưu cho file exe đó rồi cập nhật dấu chọn ở menu khay. Tên exe đọc bằng `PROCESS_QUERY_LIMITED_INFORMATION` (đủ cho cả ứng dụng không cho quyền đọc bộ nhớ). Ứng dụng Store nằm trong `ApplicationFrameHost.exe` được nhớ theo tiến trình sở hữu cửa sổ `CoreWindow` bên trong khung. Nếu không đọc được tên, giữ nguyên lựa chọn hiện tại thay vì ghi sang ứng dụng trước. | `winEventProcCallback`, `getFrontMostAppExecuteName`, `SmartSwitchKey.cpp` |
 | Bấm chuột | Bắt đầu từ mới, vì con trỏ có thể đã sang chỗ khác. | `mouseHookProcess` |
 
@@ -141,22 +141,27 @@ Giới hạn đã biết:
 - Một số game fullscreen exclusive, overlay tùy chỉnh hoặc cơ chế nhập liệu riêng có thể hành xử khác nhau.
 - Chế độ Game không đọc nội dung game, không can thiệp vào bộ nhớ tiến trình và không gửi dữ liệu ra ngoài.
 
-### Bỏ qua ô mật khẩu
+### Bỏ qua ô mật khẩu (Browser & Win32)
 
 Khi con trỏ nhập liệu đang ở trong một ô mật khẩu được xác định rõ ràng, EasyKey chuyển sang chế độ phím thô tuyệt đối.
 
 Mục tiêu là tránh việc các ký tự mật khẩu bị biến thành dấu tiếng Việt, gõ tắt, viết hoa tự động hoặc bị xử lý bởi chế độ Anh–Việt.
 
-- Phát hiện ô mật khẩu chỉ diễn ra khi focus thay đổi.
+- Kiến trúc 3 tầng không khóa:
+  1. Win32 Fast Path (0 ms): Nhận diện tức thì qua `ES_PASSWORD` trên điều khiển `Edit` chuẩn.
+  2. Async Probe Worker (COM MTA): Thăm dò nền qua Windows UI Automation (`UIA_IsPasswordPropertyId`), tự động fallback MSAA (`STATE_SYSTEM_PROTECTED`). Không đọc nội dung, zero-telemetry.
+  3. Máy trạng thái nguyên tử 32-bit: `PW_NORMAL`, `PW_PASSWORD`, `PW_PENDING` (thời hạn 60 ms bảo vệ phím bấm đầu tiên khỏi bị dính dấu tiếng Việt). Monotonic generation barrier ngăn chặn stale probe.
+  4. Sticky Password: Giữ nguyên bypass khi người dùng bấm chuyển đổi Hiện/Ẩn mật khẩu (Show/Hide Password toggle) trên cùng focus key.
+  5. Bảo vệ gõ liên tục & Re-probe chuột: Chặn probe khi đang gõ liên tục `< 150 ms` (bảo vệ Omnibox / search box); tái thăm dò trên `WM_LBUTTONUP` trong vùng web với throttle 100 ms và debounce 40 ms.
 - Hook bàn phím và chuột chỉ đọc một cờ trạng thái đã được cache, với chi phí không đổi.
 - Trong ô mật khẩu, EasyKey tắt đánh dấu Telex/VNI, chế độ Anh–Việt, gõ tắt, Quick Telex, tự động viết hoa và các cơ chế khôi phục bộ đệm.
 - Phím Esc và Enter đi thẳng tới ứng dụng.
 - EasyKey không đọc nội dung ô nhập, không ghi nhật ký phím, không lưu trạng thái ô mật khẩu theo ứng dụng và không gửi dữ liệu ra ngoài.
-- Tính năng có thể bật/tắt trong Cài đặt › Nâng cao và mặc định được bật.
+- Tính năng có thể bật/tắt trong Cài đặt › Nâng cao (`vPasswordFieldBypass` và `vPasswordFieldUIA`), mặc định được bật.
 
 Giới hạn đã biết:
 - Windows logon, UAC secure prompt và các màn hình credential chạy trên secure desktop có thể nằm ngoài phạm vi hỗ trợ.
-- Một số điều khiển tùy chỉnh không dùng semantics mật khẩu chuẩn của Windows có thể không được nhận diện.
+- Một số điều khiển tùy chỉnh đặc thù, shadow DOM phức tạp hoặc iframe khác nguồn (cross-origin) không được trình duyệt phơi bày thuộc tính mật khẩu qua UIA/MSAA có thể không được nhận diện.
 - EasyKey không phải trình quản lý mật khẩu và không can thiệp vào clipboard, autofill hay nội dung trang web.
 
 ### Kiểm thử và dữ liệu mẫu
