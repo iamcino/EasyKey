@@ -198,6 +198,13 @@ extern int vOtherLanguage;
  */
 extern int vRestoreOnEscape;
 
+/*
+ * Password field raw bypass (EasyKey)
+ * 0: No
+ * 1: Yes, pass keys raw when focused on a password field
+ */
+extern int vPasswordFieldBypass;
+
 /**
  * Call this function first to receive data pointer
  */

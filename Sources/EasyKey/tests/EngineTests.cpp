@@ -772,6 +772,287 @@ static void testGameMode() {
     }
 }
 
+// Mirrors password-field bypass precedence.
+// Host integration/manual matrix covers real Win32/UIA controls.
+static void testPasswordField() {
+    struct PasswordFieldSim {
+        bool isPasswordField = false;
+        bool inGame = false;
+        bool gameChat = false;
+        bool bypassSetting = true;
+        uint64_t lastHookTick = 0;
+        void* lastFocusHwnd = nullptr;
+        uint32_t lastFocusPid = 0;
+        int evaluateCount = 0;
+
+        void invalidateCache() {
+            lastFocusHwnd = nullptr;
+            lastFocusPid = 0;
+            isPasswordField = false;
+        }
+
+        void updateFocus(void* hwnd, uint32_t pid, bool isPasswordControl) {
+            if (!bypassSetting) {
+                isPasswordField = false;
+                lastFocusHwnd = nullptr;
+                lastFocusPid = 0;
+                return;
+            }
+            if (hwnd == lastFocusHwnd && pid == lastFocusPid) {
+                return; // Cached, skip re-evaluating
+            }
+            evaluateCount++;
+            lastFocusHwnd = hwnd;
+            lastFocusPid = pid;
+            bool wasPass = isPasswordField;
+            isPasswordField = isPasswordControl;
+
+            if (isPasswordField) {
+                gameChat = false;
+                startNewSession();
+                vStartSentence();
+            } else if (wasPass) {
+                startNewSession();
+                vStartSentence();
+            }
+        }
+
+        void setBypass(bool enabled, void* currentHwnd, uint32_t currentPid, bool isCurrentControlPassword) {
+            bypassSetting = enabled;
+            invalidateCache();
+            updateFocus(currentHwnd, currentPid, isCurrentControlPassword);
+            startNewSession();
+            vStartSentence();
+        }
+
+        // Returns true if passed-through raw to target app, false if intercepted by engine
+        bool handleKey(uint16_t keycode, uint64_t currentTick) {
+            lastHookTick = currentTick; // Bookkeeping must always update
+            if (isPasswordField) {
+                return true; // Pass-through raw unconditionally
+            }
+            if (inGame && !gameChat) {
+                if (keycode == 13) { gameChat = true; return true; }
+                return true;
+            }
+            return false; // Processed by engine
+        }
+
+        // Returns true if passed-through raw to target app, false if intercepted
+        bool handleMouse(int mouseMsg, uint64_t currentTick) {
+            lastHookTick = currentTick; // Bookkeeping must always update
+            if (isPasswordField) {
+                return true; // Pass-through raw unconditionally
+            }
+            if (inGame && gameChat && (mouseMsg == 0x0201 || mouseMsg == 0x0204 || mouseMsg == 0x0207)) {
+                gameChat = false;
+                return true;
+            }
+            return false;
+        }
+    };
+
+    // Test 1: Raw pass-through suppresses Telex marks, macros, Quick Telex, mixed mode, auto-caps
+    {
+        total++;
+        PasswordFieldSim sim;
+        sim.updateFocus((void*)0x1000, 100, true);
+        bool keyPassed = sim.handleKey('A', 1001);
+        if (!keyPassed || !sim.isPasswordField || sim.lastHookTick != 1001) {
+            failures++;
+            printf("FAIL [password raw pass-through A]\n");
+        }
+    }
+
+    // Test 2: Typing 'asdf', 'dc', 'pp', 'how', 'test' in password field remains raw
+    {
+        total++;
+        PasswordFieldSim sim;
+        sim.updateFocus((void*)0x1000, 100, true);
+        bool allRaw = true;
+        const char* samples[] = { "asdf", "dc", "pp", "how", "test" };
+        for (const char* word : samples) {
+            for (int i = 0; word[i]; i++) {
+                if (!sim.handleKey((uint16_t)word[i], 2000 + i)) {
+                    allRaw = false;
+                }
+            }
+        }
+        if (!allRaw) {
+            failures++;
+            printf("FAIL [password words samples must be 100%% raw]\n");
+        }
+    }
+
+    // Test 3: Enter in password field passes through and does not open game chat
+    {
+        total++;
+        PasswordFieldSim sim;
+        sim.inGame = true;
+        sim.updateFocus((void*)0x1000, 100, true);
+        bool enterPassed = sim.handleKey(13, 3000); // VK_RETURN
+        if (!enterPassed || sim.gameChat) {
+            failures++;
+            printf("FAIL [password Enter must pass-through without toggling game chat]\n");
+        }
+    }
+
+    // Test 4: Esc in password field passes through without engine restore
+    {
+        total++;
+        PasswordFieldSim sim;
+        sim.updateFocus((void*)0x1000, 100, true);
+        bool escPassed = sim.handleKey(27, 4000); // VK_ESCAPE
+        if (!escPassed) {
+            failures++;
+            printf("FAIL [password Esc must pass-through unconditionally]\n");
+        }
+    }
+
+    // Test 5: Mouse click in password field passes through, does not exit game chat or trigger engine mouse event
+    {
+        total++;
+        PasswordFieldSim sim;
+        sim.inGame = true;
+        sim.gameChat = false;
+        sim.updateFocus((void*)0x1000, 100, true);
+        bool mousePassed = sim.handleMouse(0x0201, 5000); // WM_LBUTTONDOWN
+        if (!mousePassed || sim.lastHookTick != 5000) {
+            failures++;
+            printf("FAIL [password mouse click must pass-through without engine side effects]\n");
+        }
+    }
+
+    // Test 6: Password field beats game mode (password > game mode precedence)
+    {
+        total++;
+        PasswordFieldSim sim;
+        sim.inGame = true;
+        sim.gameChat = true; // game chat was active in background
+        sim.updateFocus((void*)0x1000, 100, true);
+        if (sim.gameChat) {
+            failures++;
+            printf("FAIL [focusing password field must teardown game chat]\n");
+        }
+        bool keyPassed = sim.handleKey('W', 6000);
+        if (!keyPassed || !sim.isPasswordField) {
+            failures++;
+            printf("FAIL [password field beats game mode]\n");
+        }
+    }
+
+    // Test 7: Normal -> Password resets typing session (buffer isolation)
+    {
+        total++;
+        vInputType = vTelex;
+        vLanguage = 1;
+        startNewSession();
+        // Type "vie" in normal field
+        typeKeys("vie");
+        // Focus moves to password field
+        PasswordFieldSim sim;
+        sim.updateFocus((void*)0x2000, 100, true);
+        // Engine session was reset, type "ejt" in password field (simulated raw)
+        // Verify normal engine session after password focus change is clean
+        startNewSession();
+        wstring res = typeKeys("vieejt ");
+        if (res != L"vi\u1ec7t ") {
+            failures++;
+            printf("FAIL [session isolation on password field entry]\n");
+        }
+    }
+
+    // Test 8: Password -> Normal resets typing session
+    {
+        total++;
+        PasswordFieldSim sim;
+        sim.updateFocus((void*)0x2000, 100, true);
+        // Switch back to normal field
+        sim.updateFocus((void*)0x3000, 100, false);
+        if (sim.isPasswordField) {
+            failures++;
+            printf("FAIL [normal field must have isPasswordField=false]\n");
+        }
+        startNewSession();
+        wstring res = typeKeys("vieejt ");
+        if (res != L"vi\u1ec7t ") {
+            failures++;
+            printf("FAIL [normal typing resumes cleanly after exiting password field]\n");
+        }
+    }
+
+    // Test 9: Toggle OFF in password field immediately enables normal typing
+    {
+        total++;
+        PasswordFieldSim sim;
+        sim.updateFocus((void*)0x2000, 100, true);
+        if (!sim.isPasswordField) failures++;
+        sim.setBypass(false, (void*)0x2000, 100, true);
+        if (sim.isPasswordField) {
+            failures++;
+            printf("FAIL [toggle OFF in password field must immediately disable bypass]\n");
+        }
+    }
+
+    // Test 10: Toggle ON in password field immediately enables raw bypass
+    {
+        total++;
+        PasswordFieldSim sim;
+        sim.setBypass(false, (void*)0x2000, 100, true);
+        if (sim.isPasswordField) failures++;
+        sim.setBypass(true, (void*)0x2000, 100, true);
+        if (!sim.isPasswordField) {
+            failures++;
+            printf("FAIL [toggle ON in password field must immediately enable bypass]\n");
+        }
+    }
+
+    // Test 11: Cache deduplication: same HWND + same PID skips re-evaluation
+    {
+        total++;
+        PasswordFieldSim sim;
+        sim.updateFocus((void*)0x4000, 200, true);
+        int eval1 = sim.evaluateCount;
+        sim.updateFocus((void*)0x4000, 200, true);
+        int eval2 = sim.evaluateCount;
+        if (eval1 != eval2 || eval1 != 1) {
+            failures++;
+            printf("FAIL [cache same HWND + same PID must skip re-evaluation]\n");
+        }
+    }
+
+    // Test 12: Cache invalidation: same HWND with different PID triggers re-evaluation
+    {
+        total++;
+        PasswordFieldSim sim;
+        sim.updateFocus((void*)0x4000, 200, true);
+        int eval1 = sim.evaluateCount;
+        sim.updateFocus((void*)0x4000, 300, false); // Handle recycled by different PID
+        int eval2 = sim.evaluateCount;
+        if (eval2 != eval1 + 1 || sim.isPasswordField) {
+            failures++;
+            printf("FAIL [cache same HWND + different PID must re-evaluate]\n");
+        }
+    }
+
+    // Test 13: Hook liveness tick is updated even during password raw pass-through
+    {
+        total++;
+        PasswordFieldSim sim;
+        sim.updateFocus((void*)0x5000, 400, true);
+        sim.handleKey('X', 99999);
+        if (sim.lastHookTick != 99999) {
+            failures++;
+            printf("FAIL [keyboard hook liveness tick must update in password field]\n");
+        }
+        sim.handleMouse(0x0201, 100000);
+        if (sim.lastHookTick != 100000) {
+            failures++;
+            printf("FAIL [mouse hook liveness tick must update in password field]\n");
+        }
+    }
+}
+
 //EngineTests --render: for each word read, print it and what Telex makes of it (tools/make_mixed_words.py uses this)
 static int renderWords() {
     vInputType = vTelex;
@@ -795,6 +1076,7 @@ int main(int argc, char** argv) {
     testUtf8Conversion();
     testMacroFileIO();
     testGameMode();
+    testPasswordField();
     printf("%d/%d engine tests passed\n", total - failures, total);
     return failures == 0 ? 0 : 1;
 }

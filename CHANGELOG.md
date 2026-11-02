@@ -7,7 +7,12 @@
   - Khung chat trong game mặc định giữ nguyên phím thô (raw) để không làm sai các từ chat nhanh (`afk`, `gg`, `how`, `wp`). Người dùng vẫn có thể chủ động chuyển chế độ tiếng Việt theo từng game nếu muốn.
   - Thoát chat thông minh: bấm phím Esc hoặc click chuột (trái, phải, giữa) sẽ đóng trạng thái chat ngay tức thì và đưa phím WASD/combat về game, không bị kẹt bộ gõ. Thao tác di chuột (FPS), lăn chuột xem lịch sử và các phím chuột phụ (nút ngón cái gán đàm thoại/ping) không làm thoát chat.
   - Lệnh bắt đầu bằng ký tự `/` (như `/give`, `/w`, `/ff`, `/tp`) được giữ nguyên dạng phím thô cho tới khi gõ phím cách hoặc Enter, không bị đánh dấu tiếng Việt nhầm.
-  - Kích thước ứng dụng `EasyKey.exe` tiếp tục duy trì 636 KB (636 416 bytes, không đổi so với 1.0.17).
+- Tự động nhận diện ô mật khẩu (Password Field Bypass):
+  - Khi con trỏ đang ở trong ô nhập mật khẩu được xác định rõ ràng, EasyKey sẽ gõ phím thô (raw) tuyệt đối để tránh biến ký tự mật khẩu thành dấu tiếng Việt, bung gõ tắt hoặc tự động viết hoa.
+  - Cơ chế nhận diện chỉ chạy khi chuyển con trỏ/cửa sổ (focus change) với bộ nhớ đệm HWND + PID chống lặp, không đọc nội dung ô nhập, không ghi nhật ký và không gửi dữ liệu ra ngoài thiết bị.
+  - Có thể bật/tắt trong Cài đặt › Nâng cao › Gõ. Mặc định bật.
+  - Màn hình đăng nhập Windows (Logon) và hộp thoại xác thực bảo mật UAC thuộc ranh giới bảo vệ riêng của Windows nên nằm ngoài phạm vi hoạt động của bộ gõ thông thường.
+- Kích thước ứng dụng `EasyKey.exe` duy trì khoảng 638 KB (~638.976 bytes, tăng rất nhỏ ~2,5 KB so với 1.0.17).
 
 ## 1.0.17 (Windows 11 x64)
 - Cửa sổ Cài đặt gọn hơn: thu gọn khoảng cách và cỡ chữ, ba nút chế độ **Tiếng Việt** · **Anh–Việt** · **Tiếng Anh** nằm trên một dòng và tự căn giữa cụm chữ (cả khi dùng 2 chế độ), thanh kiểu gõ chuyển sang dạng tab phẳng có vạch màu nhấn bên dưới, phần **Nâng cao** mở gọn hơn.

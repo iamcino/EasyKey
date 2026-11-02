@@ -70,6 +70,10 @@ extern void setGameApp(const string& exe, const bool& on);
 extern const vector<string>& getGameApps();
 extern void exitGameChat();
 extern void checkHooks();
+extern bool isPasswordFieldActive();
+extern void invalidatePasswordFieldCache();
+extern void updatePasswordFieldState(HWND hwnd);
+extern void setPasswordFieldBypass(bool enabled);
 
 extern int vLanguage;
 extern int vMixedEnglish;
@@ -108,6 +112,8 @@ extern int vCheckNewVersion;
 extern int vRememberCode;
 extern int vOtherLanguage;
 extern int vRestoreOnEscape;
+extern int vPasswordFieldBypass;
+extern int vPasswordFieldUIA;
 extern int vWarnOtherKeyboards; //warn at start when UniKey, EVKey... also runs
 extern int vLastVersion;        //version that ran last, to show what is new once after an update
 extern int vFixChromiumBrowser;

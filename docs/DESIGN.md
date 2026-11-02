@@ -90,7 +90,8 @@ Cả hai bỏ qua khi cửa sổ đang ở trước chạy quyền Admin, vì l�
 | Ô có gợi ý tự động (thanh địa chỉ trình duyệt) | Chrome, Edge, Brave: chọn ký tự cuối bằng Shift+Left để Backspace xoá luôn phần gợi ý. Ứng dụng khác: gửi một ký tự trống (U+202F) rồi xoá thêm một lần. | `keyboardHookProcess`, `_chromiumBrowser` |
 | Ứng dụng quyền Admin | Windows không cho ứng dụng thường gửi phím vào. EasyKey báo một lần cho mỗi ứng dụng. Tuỳ chọn chạy quyền Admin dùng Task Scheduler để khởi động cùng Windows mà không hỏi UAC. | `onElevatedWindow`, `registerAdminTask` |
 | Phím tắt có Alt hoặc Win | Hook ăn mất phím chữ của phím tắt, nên ứng dụng tưởng Alt/Win được bấm riêng và mở menu hay Start. EasyKey gửi thêm phím trống 0xE8 để tránh việc này. | `maskMenuKey` |
-| Chế độ game | Với game trong danh sách, phím đi thẳng vào game. Enter mở chat thì bỏ dấu, Enter hoặc Esc kết thúc. | `_inGame`, `_gameChat` |
+| Chế độ game | Với game trong danh sách, phím đi thẳng vào game. Khung chat mặc định dùng phím thô. Enter mở/đóng chat; Esc hoặc click chuột thoát chat ngay tức thì; lệnh bắt đầu bằng `/` giữ nguyên dạng phím thô cho tới phím cách hoặc Enter. | `_inGame`, `_gameChat`, `exitGameChat` |
+| Bỏ qua ô mật khẩu | Khi con trỏ ở ô mật khẩu (nhận diện lúc đổi focus), EasyKey chuyển sang phím thô tuyệt đối: tắt toàn bộ bỏ dấu, gõ tắt, tự động viết hoa và phục hồi đệm. Không đọc nội dung ô nhập. | `_isPasswordField`, `updatePasswordFieldState` |
 | Nhớ theo ứng dụng | Khi đổi cửa sổ (`EVENT_SYSTEM_FOREGROUND`), đọc lại Việt/Anh và bảng mã đã lưu cho file exe đó rồi cập nhật dấu chọn ở menu khay. Tên exe đọc bằng `PROCESS_QUERY_LIMITED_INFORMATION` (đủ cho cả ứng dụng không cho quyền đọc bộ nhớ). Ứng dụng Store nằm trong `ApplicationFrameHost.exe` được nhớ theo tiến trình sở hữu cửa sổ `CoreWindow` bên trong khung. Nếu không đọc được tên, giữ nguyên lựa chọn hiện tại thay vì ghi sang ứng dụng trước. | `winEventProcCallback`, `getFrontMostAppExecuteName`, `SmartSwitchKey.cpp` |
 | Bấm chuột | Bắt đầu từ mới, vì con trỏ có thể đã sang chỗ khác. | `mouseHookProcess` |
 
@@ -107,7 +108,64 @@ Cả hai bỏ qua khi cửa sổ đang ở trước chạy quyền Admin, vì l�
 
 Test engine ở `Sources/EasyKey/tests/EngineTests.cpp` (Telex, VNI, chuyển mã, Anh–Việt). Khi sửa engine, thêm ca test cho lỗi vừa sửa.
 
-**Chế độ Anh–Việt** (`vMixedEnglish`, chỉ có tác dụng khi `vLanguage` = 1). Engine vẫn bỏ dấu như thường trong lúc gõ. Khi từ kết thúc (dấu cách, dấu câu), `checkMixedEnglish` tra các phím đã gõ (cả phím gõ đôi để bỏ dấu, như "ff" trong "different") trong danh sách 3.315 từ: mỗi từ có độ phổ biến (Zipf × 10) trong tiếng Anh và của chữ Việt mà Telex tạo ra từ cùng các phím. Từ được coi là tiếng Anh khi điểm Anh − điểm Việt − 5 (nghiêng về tiếng Việt) cộng độ lệch ngữ cảnh (tối đa ±20, theo ngôn ngữ các từ vừa gõ) lớn hơn 0; khi đó engine xoá chữ Việt và gửi lại phím gốc. Từ có dấu không nằm trong danh sách (`!listed && changed`) được tính là tiếng Việt. Để tránh các danh từ riêng/viết tắt ngắn trong corpus tiếng Anh nhưng có `vi = 0` trong corpus đơn từ tiếng Việt (ví dụ `dar` từ "Dar es Salaam" đè `dả` trong `dư dả`, `già dả`), `tools/make_mixed_words.py` lọc bỏ từ nhiễu này ngay lúc sinh bảng. Một từ rõ ràng (chênh từ 20 điểm) còn sửa lại từ ngay trước nó nếu hai từ chỉ cách nhau một dấu cách: "Thể are" thành "There are", "The cả was" thành "The car was" (không làm với VNI Windows và Unicode tổ hợp vì số phím xoá không chắc chắn). Danh sách lấy từ dữ liệu [wordfreq](https://github.com/rspeer/wordfreq) (CC BY-SA 4.0); muốn đổi ngưỡng thì sửa đồng thời `Engine.cpp` và `tools/make_mixed_words.py`, rồi chạy lại script.
+### Chế độ Anh–Việt
+
+Chế độ Anh–Việt được thiết kế theo nguyên tắc an toàn hơn thông minh. Bộ gõ chỉ chuyển sang phím tiếng Anh thô khi có bằng chứng đủ mạnh, và mặc định không sửa ngược từ đã gõ trước đó.
+
+- Từ tiếng Việt hợp lệ có dấu không bị thay thế chỉ vì một chuỗi tiếng Anh hiếm, viết tắt hoặc danh từ riêng tình cờ trùng phím gõ.
+- Từ điển hỗ trợ chế độ Anh–Việt được sinh ngoại tuyến từ dữ liệu tần suất ngôn ngữ và được lọc để giảm nhiễu từ các token không phải từ tiếng Anh thông dụng.
+- Việc đánh giá ngôn ngữ diễn ra theo từng từ, tại ranh giới từ, không can thiệp vào các từ đứng trước.
+- Một số cặp đồng âm được xử lý bằng quy tắc cụm từ hạn chế. Ví dụ: `bánh tét` và `thịt tét` được nhận diện là tiếng Việt, trong khi `test` trong các ngữ cảnh phổ biến như `chạy test`, `unit test`, `test case` được giữ nguyên.
+- Với các ngữ cảnh tiếng Việt khác của từ `tét`, người dùng có thể gõ `tets` để chủ động nhận về `tét`.
+
+Giới hạn đã biết:
+- Chế độ Anh–Việt tối ưu cho bảng mã Unicode.
+- URL, email, tên miền và một số chuỗi kỹ thuật có thể được xử lý theo từng phân đoạn.
+- Kebab-case như `read-only` hoặc `end-to-end` hiện được xử lý theo từng từ con phân cách bởi dấu `-`.
+- Chuỗi rất dài không được bảo đảm tuyệt đối ở mọi trường hợp; phím Esc có thể khôi phục phím thô của từ hiện tại.
+
+### Chế độ Game
+
+Chế độ Game ưu tiên bảo vệ phím điều khiển. Khi đang chơi, các phím như `W`, `A`, `S`, `D`, `Q`, `E`, `R` phải đi thẳng vào game mà không bị bộ gõ tiếng Việt xen vào.
+
+- Khung chat trong game mặc định dùng phím thô để tránh biến các từ chat nhanh như `afk`, `gg`, `wp`, `how`, `as` thành ký tự tiếng Việt sai.
+- Người dùng vẫn có thể chủ động chuyển chế độ gõ cho từng ứng dụng nếu muốn gõ tiếng Việt trong chat game.
+- Phím Enter được dùng để mở hoặc đóng trạng thái chat trong game, nhưng vẫn truyền tới ứng dụng đích.
+- Phím Esc đóng chat và dọn trạng thái bộ gõ.
+- Click chuột trái, phải hoặc giữa sẽ thoát trạng thái chat, giúp phím điều khiển trở về game ngay lập tức.
+- Di chuột, lăn chuột và các nút chuột phụ không làm thoát chat.
+- Các lệnh bắt đầu bằng `/`, ví dụ `/ff`, `/w`, `/give`, `/tp`, được giữ nguyên dạng phím thô cho tới khi gặp phím cách hoặc Enter.
+
+Giới hạn đã biết:
+- CI kiểm chứng logic trạng thái bộ gõ trong game. Trải nghiệm thực tế trên từng game cụ thể thuộc phạm vi kiểm thử thủ công.
+- Một số game fullscreen exclusive, overlay tùy chỉnh hoặc cơ chế nhập liệu riêng có thể hành xử khác nhau.
+- Chế độ Game không đọc nội dung game, không can thiệp vào bộ nhớ tiến trình và không gửi dữ liệu ra ngoài.
+
+### Bỏ qua ô mật khẩu
+
+Khi con trỏ nhập liệu đang ở trong một ô mật khẩu được xác định rõ ràng, EasyKey chuyển sang chế độ phím thô tuyệt đối.
+
+Mục tiêu là tránh việc các ký tự mật khẩu bị biến thành dấu tiếng Việt, gõ tắt, viết hoa tự động hoặc bị xử lý bởi chế độ Anh–Việt.
+
+- Phát hiện ô mật khẩu chỉ diễn ra khi focus thay đổi.
+- Hook bàn phím và chuột chỉ đọc một cờ trạng thái đã được cache, với chi phí không đổi.
+- Trong ô mật khẩu, EasyKey tắt đánh dấu Telex/VNI, chế độ Anh–Việt, gõ tắt, Quick Telex, tự động viết hoa và các cơ chế khôi phục bộ đệm.
+- Phím Esc và Enter đi thẳng tới ứng dụng.
+- EasyKey không đọc nội dung ô nhập, không ghi nhật ký phím, không lưu trạng thái ô mật khẩu theo ứng dụng và không gửi dữ liệu ra ngoài.
+- Tính năng có thể bật/tắt trong Cài đặt › Nâng cao và mặc định được bật.
+
+Giới hạn đã biết:
+- Windows logon, UAC secure prompt và các màn hình credential chạy trên secure desktop có thể nằm ngoài phạm vi hỗ trợ.
+- Một số điều khiển tùy chỉnh không dùng semantics mật khẩu chuẩn của Windows có thể không được nhận diện.
+- EasyKey không phải trình quản lý mật khẩu và không can thiệp vào clipboard, autofill hay nội dung trang web.
+
+### Kiểm thử và dữ liệu mẫu
+
+Các kiểm thử engine được công khai để chứng minh hành vi bộ gõ, không phải để mô tả quy trình phát triển nội bộ.
+
+- Dữ liệu kiểm thử phải là chuỗi tổng hợp, cục bộ hoặc giả lập.
+- Kiểm thử engine không gọi mạng, không đọc registry thật, không ghi file ngoài thư mục tạm và không chứa dữ liệu người dùng thật.
+- `example.com` chỉ có thể xuất hiện như chuỗi minh họa trong tài liệu. Đây không phải một dịch vụ và không được dùng làm dependency cho kiểm thử hoặc giám sát.
 
 ## 8. Giao diện
 Giao diện không dùng hộp thoại Win32 cổ điển mà tự vẽ để giống Windows 11, mật độ hiển thị gọn (chiều cao tối thiểu 210px, các nút chế độ `V` · `EV` · `E` 1 dòng tự cân lại 2 nút khi bật `vTwoModesOnly`, thanh kiểu gõ dạng tab gạch chân 2px):

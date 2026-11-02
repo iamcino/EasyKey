@@ -90,7 +90,8 @@ Both skip the check while an elevated window is in front, because the hook not s
 | Autocomplete boxes (browser address bars) | Chrome, Edge, Brave: select the last character with Shift+Left so the Backspace also removes the suggestion. Other apps: send an empty character (U+202F) and delete one more. | `keyboardHookProcess`, `_chromiumBrowser` |
 | Elevated apps | Windows doesn't let normal apps send keys to them. EasyKey tells the user once per app. The run-as-administrator option uses Task Scheduler to start with Windows without a UAC prompt. | `onElevatedWindow`, `registerAdminTask` |
 | Shortcuts with Alt or Win | The hook eats the letter of the shortcut, so the app thinks Alt/Win was pressed alone and opens its menu or Start. EasyKey sends an extra no-op key 0xE8 to prevent that. | `maskMenuKey` |
-| Game mode | For games on the list, keys go straight to the game. Enter opens the chat and marks are added; Enter or Esc ends it. | `_inGame`, `_gameChat` |
+| Game mode | For games on the list, keys go straight to the game. Game chat defaults to raw input. Enter opens or closes chat; Esc or mouse click exits chat immediately; commands starting with `/` remain raw until Space or Enter. | `_inGame`, `_gameChat`, `exitGameChat` |
+| Password field bypass | When focus enters a recognized password field, EasyKey switches to absolute raw typing: disables all diacritics, macros, auto-capitalization, and buffer restoration. Does not read field contents. | `_isPasswordField`, `updatePasswordFieldState` |
 | Per app memory | When the foreground window changes (`EVENT_SYSTEM_FOREGROUND`), load the Vietnamese/English mode and encoding saved for that exe and update the ticks in the tray menu. The exe name is read with `PROCESS_QUERY_LIMITED_INFORMATION`, which also works for apps that refuse memory reads. Store apps hosted in `ApplicationFrameHost.exe` are remembered by the process that owns the `CoreWindow` inside the frame. When the name can't be read, the current choice stays instead of being saved for the previous app. | `winEventProcCallback`, `getFrontMostAppExecuteName`, `SmartSwitchKey.cpp` |
 | Mouse click | Start a new word, since the caret may have moved. | `mouseHookProcess` |
 
@@ -107,7 +108,64 @@ Both skip the check while an elevated window is in front, because the hook not s
 
 Engine tests are in `Sources/EasyKey/tests/EngineTests.cpp` (Telex, VNI, conversion, mixed mode). When you fix an engine bug, add a test for it.
 
-**Mixed English and Vietnamese mode** (`vMixedEnglish`, only while `vLanguage` is 1). The engine adds marks as usual while typing. When the word ends (space, punctuation), `checkMixedEnglish` looks up the keys as typed (including a doubled key that undid a mark, like "ff" in "different") in a list of 3,315 words: each has how common it is (Zipf × 10) in English, and how common the Vietnamese word is that Telex makes of the same keys. The word counts as English when English − Vietnamese − 5 (a lean towards Vietnamese) plus a context bias (up to ±20, from the language of the last words) is above 0; the engine then deletes the Vietnamese and sends the original keys. A word with marks that is not in the list (`!listed && changed`) counts as Vietnamese. To prevent short proper nouns or acronyms in the English corpus that have `vi = 0` in single-token Vietnamese counts (for example `dar` from "Dar es Salaam" overriding `dả` in `dư dả`, `già dả`), `tools/make_mixed_words.py` filters out that noise entry at generation time. A clear word (20 points or more apart) also fixes the word right before it when only one space is between them: "Thể are" becomes "There are", "The cả was" becomes "The car was" (not with VNI Windows and Unicode combining, where the number of backspaces is not certain). The list comes from [wordfreq](https://github.com/rspeer/wordfreq) data (CC BY-SA 4.0); to change a threshold, change both `Engine.cpp` and `tools/make_mixed_words.py`, then run the script again.
+### English–Vietnamese Mixed Mode
+
+Mixed mode is designed to be safe rather than clever. EasyKey only reverts to raw English keys when there is strong evidence, and it does not correct previously committed words by default.
+
+- Valid Vietnamese words with diacritics are not replaced merely because a rare English token, acronym, or proper noun happens to match the typed keys.
+- The mixed-mode dictionary is generated offline from language frequency data and filtered to reduce noise from non-common English tokens.
+- Language decisions are made per word at word boundaries and never rewind earlier words.
+- A small set of homophone contexts is handled with phrase rules. For example, `bánh tét` and `thịt tét` are treated as Vietnamese, while `test` is preserved in common contexts such as `chạy test`, `unit test`, and `test case`.
+- For other Vietnamese contexts where `tét` is desired, users can type `tets` explicitly.
+
+Known limitations:
+- Mixed mode is optimized for Unicode.
+- URLs, emails, domains, and some technical strings may be processed segment by segment.
+- Kebab-case strings such as `read-only` or `end-to-end` are currently handled as separate segments divided by `-`.
+- Very long tokens are not guaranteed in every case. Esc can restore the raw keys of the current word.
+
+### Game Mode
+
+Game Mode prioritizes protection of control keys. While playing, keys such as `W`, `A`, `S`, `D`, `Q`, `E`, and `R` must reach the game directly without Vietnamese input interference.
+
+- Game chat defaults to raw input to avoid turning fast chat words such as `afk`, `gg`, `wp`, `how`, or `as` into incorrect Vietnamese marks.
+- Users can still switch input mode per application if they want Vietnamese typing inside game chat.
+- Enter opens or closes game chat state, but the key is still passed to the target application.
+- Esc closes chat and clears typing state.
+- Left, right, or middle mouse click exits chat state, returning control keys to the game immediately.
+- Mouse movement, mouse wheel, and extra mouse buttons do not exit chat.
+- Commands starting with `/`, such as `/ff`, `/w`, `/give`, and `/tp`, are preserved as raw input until space or Enter.
+
+Known limitations:
+- Automated tests verify game-mode state-machine logic. Real-world behavior in individual games is covered by manual testing.
+- Some fullscreen exclusive games, custom overlays, or proprietary input paths may behave differently.
+- Game Mode does not read game content, inspect process memory, or send data off-device.
+
+### Password Field Bypass
+
+When focus is in a clearly identified password input, EasyKey switches to absolute raw typing.
+
+The goal is to prevent password characters from being converted into Vietnamese marks, expanded by macros, auto-capitalized, or affected by Mixed mode.
+
+- Password-field detection runs only on focus change.
+- Keyboard and mouse hooks read a cached state flag with constant cost.
+- Inside a password field, EasyKey disables Telex/VNI marking, Mixed mode, macros, Quick Telex, auto-capitalization, and buffer restoration mechanisms.
+- Esc and Enter are passed through to the application.
+- EasyKey does not read field contents, does not log keystrokes, does not store password-field state per application, and does not send data off-device.
+- The feature can be enabled or disabled in Settings › Advanced and is enabled by default.
+
+Known limitations:
+- Windows logon, UAC secure prompts, and credential screens running on the secure desktop may be outside the supported scope.
+- Some custom controls that do not use standard Windows password semantics may not be detected.
+- EasyKey is not a password manager and does not interact with clipboard, autofill, or page content.
+
+### Testing and Fixtures
+
+Engine tests are public to demonstrate typing behavior, not to describe internal development workflows.
+
+- Test data must be synthetic, local, or simulated.
+- Engine tests do not access the network, read real registry state, write outside temporary directories, or contain real user data.
+- `example.com` may appear only as documentation text. It is not a service and must not be used as a dependency for testing or monitoring.
 
 ## 8. User interface
 The interface doesn't use classic Win32 dialogs; it is custom drawn to look like Windows 11 with a compact layout (210px minimum height, single-line `V` · `EV` · `E` mode buttons that rebalance to 2 buttons when `vTwoModesOnly` is on, and a flat input method tab bar with a 2px accent underline):
