@@ -202,7 +202,7 @@ Updates live in `Updater.cpp` and run on a separate thread so the keyboard and m
 ## 11. Build and release
 - Visual Studio 2022 project (toolset v143); only `Release|x64` is released. Details in [BUILD](BUILD.en.md).
 - CI (`.github/workflows/msbuild.yml`): runs the engine tests on Windows and Linux, builds x64, uploads the exe as an artifact and creates a provenance attestation.
-- Releasing: raise `versionName` and `versionCode` in `version.json` and add a section to both CHANGELOG files, merge into `master`, then run the MSBuild workflow by hand (Actions › MSBuild › Run workflow). It tags `versionName`, builds, produces `EasyKey.exe`, `EasyKey.exe.sha256` and `EasyKey<version>-Windows.zip`, attests them and publishes the release with notes taken from the CHANGELOGs.
+- Releasing: raise `versionName` and `versionCode` in `version.json` and add a section to both CHANGELOG files, merge into `master`, then run the MSBuild workflow by hand (Actions › MSBuild › Run workflow). It tags `versionName`, builds, digitally signs the binary using an ECDSA P-256 Authenticode certificate (`tools/signing/sign.ps1`) with RFC 3161 timestamping, pins the thumbprint against `docs/signing/EasyKey-codesign.cer`, generates `signature.json`, computes `EasyKey.exe.sha256` after signing, packages the zip, creates provenance attestations, and publishes the release.
 - Running copies read `version.json` on `master` too, so change the version there only when the matching release is about to be published.
 
 ## 12. Source map

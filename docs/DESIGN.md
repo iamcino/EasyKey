@@ -202,7 +202,7 @@ Cập nhật nằm trong `Updater.cpp`, chạy ở luồng riêng để không l
 ## 11. Build và phát hành
 - Dự án Visual Studio 2022 (toolset v143), chỉ cấu hình `Release|x64` được phát hành. Chi tiết ở [BUILD](BUILD.md).
 - CI (`.github/workflows/msbuild.yml`): chạy test engine trên Windows và Linux, build x64, tải exe lên mục Artifacts và tạo chứng thực nguồn gốc.
-- Phát hành: cập nhật `versionName` và `versionCode` trong `version.json` và thêm mục vào hai file CHANGELOG, merge vào `master`, rồi chạy tay workflow MSBuild (Actions › MSBuild › Run workflow). Workflow tạo tag trùng `versionName`, build, tạo `EasyKey.exe`, `EasyKey.exe.sha256`, `EasyKey<phiên bản>-Windows.zip`, chứng thực và trang phát hành có ghi chú lấy từ CHANGELOG.
+- Phát hành: cập nhật `versionName` và `versionCode` trong `version.json` và thêm mục vào hai file CHANGELOG, merge vào `master`, rồi chạy tay workflow MSBuild (Actions › MSBuild › Run workflow). Workflow tạo tag trùng `versionName`, build, ký số Authenticode bằng ECDSA P-256 (`tools/signing/sign.ps1`) với timestamp RFC 3161, ghim thumbprint đối chiếu với `docs/signing/EasyKey-codesign.cer`, sinh `signature.json`, tính `EasyKey.exe.sha256` sau khi ký, đóng gói zip, chứng thực nguồn gốc và tạo trang phát hành.
 - Bản đang chạy cũng đọc `version.json` trên `master`, nên chỉ đổi phiên bản trong file này khi bản phát hành tương ứng sắp có.
 
 ## 12. Bản đồ mã nguồn
@@ -231,5 +231,5 @@ Giấy phép: toàn bộ dự án là GPL-3.0. Các file giao diện viết mớ
 ## 13. Giới hạn đã biết
 - **Hook thay vì TSF.** Cách xoá rồi gửi lại có thể lộ ra với ứng dụng tự theo dõi từng phím (trang luyện gõ, một số game). Bù lại không có ô ENG/VIE trên thanh tác vụ. TSF được để dành cho một sản phẩm riêng sau này.
 - **Ứng dụng quyền Admin** chỉ gõ được khi EasyKey cũng chạy quyền Admin.
-- **Chưa có chữ ký số**, nên SmartScreen và phần mềm diệt virus có thể cảnh báo.
+- **Chứng chỉ ký số tự ký (self-signed).** Bản phát hành được ký Authenticode ECDSA nội bộ và ghim thumbprint để người dùng tự xác thực tính toàn vẹn. Vì chưa qua CA thương mại trong Microsoft Trusted Root Program, Windows SmartScreen vẫn có thể hiển thị cảnh báo 'Unknown publisher' cho đến khi chuyển đổi sang chứng chỉ thương mại/Azure Trusted Signing trong tương lai.
 - **Chỉ Windows x64.** Không có bản x86, ARM64, macOS hay Linux.

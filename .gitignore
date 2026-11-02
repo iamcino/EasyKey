@@ -12,3 +12,9 @@
 docs/SPEC-*.md
 note_for_agent.md
 
+# Code signing private material (only docs/signing/*.cer is public)
+.signing/
+*.pfx
+*.p12
+*.pvk
+*.key

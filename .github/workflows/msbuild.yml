@@ -51,6 +51,15 @@ jobs:
     steps:
     - uses: actions/checkout@v7
 
+    - name: Guard against committed private key material
+      shell: pwsh
+      run: |
+        $bad = git ls-files | Where-Object { $_ -match '\.(pfx|p12|pvk|key)$' -or $_ -match '^\.signing/' }
+        if ($bad) {
+          throw "Security violation: private key material tracked in git: $bad"
+        }
+        Write-Host "Key material check: PASS"
+
     - name: Add MSBuild to PATH
       uses: microsoft/setup-msbuild@v3
 
@@ -128,16 +137,54 @@ jobs:
     - name: Build x64
       run: msbuild -m -target:Rebuild -p:Configuration=Release -p:Platform=x64 ${{env.SOLUTION_FILE_PATH}}
 
+    - name: Sign executable
+      shell: pwsh
+      env:
+        EASYKEY_SIGN_PFX_BASE64: ${{ secrets.EASYKEY_SIGN_PFX_BASE64 }}
+        EASYKEY_SIGN_PFX_PASSWORD: ${{ secrets.EASYKEY_SIGN_PFX_PASSWORD }}
+        EASYKEY_EXPECTED_THUMBPRINT: ${{ vars.EASYKEY_EXPECTED_THUMBPRINT }}
+        EASYKEY_TIMESTAMP_URL: ${{ vars.EASYKEY_TIMESTAMP_URL }}
+        EASYKEY_TIMESTAMP_URL_FALLBACK: ${{ vars.EASYKEY_TIMESTAMP_URL_FALLBACK }}
+      run: |
+        $exe = "${{env.SOLUTION_FILE_PATH}}\x64\Release\EasyKey.exe"
+        if ($env:EASYKEY_SIGN_PFX_BASE64 -and $env:EASYKEY_SIGN_PFX_PASSWORD) {
+          $pfxTemp = Join-Path $env:RUNNER_TEMP 'signing.pfx'
+          [IO.File]::WriteAllBytes($pfxTemp, [Convert]::FromBase64String($env:EASYKEY_SIGN_PFX_BASE64))
+          try {
+            $signArgs = @{
+              Path = $exe
+              PfxPath = $pfxTemp
+            }
+            if ($env:EASYKEY_EXPECTED_THUMBPRINT) {
+              $signArgs['ExpectedThumbprint'] = $env:EASYKEY_EXPECTED_THUMBPRINT
+            }
+            $urls = @($env:EASYKEY_TIMESTAMP_URL, $env:EASYKEY_TIMESTAMP_URL_FALLBACK) | Where-Object { $_ }
+            if ($urls.Count -gt 0) {
+              $signArgs['TimestampUrl'] = $urls
+            }
+            & tools\signing\sign.ps1 @signArgs
+            & tools\signing\verify.ps1 -Path $exe -JsonPath signature.json
+          } finally {
+            Remove-Item $pfxTemp -Force -ErrorAction SilentlyContinue
+          }
+        } else {
+          Write-Warning "EASYKEY_SIGN_PFX_BASE64 not configured; release binary will remain unsigned."
+        }
+
     - name: Package
       shell: pwsh
       run: |
         $out = "${{env.SOLUTION_FILE_PATH}}\x64\Release"
         Copy-Item "$out\EasyKey.exe" EasyKey.exe
-        Compress-Archive -Path EasyKey.exe -DestinationPath "EasyKey${{ steps.version.outputs.name }}-Windows.zip"
+        $zipName = "EasyKey${{ steps.version.outputs.name }}-Windows.zip"
+        Compress-Archive -Path EasyKey.exe -DestinationPath $zipName
         # the in-app updater reads "<sha256>  EasyKey.exe"
-        $hash = (Get-FileHash EasyKey.exe -Algorithm SHA256).Hash.ToLower()
-        [IO.File]::WriteAllText("EasyKey.exe.sha256", "$hash  EasyKey.exe`n")
-
+        $hashExe = (Get-FileHash EasyKey.exe -Algorithm SHA256).Hash.ToLower()
+        [IO.File]::WriteAllText("EasyKey.exe.sha256", "$hashExe  EasyKey.exe
+")
+        $hashZip = (Get-FileHash $zipName -Algorithm SHA256).Hash.ToLower()
+        [IO.File]::WriteAllText("$zipName.sha256", "$hashZip  $zipName
+")
     - name: Generate artifact attestation
       uses: actions/attest-build-provenance@v4
       with:
@@ -174,4 +221,15 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
       # on a tag push the tag exists; when run by hand, gh creates it on this commit
-      run: gh release create "${{ steps.version.outputs.name }}" "EasyKey${{ steps.version.outputs.name }}-Windows.zip" EasyKey.exe EasyKey.exe.sha256 --title "EasyKey ${{ steps.version.outputs.name }}" --notes-file release-notes.md --target "${{ github.sha }}"
+      run: |
+        $assets = @(
+          "EasyKey${{ steps.version.outputs.name }}-Windows.zip",
+          "EasyKey${{ steps.version.outputs.name }}-Windows.zip.sha256",
+          "EasyKey.exe",
+          "EasyKey.exe.sha256",
+          "docs/signing/EasyKey-codesign.cer"
+        )
+        if (Test-Path "signature.json") {
+          $assets += "signature.json"
+        }
+        gh release create "${{ steps.version.outputs.name }}" @assets --title "EasyKey ${{ steps.version.outputs.name }}" --notes-file release-notes.md --target "${{ github.sha }}"

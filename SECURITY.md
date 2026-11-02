@@ -28,6 +28,18 @@ Phạm vi: `EasyKey.exe`, trình tự cập nhật và mọi lỗi có thể là
 cho phép chương trình khác lạm dụng EasyKey (nhất là khi EasyKey chạy quyền
 Admin), hoặc khiến EasyKey cài một file không phải bản phát hành chính thức.
 
+## Chữ ký số Authenticode (Code Signing)
+
+Các bản phát hành chính thức của EasyKey được ký số Authenticode (ECDSA P-256 + SHA-256) và đóng dấu thời gian RFC 3161 (DigiCert/Sectigo).
+
+- **Chứng chỉ công khai**: [`docs/signing/EasyKey-codesign.cer`](docs/signing/EasyKey-codesign.cer)
+- **Thumbprint (SHA-1)**: `073FF7FEF09B3E51C8863CA5B2168A79D396976A`
+- **Kiểm tra chữ ký**:
+  ```powershell
+  Get-AuthenticodeSignature .\EasyKey.exe
+  ```
+- **Lưu ý**: Chứng chỉ hiện tại là self-signed nội bộ nhằm bảo đảm tính toàn vẹn và chống giả mạo nhị phân. Do chưa qua CA thương mại trong Microsoft Trusted Root Program, Windows SmartScreen vẫn có thể hiển thị cảnh báo "Unknown publisher". Tuyệt đối không cài đặt chứng chỉ vào Trusted Root của Windows.
+
 ---
 
 ## English
@@ -58,3 +70,16 @@ In scope: `EasyKey.exe`, the update process, and anything that could leak
 typed keys, let another program abuse EasyKey (especially when it runs as
 administrator), or make EasyKey install a file that is not an official
 release.
+
+### Authenticode code signing
+
+Official release binaries are digitally signed with an Authenticode certificate (ECDSA P-256 + SHA-256) and timestamped via RFC 3161 (DigiCert/Sectigo).
+
+- **Public certificate**: [`docs/signing/EasyKey-codesign.cer`](docs/signing/EasyKey-codesign.cer)
+- **Pinned thumbprint (SHA-1)**: `073FF7FEF09B3E51C8863CA5B2168A79D396976A`
+- **Verify signature**:
+  ```powershell
+  Get-AuthenticodeSignature .\EasyKey.exe
+  ```
+- **Note**: The current certificate is self-signed internally to guarantee binary integrity and prevent tampering. Because it is not yet issued by a commercial CA in the Microsoft Trusted Root Program, Windows SmartScreen may still display an "Unknown publisher" warning. Never install this certificate into your machine's Trusted Root Certification Authorities store.
+
