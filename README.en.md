@@ -65,11 +65,11 @@ no .NET and no extra libraries, and removes itself cleanly with one button.
 |----------|-----------------------|
 | **One file, under 1 MB** | No installer, no DLLs, no runtimes. Copy it anywhere, even a USB stick, and it runs. |
 | **English and Vietnamese in one sentence** | Mixed mode spots English words and gives you back the keys you typed when the word ends, even words that are also Vietnamese, such as "this" (thí) or "test" (tét). No switching in the middle of a sentence. |
-| **Reliable where keyboards often fail** | No doubled letters in the Chrome, Edge and Brave address bars; the hook comes back by itself when Windows drops it (the "chaats" bug in Discord); game mode sends skill keys straight to the game. |
+| **Reliable where keyboards often fail** | No doubled letters in the Chrome, Edge and Brave address bars; the hook comes back by itself when Windows drops it (the "chaats" bug in Discord); smart window-bound game mode sends skill keys straight to the game. |
 | **Remembers each app** | Every app keeps its own Vietnamese/English mode and encoding, Microsoft Store apps included. Word on TCVN3, Chrome still on Unicode. |
 | **A real Windows 11 look** | Mica, light and dark following Windows, your own accent color, DirectWrite text that stays sharp at any scale, the Be Vietnam Pro font built in. Vietnamese or English interface. |
 | **No ENG/VIE indicator on the taskbar** | Windows keeps a single keyboard, so there is no language button taking space or jumping around. |
-| **Safe updates** | Downloads only over HTTPS from this project's releases, checks the SHA-256 hash, always asks first. Every release is built in public on GitHub Actions with build provenance. |
+| **Safe updates & verification** | Downloads only over HTTPS from this project's releases, checks the SHA-256 hash (`SHA256SUMS.txt`), always asks first. Every release is built in public on GitHub Actions with build provenance attestation, supports Authenticode code signing, and includes transparent VirusTotal API v3 scan references. |
 | **Private** | No account, no data collection, no record of what you type. Its only connection is the update check on GitHub. |
 | **Open source** | GPL v3. The typing engine has a test suite that runs on Windows and Linux on every change. |
 
@@ -119,9 +119,8 @@ languages (coding, work, study):
   encoding of the app in front. Microsoft Store apps are remembered under
   their own name; apps whose name can't be read keep the current choice
   instead of saving it for the wrong app.
-- **Game mode:** turn it on per game from the tray menu while playing. Q, W, E,
-  R… go straight to the game; press Enter to open the chat and type
-  Vietnamese, Enter or Esc to go back.
+- **Game mode (Window-Bound Game Mode):** automatically suggests the top 3 candidate game windows or lets you browse match `.exe` files, binding directly to the game window (HWND + PID) so switching apps does not leak modes. Q, W, E, R… go straight to the game; game chat defaults to raw input (avoiding accidental Vietnamese marks on `afk`, `gg`, `wp`, `how`, `as`), press Enter to chat in Vietnamese, or press Esc / click mouse to exit chat immediately.
+- **Automatic password field bypass:** detects standard password inputs in Win32 apps and modern browsers (Chrome, Edge, Firefox, Electron), automatically switching to raw input to avoid Vietnamese marks and shortcuts. Runs asynchronously on a background worker with no typing latency.
 - **No doubled letters** in the Chrome, Edge and Brave address bars and other
   autocomplete boxes.
 - **Administrator apps:** EasyKey tells you when you open one, and can run as
@@ -203,7 +202,7 @@ restarts. Right-click › **Check for updates…** to check right away.
 | Open Settings | Double-click the tray icon, or right-click › Settings… |
 | Change input method or encoding | Right-click the tray icon › Input method / Character encoding, or use Settings |
 | Undo the marks EasyKey just added | Press **Esc** right after the word (việt → vieejt) |
-| Turn on game mode for a game | While in the game, right-click the tray icon › Game mode for … |
+| Turn on game mode for a game | Right-click the tray icon › Game Mode › pick from top 3 suggestions or browse .exe |
 | Change the switch keys | Settings › Shortcut › Edit |
 | Edit your shortcuts | Settings › Advanced › Typing › Shortcut list |
 
@@ -290,21 +289,17 @@ you turn on the key log for a bug report yourself (see
 **Is there a macOS, Linux or ARM64 version?**
 Not yet. EasyKey focuses on Windows 11 x64 until it is truly stable.
 
-### Windows warnings
+### Provenance verification and malware scan
 
-EasyKey is **not code signed yet**. SmartScreen may show "Windows protected
-your PC" (click **More info** › **Run anyway**), and antivirus software may
-block `EasyKey.exe`. Every keyboard has to read key presses to add marks, so
-an unsigned one draws suspicion.
+Every EasyKey release is built publicly on GitHub Actions with build provenance attestation, supports Authenticode code signing, and is independently scanned via VirusTotal API v3:
 
-The source code is public. Every release is built on GitHub Actions with build
-provenance attestation. Check it with the [GitHub CLI](https://cli.github.com):
-
-```
-gh attestation verify EasyKey<version>-Windows.zip --repo iamcino/EasyKey
-```
-
-If you trust it, you can add the EasyKey folder to your antivirus exclusions.
+- **VirusTotal Report:** Every release includes a `virustotal-<version>.json` file providing direct GUI links to VirusTotal with detection results from 70+ antivirus engines.
+- **Integrity Checksums:** Includes `SHA256SUMS.txt` and `<file>.sha256` to verify file integrity before running.
+- **Provenance Attestation:** Verify with the [GitHub CLI](https://cli.github.com):
+  ```
+  gh attestation verify EasyKey<version>-Windows.zip --repo iamcino/EasyKey
+  ```
+- **SmartScreen Note:** If Windows shows "Windows protected your PC", click **More info** › **Run anyway**. Low-level keyboard hook software can trigger false-positive warnings; you can verify signatures or compare the binary hash against the attached VirusTotal scan.
 
 ### Vietnamese spell check
 

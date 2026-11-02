@@ -1,4 +1,4 @@
-﻿/*----------------------------------------------------------
+/*----------------------------------------------------------
 EasyKey - Vietnamese input for Windows 11.
 Copyright (C) 2026 Cino
 
@@ -16,6 +16,7 @@ See LICENSE and NOTICE.
 -----------------------------------------------------------*/
 #include "stdafx.h"
 #include "AppDelegate.h"
+#include "GameCandidateFinder.h"
 #include <algorithm>
 #include <atomic>
 #include <cstdint>
@@ -114,6 +115,10 @@ static vector<Byte> savedSmartSwitchKeyData; ////use for smart switch key
 
 static bool _hasJustUsedHotKey = false;
 //game mode, see isGameApp
+static constexpr uint64_t GAME_BINDING_TTL_MS = 5000;
+static HWND _gameHwnd = NULL;
+static DWORD _gamePid = 0;
+static uint64_t _lastGameForegroundTick = 0;
 static vector<string> _gameApps;
 static bool _inGame = false;   //the foreground app is in game mode
 static bool _gameChat = false; //Enter opened the chat in it
@@ -134,10 +139,13 @@ LRESULT CALLBACK mouseHookProcess(int nCode, WPARAM wParam, LPARAM lParam);
 VOID CALLBACK winEventProcCallback(HWINEVENTHOOK hWinEventHook, DWORD dwEvent, HWND hwnd, LONG idObject, LONG idChild, DWORD dwEventThread, DWORD dwmsEventTime);
 static void watchRawKeyboard();
 static void syncModifierMask();
+static void clearGameBinding();
+static void bindGameWindow(HWND hwnd);
 
 void EasyKeyFree() {
 	stopPasswordProbeWorker();
 	applyPasswordFeatureConfigChanges();
+	clearGameBinding();
 	UnhookWindowsHookEx(hMouseHook);
 	UnhookWindowsHookEx(hKeyboardHook);
 	UnhookWinEvent(hSystemEvent);
@@ -260,15 +268,15 @@ void EasyKeyInit() {
 	if (gameApps && gameAppsSize > 0) {
 		string list((char*)gameApps, gameAppsSize), name;
 		for (char c : list) {
-			if (c == '\n') {
-				if (!name.empty())
+			if (c == '\n' || c == '\r') {
+				if (!name.empty() && name.length() <= MAX_PATH)
 					_gameApps.push_back(name);
 				name.clear();
-			} else {
+			} else if ((unsigned char)c >= 32 && (unsigned char)c != 127) {
 				name += c;
 			}
 		}
-		if (!name.empty())
+		if (!name.empty() && name.length() <= MAX_PATH)
 			_gameApps.push_back(name);
 	}
 
@@ -300,25 +308,52 @@ static string exeNameOfWindow(const HWND& hWnd) {
 	return name;
 }
 
+static bool isSameExe(const string& a, const string& b) {
+#ifdef _WIN32
+	return _stricmp(a.c_str(), b.c_str()) == 0;
+#else
+	return a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin(), [](char c1, char c2) {
+		return std::tolower((unsigned char)c1) == std::tolower((unsigned char)c2);
+	});
+#endif
+}
+
 const vector<string>& getGameApps() {
 	return _gameApps;
 }
 
 bool isGameApp(const string& exe) {
-	return std::find(_gameApps.begin(), _gameApps.end(), exe) != _gameApps.end();
+	if (exe.empty())
+		return false;
+	return std::find_if(_gameApps.begin(), _gameApps.end(), [&](const string& item) {
+		return isSameExe(item, exe);
+	}) != _gameApps.end();
 }
 
 void setGameApp(const string& exe, const bool& on) {
-	_gameApps.erase(std::remove(_gameApps.begin(), _gameApps.end(), exe), _gameApps.end());
+	if (exe.empty() || exe.length() > MAX_PATH)
+		return;
+	for (char ch : exe) {
+		if ((unsigned char)ch < 32 || (unsigned char)ch == 127)
+			return;
+	}
+	_gameApps.erase(std::remove_if(_gameApps.begin(), _gameApps.end(), [&](const string& item) {
+		return isSameExe(item, exe);
+	}), _gameApps.end());
 	if (on)
 		_gameApps.push_back(exe);
 	string list;
 	for (auto& name : _gameApps)
 		list += name + "\n";
 	EasyKeyHelper::setRegBinary(_T("gameApps"), (BYTE*)list.data(), (int)list.size());
-	//the app is in the background while the tray menu is open, it applies when it comes back
-	_inGame = false;
-	exitGameChat();
+	if (on) {
+		HWND fg = GetForegroundWindow();
+		if (fg && isGameApp(exeNameOfWindow(fg))) {
+			bindGameWindow(fg);
+			return;
+		}
+	}
+	clearGameBinding();
 }
 
 bool isPasswordFieldActive() {
@@ -968,6 +1003,40 @@ void exitGameChat() {
 	}
 }
 
+static void clearGameBinding() {
+	_gameHwnd = NULL;
+	_gamePid = 0;
+	_lastGameForegroundTick = 0;
+	_inGame = false;
+	exitGameChat();
+}
+
+static void bindGameWindow(HWND hwnd) {
+	if (!hwnd || !IsWindow(hwnd))
+		return;
+	DWORD pid = 0;
+	GetWindowThreadProcessId(hwnd, &pid);
+	if (!pid)
+		return;
+	_gameHwnd = hwnd;
+	_gamePid = pid;
+	_lastGameForegroundTick = GetTickCount64();
+	HWND fg = GetForegroundWindow();
+	if (fg == hwnd) {
+		_inGame = true;
+		exitGameChat();
+		startNewSession();
+		vStartSentence();
+	} else {
+		// Arm binding without enabling _inGame yet
+		_inGame = false;
+	}
+}
+
+static inline bool isGameBindingAlive(uint64_t now) {
+	return _gameHwnd != NULL && (now >= _lastGameForegroundTick) && ((now - _lastGameForegroundTick) < GAME_BINDING_TTL_MS);
+}
+
 void saveSmartSwitchKeyData() {
 	getSmartSwitchKeySaveData(savedSmartSwitchKeyData);
 	EasyKeyHelper::setRegBinary(_T("smartSwitchKey"), savedSmartSwitchKeyData.data(), (int)savedSmartSwitchKeyData.size());
@@ -1224,7 +1293,7 @@ void switchLanguage() {
 		MessageBeep(MB_OK);
 	AppDelegate::getInstance()->onInputMethodChangedFromHotKey();
 	AppDelegate::getInstance()->showSwitchFlyout();
-	if (vUseSmartSwitchKey) {
+	if (vUseSmartSwitchKey && !_inGame) {
 		setAppInputMethodStatus(EasyKeyHelper::getFrontMostAppExecuteName(), vLanguage | (vCodeTable << 1));
 		saveSmartSwitchKeyData();
 	}
@@ -1477,9 +1546,41 @@ LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 	if (isPasswordRawActiveOnHookThread(nowTick)) {
 		return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
 	}
-	
+
+	//fast-path game window binding check
+	HWND fg = NULL;
+	if (isGameBindingAlive(nowTick)) {
+		fg = GetForegroundWindow();
+		if (fg == _gameHwnd) {
+			if (!_inGame) {
+				DWORD pid = 0;
+				GetWindowThreadProcessId(fg, &pid);
+				if (pid == _gamePid && IsWindow(fg)) {
+					_inGame = true;
+					_lastGameForegroundTick = nowTick;
+					exitGameChat();
+					startNewSession();
+					vStartSentence();
+				} else {
+					clearGameBinding();
+				}
+			} else if (!IsWindow(_gameHwnd)) {
+				clearGameBinding();
+			} else {
+				_lastGameForegroundTick = nowTick;
+			}
+		} else {
+			if (_inGame) {
+				exitGameChat();
+				_inGame = false;
+			}
+		}
+	} else if (_gameHwnd != NULL) {
+		clearGameBinding();
+	}
+
 	//ignore if IME pad is open when typing Japanese/Chinese...
-	HWND hWnd = GetForegroundWindow();
+	HWND hWnd = (fg != NULL) ? fg : GetForegroundWindow();
 	DWORD_PTR isImeON = 0;
 	DWORD foregroundProcess = 0;
 	GetWindowThreadProcessId(hWnd, &foregroundProcess);
@@ -1512,6 +1613,51 @@ LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 	}
 	if (!_isFlagKey && wParam != WM_KEYUP && wParam != WM_SYSKEYUP)
 		_keycode = (Uint16)keyboardData->vkCode;
+
+	//game mode: keys go straight to the game (skills on Q, W, E, R...) until Enter opens the chat;
+	//Enter (send) or Esc (close) ends the chat
+	if (_inGame && (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN)) {
+		if ((_keycode == VK_RETURN || _keycode == VK_ESCAPE) && !(_flag & (MASK_ALT | MASK_CONTROL))) { //not Alt + Enter
+			if (_keycode == VK_RETURN) {
+				if (_gameChat)
+					exitGameChat();
+				else {
+					_gameChat = true;
+					_chatRawCommand = false;
+					_chatTokenStart = true;
+					startNewSession();
+				}
+			} else {
+				exitGameChat();
+			}
+			return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
+		}
+		if (!_gameChat)
+			return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
+
+		//game chat: / prefix passes entire command raw until space or enter
+		if (_chatRawCommand) {
+			if (_keycode == VK_SPACE) {
+				_chatRawCommand = false;
+				_chatTokenStart = true;
+			}
+			return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
+		} else {
+			if (_keycode == VK_OEM_2 && _chatTokenStart && !(_flag & (MASK_CONTROL | MASK_ALT))) {
+				_chatRawCommand = true;
+				_chatTokenStart = false;
+				return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
+			}
+			if (_keycode == VK_SPACE) {
+				_chatTokenStart = true;
+			} else if (_keycode != VK_SHIFT && _keycode != VK_CAPITAL && _keycode != VK_LSHIFT && _keycode != VK_RSHIFT) {
+				_chatTokenStart = false;
+			}
+		}
+
+		// Model W: game chat is raw by default without mutating normal app language
+		return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
+	}
 
 	//switch language shortcut; convert hotkey
 	if ((wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN) && !_isFlagKey && _keycode != 0) {
@@ -1564,48 +1710,6 @@ LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 		}
 		_keycode = 0;
 		return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
-	}
-
-	//game mode: keys go straight to the game (skills on Q, W, E, R...) until Enter opens the chat;
-	//Enter (send) or Esc (close) ends the chat
-	if (_inGame && (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN)) {
-		if ((_keycode == VK_RETURN || _keycode == VK_ESCAPE) && !(_flag & (MASK_ALT | MASK_CONTROL))) { //not Alt + Enter
-			if (_keycode == VK_RETURN) {
-				if (_gameChat)
-					exitGameChat();
-				else {
-					_gameChat = true;
-					_chatRawCommand = false;
-					_chatTokenStart = true;
-					startNewSession();
-				}
-			} else {
-				exitGameChat();
-			}
-			return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
-		}
-		if (!_gameChat)
-			return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
-
-		//game chat: / prefix passes entire command raw until space or enter
-		if (_chatRawCommand) {
-			if (_keycode == VK_SPACE) {
-				_chatRawCommand = false;
-				_chatTokenStart = true;
-			}
-			return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
-		} else {
-			if (_keycode == VK_OEM_2 && _chatTokenStart && !(_flag & (MASK_CONTROL | MASK_ALT))) {
-				_chatRawCommand = true;
-				_chatTokenStart = false;
-				return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
-			}
-			if (_keycode == VK_SPACE) {
-				_chatTokenStart = true;
-			} else if (_keycode != VK_SHIFT && _keycode != VK_CAPITAL && _keycode != VK_LSHIFT && _keycode != VK_RSHIFT) {
-				_chatTokenStart = false;
-			}
-		}
 	}
 
 	//if is in english mode
@@ -1747,23 +1851,32 @@ LRESULT CALLBACK mouseHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 
 VOID CALLBACK winEventProcCallback(HWINEVENTHOOK hWinEventHook, DWORD dwEvent, HWND hwnd, LONG idObject, LONG idChild, DWORD dwEventThread, DWORD dwmsEventTime) {
 	if (dwEvent == EVENT_SYSTEM_FOREGROUND) {
+		GameCandidateFinder::recordForeground(hwnd);
 		if (hwnd && EasyKeyHelper::isWindowElevated(hwnd))
 			AppDelegate::getInstance()->onElevatedWindow(hwnd);
 		//typing in another window usually starts a new sentence
 		startNewSession();
 		vStartSentence();
-		_inGame = !_gameApps.empty() && hwnd && isGameApp(exeNameOfWindow(hwnd));
-		exitGameChat();
-		recordNavigationSignal(GetTickCount64());
+		uint64_t nowTick = GetTickCount64();
+		if (!_gameApps.empty() && hwnd && isGameApp(exeNameOfWindow(hwnd))) {
+			bindGameWindow(hwnd);
+			_inGame = true;
+		} else {
+			if (_inGame) {
+				_inGame = false;
+			}
+			exitGameChat();
+		}
+		recordNavigationSignal(nowTick);
 		updatePasswordFieldState(hwnd, OBJID_WINDOW, CHILDID_SELF, true);
 		//smart switch key
-		if (vUseSmartSwitchKey || vRememberCode) {
+		if (!_inGame && (vUseSmartSwitchKey || vRememberCode)) {
 			string& exe = EasyKeyHelper::getFrontMostAppExecuteName();
 			//Explorer counts as the app the user came from; an app whose name can't be read
 			//keeps what is on now instead of sharing one entry with every other such app
 			if (!EasyKeyHelper::isRealApp(exe))
 				return;
-			_languageTemp = getAppInputMethodStatus(exe, _inGame ? (0 | (vCodeTable << 1)) : (vLanguage | (vCodeTable << 1)));
+			_languageTemp = getAppInputMethodStatus(exe, vLanguage | (vCodeTable << 1));
 			if (vUseSmartSwitchKey && (_languageTemp & 0x01) != vLanguage) {
 				if (_languageTemp != -1) {
 					vLanguage = _languageTemp & 0x01; //the other bits hold the code table

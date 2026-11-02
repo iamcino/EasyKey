@@ -1,6 +1,18 @@
-﻿# Changelog
+# Changelog
 
 [Tiếng Việt](CHANGELOG.md) · **English**
+
+## 1.0.20 - 2026-11-03
+
+### Added
+- **Game Mode window binding**: Game Mode binds directly to the active game window (`HWND` + PID); preserves raw input in game and restores per-application remembering (SmartSwitchKey) when switching out; fast-path rebind within 5 seconds without hook latency.
+- **Game window picker**: Automatically suggests the top 3 candidate game windows in the tray menu and Settings, ranking by recent foreground MRU and multi-monitor fullscreen bounds; provides match binary `.exe` browse fallback; enforces clear privilege boundaries and strict privacy (window titles remain transient in RAM only, never logged, never persisted, never transmitted).
+- **VirusTotal Reference Sidecar**: Integrates an independent, decoupled VirusTotal API v3 sidecar workflow downstream after release publication, verifies SHA-256 integrity via `SHA256SUMS.txt`, and attaches structured report `virustotal-<tag>.json` to the release.
+
+### Notes
+- Game Mode targets applications by executable base name (`exeBaseName`); if different applications share the same exe name, the configuration applies to both.
+- Certain UWP / Microsoft Store games or titles hosted by specialized shells (`ApplicationFrameHost.exe`) may require manual executable browsing if permitted by Windows.
+- EasyKey does not inspect game memory or input contents, does not log keystrokes, and does not send data off-device.
 
 ## 1.0.19 - 2026-11-02
 

@@ -195,6 +195,8 @@ jobs:
         [IO.File]::WriteAllText("EasyKey.exe.sha256", "$hashExe  EasyKey.exe`n")
         $hashZip = (Get-FileHash $zipName -Algorithm SHA256).Hash.ToLower()
         [IO.File]::WriteAllText("$zipName.sha256", "$hashZip  $zipName`n")
+        $sums = "$hashExe  EasyKey.exe`n$hashZip  $zipName`n"
+        [IO.File]::WriteAllText("SHA256SUMS.txt", $sums)
     - name: Generate artifact attestation
       uses: actions/attest-build-provenance@v4
       with:
@@ -237,6 +239,7 @@ jobs:
           "EasyKey${{ steps.version.outputs.name }}-Windows.zip.sha256",
           "EasyKey.exe",
           "EasyKey.exe.sha256",
+          "SHA256SUMS.txt",
           "docs/signing/EasyKey-codesign.cer"
         )
         if (Test-Path "signature.json") {

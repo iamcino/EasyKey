@@ -1,0 +1,84 @@
+name: VirusTotal reference
+
+on:
+  workflow_run:
+    workflows: ["MSBuild"]
+    types: [completed]
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag to scan
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  scan:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    env:
+      VT_API_KEY: ${{ secrets.VT_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve release tag
+        id: rel
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          if [ -z "$TAG" ]; then
+            TAG="${{ github.event.workflow_run.head_branch }}"
+          fi
+          if [ -z "$TAG" ]; then
+            TAG="${{ inputs.tag }}"
+          fi
+          if [ -z "$TAG" ]; then
+            TAG=$(gh release view --json tagName --jq .tagName 2>/dev/null || echo "")
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "RELEASE_TAG=$TAG" >> "$GITHUB_ENV"
+
+      - name: Download signed assets + checksums
+        if: steps.rel.outputs.tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "$RELEASE_TAG" -D dl
+
+      - name: Verify integrity then scan
+        if: steps.rel.outputs.tag != ''
+        id: vt
+        run: |
+          cd dl
+          if [ -f SHA256SUMS.txt ]; then
+            echo "Verifying SHA256 checksums from SHA256SUMS.txt..."
+            sha256sum -c SHA256SUMS.txt
+          elif [ -f EasyKey.exe.sha256 ]; then
+            echo "Verifying SHA256 checksums from EasyKey.exe.sha256..."
+            sha256sum -c EasyKey.exe.sha256
+          else
+            echo "Warning: SHA256SUMS.txt not found in release assets."
+          fi
+          cd ..
+          python3 tools/virustotal/scan.py
+          SHOULD_UPLOAD="false"
+          if [ -f vt.json ]; then
+            STATUS=$(python3 -c "import json; d=json.load(open('vt.json')); print(d.get('status',''))")
+            if [ "$STATUS" != "skipped" ] && [ "$STATUS" != "integrity_mismatch" ]; then
+              SHOULD_UPLOAD="true"
+            fi
+          fi
+          echo "should_upload=$SHOULD_UPLOAD" >> "$GITHUB_OUTPUT"
+
+      - name: Attach reference asset to release
+        if: steps.rel.outputs.tag != '' && steps.vt.outputs.should_upload == 'true' && hashFiles('vt.json') != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ASSET_NAME="virustotal-${RELEASE_TAG}.json"
+          cp vt.json "$ASSET_NAME"
+          gh release upload "$RELEASE_TAG" "$ASSET_NAME" --clobber

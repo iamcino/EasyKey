@@ -128,17 +128,24 @@ Giới hạn đã biết:
 
 Chế độ Game ưu tiên bảo vệ phím điều khiển. Khi đang chơi, các phím như `W`, `A`, `S`, `D`, `Q`, `E`, `R` phải đi thẳng vào game mà không bị bộ gõ tiếng Việt xen vào.
 
-- Khung chat trong game mặc định dùng phím thô để tránh biến các từ chat nhanh như `afk`, `gg`, `wp`, `how`, `as` thành ký tự tiếng Việt sai.
-- Người dùng vẫn có thể chủ động chuyển chế độ gõ cho từng ứng dụng nếu muốn gõ tiếng Việt trong chat game.
-- Phím Enter được dùng để mở hoặc đóng trạng thái chat trong game, nhưng vẫn truyền tới ứng dụng đích.
-- Phím Esc đóng chat và dọn trạng thái bộ gõ.
-- Click chuột trái, phải hoặc giữa sẽ thoát trạng thái chat, giúp phím điều khiển trở về game ngay lập tức.
-- Di chuột, lăn chuột và các nút chuột phụ không làm thoát chat.
-- Các lệnh bắt đầu bằng `/`, ví dụ `/ff`, `/w`, `/give`, `/tp`, được giữ nguyên dạng phím thô cho tới khi gặp phím cách hoặc Enter.
+- **Window-Bound Game Mode (Bảo vệ Alt+Tab)**: Ràng buộc cửa sổ theo cặp `HWND + PID` với TTL 5 giây. Khi người dùng Alt+Tab ra ngoài rồi quay lại game, sự kiện `EVENT_SYSTEM_FOREGROUND` đôi khi bị trễ hoặc nuốt bởi DWM/DirectComposition/borderless windowed mode. Cơ chế fast-path trong hook tái gắn kết trạng thái game ngay phím đầu tiên mà không phải gọi API nặng (`GetWindowThreadProcessId`, `OpenProcess`, `QueryFullProcessImageName`) trên từng phím.
+- **Bảo vệ sự cố sập game (IsWindow Guard)**: Kiểm tra tính hợp lệ của cửa sổ (`IsWindow`) trong fast-path để tự động dọn sạch binding khi game bị crash hoặc taskkill đột ngột.
+- **Cách ly hoàn toàn khỏi SmartSwitchKey**: Game Mode hoàn toàn tách biệt khỏi bộ nhớ chế độ gõ theo ứng dụng. Khi chơi game, EasyKey không ghi đè chế độ tiếng Anh/thô vào ứng dụng trước đó; khi Alt+Tab ra ngoài, các ứng dụng như Chrome, Word vẫn giữ nguyên đúng chế độ gõ đã nhớ.
+- **Khung chat mặc định dùng phím thô (Model W)**: Tránh biến các từ chat nhanh như `afk`, `gg`, `wp`, `how`, `as`, `or` thành ký tự tiếng Việt sai. Người dùng có thể chủ động chuyển chế độ gõ cho từng ứng dụng nếu có nhu cầu gõ tiếng Việt trong chat game.
+- **Điều khiển chat tức thời**: Phím Enter mở/đóng chat; phím Esc đóng chat và dọn sạch bộ đệm; click chuột trái, phải hoặc giữa thoát chat ngay lập tức để phím điều khiển trở về game trong combat. Di chuột, lăn chuột và các nút chuột phụ (XBUTTON) không làm thoát chat.
+- **Lệnh game bắt đầu bằng `/`**: Các lệnh như `/ff`, `/w`, `/give`, `/tp` được giữ nguyên dạng phím thô cho tới khi gặp phím cách hoặc Enter.
+- **Game Window Picker & Gợi ý Top 3**:
+  - Gợi ý thông minh: Tự động xếp hạng Top 3 cửa sổ ứng viên dựa trên MRU foreground gần nhất (`+100`), chế độ toàn màn hình (`+30`), và loại trừ blacklist hệ thống (`explorer.exe`, `dwm.exe`, `taskmgr.exe`, ...) cùng ứng dụng văn phòng (`winword.exe`, `excel.exe`, ...). Giúp chọn đúng cửa sổ/process đang hiển thị, giảm mạnh nguy cơ chọn nhầm launcher.
+  - An toàn chống treo UI: Quá trình quét `EnumWindows` không lấy tiêu đề của tất cả cửa sổ; tiêu đề chỉ được lấy an toàn cho Top ứng viên cuối cùng bằng `SendMessageTimeout` (timeout 50 ms kèm cờ `SMTO_ABORTIFHUNG` và kiểm tra `IsHungAppWindow`), đảm bảo nếu có ứng dụng bên ngoài bị treo thì menu EasyKey vẫn phản hồi tức thì.
+  - Ranh giới phân quyền rõ ràng (Privilege Boundary): Quá trình tìm kiếm kiểm tra quyền nâng cao (Elevated / Admin). Nếu game chạy quyền Admin mà EasyKey chạy quyền Standard, ứng viên được đánh dấu rõ `[Quyền Admin]` và hiển thị thông báo yêu cầu chạy EasyKey với quyền Admin để hỗ trợ; EasyKey tuyệt đối không tự ý nâng quyền ngầm hay restart âm thầm.
+  - Luồng duyệt file `.exe` dự phòng: Cung cấp nút "Duyệt file .exe…" trong Cài đặt và Menu khay; chỉ lưu tên thực thi cơ sở (`exeBaseName`, so khớp không phân biệt hoa/thường) để không bị gãy khi game cập nhật hoặc di chuyển thư mục, kèm cảnh báo người dùng chọn file thực thi của trận đấu thay vì launcher.
+- **Cam kết quyền riêng tư (Privacy Guarantees)**: Candidate Finder chỉ chạy theo yêu cầu (on-demand) khi mở menu khay hoặc Cài đặt (tuyệt đối không chạy trong keyboard hook). Tiêu đề cửa sổ chỉ đọc tạm thời trong bộ nhớ RAM để hiển thị menu cho người dùng chọn, không ghi log ra đĩa, không lưu tiêu đề vào Registry và không gửi bất kỳ dữ liệu nào ra bên ngoài mạng (Zero Telemetry).
 
 Giới hạn đã biết:
+- Trùng tên file thực thi (Basename Collision): Game Mode nhận diện theo tên file thực thi. Nếu nhiều ứng dụng dùng cùng tên exe (ví dụ `game.exe`), cấu hình sẽ áp dụng chung.
+- Game UWP / Microsoft Store: Một số game UWP/MSIX hoặc ứng dụng chạy qua host đặc thù (như `ApplicationFrameHost.exe`) có thể không được gợi ý chính xác. Có thể dùng Duyệt file .exe nếu hệ thống cho phép truy cập, tuy nhiên quyền truy cập thư mục `WindowsApps` có thể bị giới hạn bởi Windows.
 - CI kiểm chứng logic trạng thái bộ gõ trong game. Trải nghiệm thực tế trên từng game cụ thể thuộc phạm vi kiểm thử thủ công.
-- Một số game fullscreen exclusive, overlay tùy chỉnh hoặc cơ chế nhập liệu riêng có thể hành xử khác nhau.
+- Một số game fullscreen exclusive, anti-cheat mức kernel hoặc cơ chế nhập liệu riêng có thể hành xử khác nhau.
 - Chế độ Game không đọc nội dung game, không can thiệp vào bộ nhớ tiến trình và không gửi dữ liệu ra ngoài.
 
 ### Bỏ qua ô mật khẩu (Browser & Win32)
