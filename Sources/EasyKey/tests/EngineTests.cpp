@@ -1025,6 +1025,376 @@ static void testGameMode() {
             printf("FAIL [hotkeys in combat must pass raw to game without mutating vLanguage]\n");
         }
     }
+
+    // --- Window Candidate Finder Logic Simulation & Tests ---
+    struct CandidateTestHelper {
+        static bool isSystemProcess(const string& exe) {
+            static const vector<string> systemExes = {
+                "explorer.exe", "dwm.exe", "shellexperiencehost.exe", "searchhost.exe",
+                "startmenuexperiencehost.exe", "taskmgr.exe", "cmd.exe", "powershell.exe",
+                "conhost.exe", "applicationframehost.exe", "lockapp.exe", "csrss.exe",
+                "services.exe", "svchost.exe", "systemsettings.exe"
+            };
+            string lower = exe;
+            std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+            for (const auto& s : systemExes) {
+                if (lower == s) return true;
+            }
+            return false;
+        }
+
+        static bool isOfficeApp(const string& exe) {
+            static const vector<string> officeExes = {
+                "winword.exe", "excel.exe", "powerpnt.exe", "outlook.exe",
+                "onenote.exe", "msaccess.exe", "notepad.exe"
+            };
+            string lower = exe;
+            std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+            for (const auto& o : officeExes) {
+                if (lower == o) return true;
+            }
+            return false;
+        }
+
+        static bool isBlacklisted(const string& exe) {
+            return isSystemProcess(exe) || isOfficeApp(exe);
+        }
+
+        static string extractBasename(const string& path) {
+            size_t slash = path.find_last_of("\\/");
+            return (slash != string::npos) ? path.substr(slash + 1) : path;
+        }
+
+        static bool iequals(const string& a, const string& b) {
+            if (a.size() != b.size()) return false;
+            return std::equal(a.begin(), a.end(), b.begin(), [](char c1, char c2) {
+                return std::tolower((unsigned char)c1) == std::tolower((unsigned char)c2);
+            });
+        }
+
+        struct WindowSim {
+            uint64_t hwnd;
+            string exePath;
+            string title;
+            bool isVisible;
+            bool isIconic;
+            bool isCloaked;
+            bool isElevated;
+            bool isFullscreen;
+            bool isHung = false;
+        };
+
+        struct CandidateResult {
+            uint64_t hwnd;
+            string exeBaseName;
+            string title;
+            bool lockedByPrivilege;
+            int score;
+        };
+
+        static string getSafeWindowTitle(const WindowSim& w) {
+            if (w.isHung) return "";
+            return sanitizeTitle(w.title);
+        }
+
+        static string sanitizeTitle(const string& raw) {
+            string res;
+            res.reserve(raw.size());
+            for (char ch : raw) {
+                if ((unsigned char)ch < 32 || (unsigned char)ch == 127) {
+                    res.push_back(' ');
+                } else {
+                    res.push_back(ch);
+                }
+            }
+            size_t first = res.find_first_not_of(" \t\r\n");
+            if (first == string::npos) return "";
+            size_t last = res.find_last_not_of(" \t\r\n");
+            return res.substr(first, (last - first + 1));
+        }
+
+        static bool validateGameExe(const string& exe) {
+            if (exe.empty() || exe.length() > 260)
+                return false;
+            for (char ch : exe) {
+                if ((unsigned char)ch < 32 || (unsigned char)ch == 127)
+                    return false;
+            }
+            return true;
+        }
+
+        struct GameModeBindingSim {
+            vector<string> gameApps;
+            uint64_t boundHwnd = 0;
+            bool inGame = false;
+
+            void setGameApp(const string& exe, bool on, uint64_t currentFgHwnd, const string& currentFgExe, uint64_t candidateHwnd = 0) {
+                if (!validateGameExe(exe))
+                    return;
+                gameApps.erase(std::remove_if(gameApps.begin(), gameApps.end(), [&](const string& item) {
+                    return iequals(item, exe);
+                }), gameApps.end());
+                if (on) {
+                    gameApps.push_back(exe);
+                    uint64_t targetHwnd = (candidateHwnd != 0) ? candidateHwnd : currentFgHwnd;
+                    if (targetHwnd != 0) {
+                        boundHwnd = targetHwnd;
+                        // Contract: ONLY set inGame = true if target is actually foreground
+                        inGame = (targetHwnd == currentFgHwnd && iequals(currentFgExe, exe));
+                        return;
+                    }
+                }
+                boundHwnd = 0;
+                inGame = false;
+            }
+
+            void onForegroundSwitched(uint64_t newFgHwnd, const string& newFgExe) {
+                if (boundHwnd != 0 && newFgHwnd == boundHwnd) {
+                    inGame = true;
+                } else {
+                    inGame = false;
+                }
+            }
+        };
+
+        static vector<CandidateResult> rankCandidates(
+            const vector<WindowSim>& windows,
+            uint64_t mruHwnd,
+            bool easyKeyElevated,
+            size_t maxCount = 3)
+        {
+            vector<CandidateResult> results;
+            for (const auto& w : windows) {
+                if (!w.isVisible || w.isIconic || w.isCloaked) continue;
+                string base = extractBasename(w.exePath);
+                if (isBlacklisted(base)) continue;
+
+                CandidateResult c;
+                c.hwnd = w.hwnd;
+                c.exeBaseName = base;
+                c.title = ""; // Safe 2-stage title fetch: empty during enumeration
+                c.lockedByPrivilege = (w.isElevated && !easyKeyElevated);
+                c.score = 5;
+
+                if (w.hwnd == mruHwnd) c.score += 100;
+                if (w.isFullscreen) c.score += 30;
+                if (c.lockedByPrivilege) c.score -= 50;
+
+                // Deduplicate by exeBaseName case-insensitively
+                auto it = std::find_if(results.begin(), results.end(), [&](const CandidateResult& item) {
+                    return iequals(item.exeBaseName, c.exeBaseName);
+                });
+                if (it == results.end()) {
+                    results.push_back(c);
+                } else if (c.score > it->score) {
+                    *it = c;
+                }
+            }
+
+            std::sort(results.begin(), results.end(), [](const CandidateResult& a, const CandidateResult& b) {
+                return a.score > b.score;
+            });
+
+            if (results.size() > maxCount) {
+                results.resize(maxCount);
+            }
+
+            // Stage 2: Safely fetch titles only for the final top candidates
+            for (auto& cand : results) {
+                for (const auto& w : windows) {
+                    if (w.hwnd == cand.hwnd) {
+                        cand.title = getSafeWindowTitle(w);
+                        break;
+                    }
+                }
+            }
+
+            return results;
+        }
+    };
+
+    // Test 14: Candidate Finder blacklist filtering
+    {
+        total++;
+        bool expSys = CandidateTestHelper::isSystemProcess("explorer.exe");
+        bool dwmSys = CandidateTestHelper::isSystemProcess("DWM.EXE");
+        bool wordOffice = CandidateTestHelper::isOfficeApp("winword.exe");
+        bool excelOffice = CandidateTestHelper::isOfficeApp("EXCEL.EXE");
+        bool gameNotBlacklisted = !CandidateTestHelper::isBlacklisted("League of Legends.exe");
+        bool genshinNotBlacklisted = !CandidateTestHelper::isBlacklisted("GenshinImpact.exe");
+
+        if (!expSys || !dwmSys || !wordOffice || !excelOffice || !gameNotBlacklisted || !genshinNotBlacklisted) {
+            failures++;
+            printf("FAIL [candidate finder blacklist filtering logic]\n");
+        }
+    }
+
+    // Test 15: Window state filtering (invisible, minimized, cloaked)
+    {
+        total++;
+        vector<CandidateTestHelper::WindowSim> windows = {
+            { 1, "C:\\Games\\LoL.exe", "League", true, false, false, false, false },
+            { 2, "C:\\Games\\Dota.exe", "Dota", false, false, false, false, false },
+            { 3, "C:\\Games\\CS2.exe", "Counter-Strike", true, true, false, false, false },
+            { 4, "C:\\Games\\Val.exe", "Valorant", true, false, true, false, false },
+        };
+
+        auto candidates = CandidateTestHelper::rankCandidates(windows, 0, false, 3);
+        if (candidates.size() != 1 || candidates[0].exeBaseName != "LoL.exe") {
+            failures++;
+            printf("FAIL [candidate finder window state filtering]\n");
+        }
+    }
+
+    // Test 16: Heuristic scoring and ranking (MRU, fullscreen, privilege)
+    {
+        total++;
+        vector<CandidateTestHelper::WindowSim> windows = {
+            { 10, "C:\\Games\\GameA.exe", "Game A", true, false, false, false, false },
+            { 20, "C:\\Games\\GameB.exe", "Game B", true, false, false, false, true },
+            { 30, "C:\\Games\\GameC.exe", "Game C", true, false, false, false, false },
+            { 40, "C:\\Games\\GameD.exe", "Game D", true, false, false, true, false },
+        };
+
+        auto ranked = CandidateTestHelper::rankCandidates(windows, 30 /* MRU */, false /* EasyKey not admin */, 4);
+        if (ranked.size() != 4 ||
+            ranked[0].exeBaseName != "GameC.exe" || ranked[0].score != 105 ||
+            ranked[1].exeBaseName != "GameB.exe" || ranked[1].score != 35 ||
+            ranked[2].exeBaseName != "GameA.exe" || ranked[2].score != 5 ||
+            ranked[3].exeBaseName != "GameD.exe" || !ranked[3].lockedByPrivilege || ranked[3].score != -45) {
+            failures++;
+            printf("FAIL [candidate finder heuristic scoring and privilege ranking]\n");
+        }
+    }
+
+    // Test 17: Basename extraction from Windows and POSIX paths
+    {
+        total++;
+        string pathWin = "C:\\Program Files (x86)\\Riot Games\\League of Legends\\League of Legends.exe";
+        string pathPosix = "D:/Games/Steam/steamapps/common/Cyberpunk 2077/bin/x64/Cyberpunk2077.exe";
+        string bareName = "Overwatch.exe";
+
+        string baseWin = CandidateTestHelper::extractBasename(pathWin);
+        string basePosix = CandidateTestHelper::extractBasename(pathPosix);
+        string baseBare = CandidateTestHelper::extractBasename(bareName);
+
+        if (baseWin != "League of Legends.exe" ||
+            basePosix != "Cyberpunk2077.exe" ||
+            baseBare != "Overwatch.exe") {
+            failures++;
+            printf("FAIL [basename extraction for browse exe fallback]\n");
+        }
+    }
+
+    // Test 18: Top 3 candidate selection cap
+    {
+        total++;
+        vector<CandidateTestHelper::WindowSim> windows;
+        for (int i = 1; i <= 10; ++i) {
+            windows.push_back({ (uint64_t)i, "C:\\Games\\Game" + std::to_string(i) + ".exe", "Title", true, false, false, false, false });
+        }
+
+        auto top3 = CandidateTestHelper::rankCandidates(windows, 10 /* MRU on Game10 */, false, 3);
+        if (top3.size() != 3 || top3[0].exeBaseName != "Game10.exe") {
+            failures++;
+            printf("FAIL [candidate finder top 3 selection cap]\n");
+        }
+    }
+
+    // Test 19: Case-insensitive matching and deduplication
+    {
+        total++;
+        string gameLower = "league of legends.exe";
+        string gameUpper = "LEAGUE OF LEGENDS.EXE";
+        string gameMixed = "League of Legends.exe";
+
+        bool match1 = CandidateTestHelper::iequals(gameLower, gameUpper);
+        bool match2 = CandidateTestHelper::iequals(gameUpper, gameMixed);
+
+        vector<CandidateTestHelper::WindowSim> windows = {
+            { 1, "C:\\Games\\Game.exe", "Game 1", true, false, false, false, false },
+            { 2, "C:\\Games\\GAME.EXE", "Game 2", true, false, false, false, true },
+        };
+
+        auto ranked = CandidateTestHelper::rankCandidates(windows, 0, false, 3);
+        if (!match1 || !match2 || ranked.size() != 1 || ranked[0].score != 35) {
+            failures++;
+            printf("FAIL [case-insensitive matching and deduplication]\n");
+        }
+    }
+
+    // Test 20: Hung window title guard
+    {
+        total++;
+        CandidateTestHelper::WindowSim hungWindow = { 99, "C:\\Games\\HungGame.exe", "Hung Title", true, false, false, false, false, true /* isHung */ };
+        string title = CandidateTestHelper::getSafeWindowTitle(hungWindow);
+        if (!title.empty()) {
+            failures++;
+            printf("FAIL [hung window must return empty title without blocking]\n");
+        }
+    }
+
+    // Test 21: Title sanitization (control characters stripped/replaced, trimmed)
+    {
+        total++;
+        string dirtyTitle = "\r\n  Title With\tTabs\033AndEsc  \n";
+        string cleanTitle = CandidateTestHelper::sanitizeTitle(dirtyTitle);
+        if (cleanTitle != "Title With Tabs AndEsc") {
+            failures++;
+            printf("FAIL [candidate title sanitization]: '%s'\n", cleanTitle.c_str());
+        }
+    }
+
+    // Test 22: Registry list protection against control characters and invalid length in exe names
+    {
+        total++;
+        bool invalidNl = CandidateTestHelper::validateGameExe("game\ninjection.exe");
+        bool invalidCr = CandidateTestHelper::validateGameExe("game\rinjection.exe");
+        bool invalidEsc = CandidateTestHelper::validateGameExe("game\033injection.exe");
+        bool invalidDel = CandidateTestHelper::validateGameExe(string("game\x7finjection.exe", 17));
+        bool invalidEmpty = CandidateTestHelper::validateGameExe("");
+        string longExe(261, 'a');
+        bool invalidLong = CandidateTestHelper::validateGameExe(longExe + ".exe");
+        bool validExe = CandidateTestHelper::validateGameExe("validgame.exe");
+        if (invalidNl || invalidCr || invalidEsc || invalidDel || invalidEmpty || invalidLong || !validExe) {
+            failures++;
+            printf("FAIL [game exe validation]\n");
+        }
+    }
+
+    // Test 23: Immediate rebind vs arming contract when adding game
+    {
+        total++;
+        CandidateTestHelper::GameModeBindingSim sim;
+
+        // Case A: User adds game while that game window IS currently foreground (e.g. from tray menu)
+        sim.setGameApp("GameClient.exe", true, 1234, "gameclient.exe");
+        if (!sim.inGame || sim.boundHwnd != 1234) {
+            failures++;
+            printf("FAIL [immediate rebind when active game is foreground]\n");
+        }
+
+        // Case B: User adds game while Settings is foreground (hwnd = 9999) and game is in background (hwnd = 1234)
+        sim.setGameApp("GameClient.exe", true, 9999, "settings.exe", 1234 /* candidateHwnd */);
+        if (sim.inGame || sim.boundHwnd != 1234) {
+            failures++;
+            printf("FAIL [adding game from background must arm binding with inGame=false]\n");
+        }
+
+        // When user switches back to the game window, fast-path foreground switch activates inGame
+        sim.onForegroundSwitched(1234, "gameclient.exe");
+        if (!sim.inGame) {
+            failures++;
+            printf("FAIL [fast-path foreground switch activates armed binding]\n");
+        }
+
+        // Turning game mode off clears binding immediately
+        sim.setGameApp("GameClient.exe", false, 1234, "gameclient.exe");
+        if (sim.inGame || sim.boundHwnd != 0) {
+            failures++;
+            printf("FAIL [immediate unbind when game mode removed]\n");
+        }
+    }
 }
 
 // Mirrors password-field bypass precedence.

@@ -1,4 +1,4 @@
-﻿/*----------------------------------------------------------
+/*----------------------------------------------------------
 EasyKey - Vietnamese input for Windows 11.
 Copyright (C) 2026 Cino
 
@@ -19,6 +19,8 @@ See LICENSE and NOTICE.
 #include "ThemeHelper.h"
 #include "Updater.h"
 #include "TrayGlyph.h"
+#include "GameCandidateFinder.h"
+#include <commdlg.h>
 #include <cmath>
 
 #define WM_TRAYMESSAGE (WM_USER + 1)
@@ -42,6 +44,11 @@ See LICENSE and NOTICE.
 #define POPUP_VN_LOCALE_1258 934
 
 #define POPUP_GAME_MODE 960
+#define POPUP_GAME_CANDIDATE_1 961
+#define POPUP_GAME_CANDIDATE_2 962
+#define POPUP_GAME_CANDIDATE_3 963
+#define POPUP_GAME_BROWSE 964
+#define POPUP_GAME_SAVED_BASE 2100
 #define POPUP_MACRO_TABLE 970
 #define POPUP_CONVERT_TOOL 980
 #define POPUP_CHECK_UPDATE 990
@@ -56,6 +63,8 @@ See LICENSE and NOTICE.
 static HMENU popupMenu;
 static HMENU menuInputType;
 static HMENU menuCodeTable;
+static HMENU menuGameMode;
+static std::vector<GameWindowCandidate> _trayCandidates;
 
 static NOTIFYICONDATA nid;
 
@@ -165,6 +174,72 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 					AppDelegate::getInstance()->showNotice(TR("Đã tắt chế độ game", "Game mode off"), app);
 				break;
 			}
+			case POPUP_GAME_CANDIDATE_1:
+			case POPUP_GAME_CANDIDATE_2:
+			case POPUP_GAME_CANDIDATE_3: {
+				size_t idx = commandId - POPUP_GAME_CANDIDATE_1;
+				if (idx < _trayCandidates.size()) {
+					const auto& cand = _trayCandidates[idx];
+					if (cand.lockedByPrivilege) {
+						AppDelegate::getInstance()->showNotice(
+							TR("Cần quyền Admin", "Admin required"),
+							TR("Game đang chạy quyền Admin. Cần chạy EasyKey quyền Admin để hỗ trợ.",
+							   "The game is running as Admin. EasyKey must run as Admin to support it."));
+					} else {
+						bool on = !isGameApp(cand.exeBaseName);
+						setGameApp(cand.exeBaseName, on);
+						wstring app = utf8ToWideString(cand.exeBaseName);
+						if (on)
+							AppDelegate::getInstance()->showNotice(TR("Đã bật chế độ game", "Game mode on"),
+								app + TR(": bấm Enter để chat tiếng Việt", ": press Enter to chat in Vietnamese"));
+						else
+							AppDelegate::getInstance()->showNotice(TR("Đã tắt chế độ game", "Game mode off"), app);
+					}
+				}
+				break;
+			}
+			case POPUP_GAME_BROWSE: {
+				static const wchar_t kExeFilterVi[] = L"Tệp thực thi (*.exe)\0*.exe\0Mọi tệp (*.*)\0*.*\0\0";
+				static const wchar_t kExeFilterEn[] = L"Executable files (*.exe)\0*.exe\0All files (*.*)\0*.*\0\0";
+				OPENFILENAME ofn = { sizeof(ofn) };
+				TCHAR file[MAX_PATH] = { 0 };
+				ofn.hwndOwner = hWnd;
+				ofn.lpstrFile = file;
+				ofn.nMaxFile = MAX_PATH;
+				ofn.lpstrFilter = (vLanguage == 0) ? kExeFilterVi : kExeFilterEn;
+				ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;
+				if (GetOpenFileName(&ofn)) {
+					LPCTSTR slash = _tcsrchr(file, '\\');
+					if (!slash)
+						slash = _tcsrchr(file, '/');
+					wstring baseNameW = slash ? slash + 1 : file;
+					if (baseNameW.empty() || baseNameW.length() > MAX_PATH)
+						break;
+					bool hasControlChar = false;
+					for (wchar_t ch : baseNameW) {
+						if (ch < 32 || ch == 127) {
+							hasControlChar = true;
+							break;
+						}
+					}
+					if (hasControlChar)
+						break;
+					if (baseNameW.length() > 4 &&
+						baseNameW.find(L'\\') == wstring::npos &&
+						baseNameW.find(L'/') == wstring::npos) {
+						wstring ext = baseNameW.substr(baseNameW.length() - 4);
+						if (_wcsicmp(ext.c_str(), L".exe") == 0) {
+							string exeName = wideStringToUtf8(baseNameW);
+							setGameApp(exeName, true);
+							AppDelegate::getInstance()->showNotice(
+								TR("Đã thêm game", "Game added"),
+								baseNameW + TR(": Lưu ý chọn file thực thi của trận đấu, không chọn launcher",
+											   ": Note: Select match binary, not launcher"));
+						}
+					}
+				}
+				break;
+			}
 			case POPUP_MACRO_TABLE:
 				AppDelegate::getInstance()->onMacroTable();
 				break;
@@ -203,6 +278,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 				break;
 			case POPUP_EASYKEY_EXIT:
 				AppDelegate::getInstance()->onEasyKeyExit();
+				break;
+			default:
+				if (commandId >= POPUP_GAME_SAVED_BASE && commandId < POPUP_GAME_SAVED_BASE + 100) {
+					size_t idx = commandId - POPUP_GAME_SAVED_BASE;
+					vector<string> apps = getGameApps();
+					if (idx < apps.size()) {
+						setGameApp(apps[idx], false);
+						AppDelegate::getInstance()->showNotice(TR("Đã tắt chế độ game", "Game mode off"), utf8ToWideString(apps[idx]));
+					}
+				}
 				break;
 			}
 			SystemTrayHelper::updateData();
@@ -267,7 +352,8 @@ void SystemTrayHelper::createPopupMenu() {
 	AppendMenu(menuCodeTable, MF_UNCHECKED, POPUP_TCVN3, menuText(POPUP_TCVN3));
 	AppendMenu(menuCodeTable, MF_UNCHECKED, POPUP_VNI_WINDOWS, menuText(POPUP_VNI_WINDOWS));
 	AppendMenu(popupMenu, MF_POPUP, (UINT_PTR)menuCodeTable, TR("Bảng mã", "Character encoding"));
-	AppendMenu(popupMenu, MF_STRING, POPUP_GAME_MODE, TR("Chế độ game", "Game mode")); //named after the app by updateGameItem
+	menuGameMode = CreatePopupMenu();
+	AppendMenu(popupMenu, MF_POPUP, (UINT_PTR)menuGameMode, TR("Chế độ game", "Game mode"));
 	AppendMenu(popupMenu, MF_SEPARATOR, 0, 0);
 
 	//text only, checkmarks show what is in use
@@ -531,15 +617,58 @@ static void loadTrayIcon() {
 		PostMessage(nid.hWnd, WM_APP + 7, 0, (LPARAM)previousBadged);
 }
 
-//"Game mode for <app>", checked when the app is in game mode; grayed when there is no app to name
+// Populates the Game mode submenu with:
+// 1. Current frontmost app (if real app)
+// 2. Top 3 running window candidates (with privilege detection)
+// 3. Browse .exe option
+// 4. Saved game apps
 static void updateGameItem(const string& exe) {
+	if (!menuGameMode)
+		return;
+	while (GetMenuItemCount(menuGameMode) > 0) {
+		RemoveMenu(menuGameMode, 0, MF_BYPOSITION);
+	}
+
 	bool known = EasyKeyHelper::isRealApp(exe);
-	wstring text = TR("Chế độ game", "Game mode");
-	if (known)
-		text += TR(" cho ", " for ") + utf8ToWideString(exe);
-	ModifyMenu(popupMenu, POPUP_GAME_MODE, MF_BYCOMMAND | MF_STRING |
-		(known && isGameApp(exe) ? MF_CHECKED : MF_UNCHECKED) | (known ? MF_ENABLED : MF_GRAYED),
-		POPUP_GAME_MODE, text.c_str());
+	if (known) {
+		wstring text = TR("Bật cho ", "Turn on for ") + utf8ToWideString(exe);
+		AppendMenu(menuGameMode, MF_STRING | (isGameApp(exe) ? MF_CHECKED : MF_UNCHECKED),
+			POPUP_GAME_MODE, text.c_str());
+		AppendMenu(menuGameMode, MF_SEPARATOR, 0, NULL);
+	}
+
+	_trayCandidates = GameCandidateFinder::findTopCandidates(3);
+	if (!_trayCandidates.empty()) {
+		for (size_t k = 0; k < _trayCandidates.size(); ++k) {
+			const auto& cand = _trayCandidates[k];
+			wstring text;
+			if (cand.lockedByPrivilege) {
+				text = utf8ToWideString(cand.exeBaseName) + TR(" [Quyền Admin]", " [Admin required]");
+			} else {
+				text = TR("Bật cho ", "Turn on for ") + utf8ToWideString(cand.exeBaseName);
+			}
+			if (!cand.title.empty()) {
+				wstring shortTitle = cand.title.length() > 22 ? cand.title.substr(0, 19) + L"..." : cand.title;
+				text += L" (" + shortTitle + L")";
+			}
+			UINT flags = MF_STRING | (isGameApp(cand.exeBaseName) ? MF_CHECKED : MF_UNCHECKED);
+			AppendMenu(menuGameMode, flags, POPUP_GAME_CANDIDATE_1 + (UINT)k, text.c_str());
+		}
+		AppendMenu(menuGameMode, MF_SEPARATOR, 0, NULL);
+	}
+
+	AppendMenu(menuGameMode, MF_STRING, POPUP_GAME_BROWSE, TR("Duyệt file .exe…", "Browse .exe file…"));
+
+	vector<string> apps = getGameApps();
+	if (!apps.empty()) {
+		AppendMenu(menuGameMode, MF_SEPARATOR, 0, NULL);
+		for (size_t n = 0; n < apps.size() && n < 20; ++n) {
+			AppendMenu(menuGameMode, MF_STRING | MF_CHECKED, POPUP_GAME_SAVED_BASE + (UINT)n, utf8ToWideString(apps[n]).c_str());
+		}
+	} else if (!known && _trayCandidates.empty()) {
+		AppendMenu(menuGameMode, MF_STRING | MF_GRAYED, 0,
+			TR("Chưa có game nào đang chạy", "No running games found"));
+	}
 }
 
 void SystemTrayHelper::rebuildMenu() {

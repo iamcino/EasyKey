@@ -16,6 +16,7 @@ See LICENSE and NOTICE.
 -----------------------------------------------------------*/
 #include "stdafx.h"
 #include "AppDelegate.h"
+#include "GameCandidateFinder.h"
 #include <algorithm>
 #include <atomic>
 #include <cstdint>
@@ -139,6 +140,7 @@ VOID CALLBACK winEventProcCallback(HWINEVENTHOOK hWinEventHook, DWORD dwEvent, H
 static void watchRawKeyboard();
 static void syncModifierMask();
 static void clearGameBinding();
+static void bindGameWindow(HWND hwnd);
 
 void EasyKeyFree() {
 	stopPasswordProbeWorker();
@@ -266,15 +268,15 @@ void EasyKeyInit() {
 	if (gameApps && gameAppsSize > 0) {
 		string list((char*)gameApps, gameAppsSize), name;
 		for (char c : list) {
-			if (c == '\n') {
-				if (!name.empty())
+			if (c == '\n' || c == '\r') {
+				if (!name.empty() && name.length() <= MAX_PATH)
 					_gameApps.push_back(name);
 				name.clear();
-			} else {
+			} else if ((unsigned char)c >= 32 && (unsigned char)c != 127) {
 				name += c;
 			}
 		}
-		if (!name.empty())
+		if (!name.empty() && name.length() <= MAX_PATH)
 			_gameApps.push_back(name);
 	}
 
@@ -306,23 +308,51 @@ static string exeNameOfWindow(const HWND& hWnd) {
 	return name;
 }
 
+static bool isSameExe(const string& a, const string& b) {
+#ifdef _WIN32
+	return _stricmp(a.c_str(), b.c_str()) == 0;
+#else
+	return a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin(), [](char c1, char c2) {
+		return std::tolower((unsigned char)c1) == std::tolower((unsigned char)c2);
+	});
+#endif
+}
+
 const vector<string>& getGameApps() {
 	return _gameApps;
 }
 
 bool isGameApp(const string& exe) {
-	return std::find(_gameApps.begin(), _gameApps.end(), exe) != _gameApps.end();
+	if (exe.empty())
+		return false;
+	return std::find_if(_gameApps.begin(), _gameApps.end(), [&](const string& item) {
+		return isSameExe(item, exe);
+	}) != _gameApps.end();
 }
 
 void setGameApp(const string& exe, const bool& on) {
-	_gameApps.erase(std::remove(_gameApps.begin(), _gameApps.end(), exe), _gameApps.end());
+	if (exe.empty() || exe.length() > MAX_PATH)
+		return;
+	for (char ch : exe) {
+		if ((unsigned char)ch < 32 || (unsigned char)ch == 127)
+			return;
+	}
+	_gameApps.erase(std::remove_if(_gameApps.begin(), _gameApps.end(), [&](const string& item) {
+		return isSameExe(item, exe);
+	}), _gameApps.end());
 	if (on)
 		_gameApps.push_back(exe);
 	string list;
 	for (auto& name : _gameApps)
 		list += name + "\n";
 	EasyKeyHelper::setRegBinary(_T("gameApps"), (BYTE*)list.data(), (int)list.size());
-	//the app is in the background while the tray menu is open, it applies when it comes back
+	if (on) {
+		HWND fg = GetForegroundWindow();
+		if (fg && isGameApp(exeNameOfWindow(fg))) {
+			bindGameWindow(fg);
+			return;
+		}
+	}
 	clearGameBinding();
 }
 
@@ -979,6 +1009,28 @@ static void clearGameBinding() {
 	_lastGameForegroundTick = 0;
 	_inGame = false;
 	exitGameChat();
+}
+
+static void bindGameWindow(HWND hwnd) {
+	if (!hwnd || !IsWindow(hwnd))
+		return;
+	DWORD pid = 0;
+	GetWindowThreadProcessId(hwnd, &pid);
+	if (!pid)
+		return;
+	_gameHwnd = hwnd;
+	_gamePid = pid;
+	_lastGameForegroundTick = GetTickCount64();
+	HWND fg = GetForegroundWindow();
+	if (fg == hwnd) {
+		_inGame = true;
+		exitGameChat();
+		startNewSession();
+		vStartSentence();
+	} else {
+		// Arm binding without enabling _inGame yet
+		_inGame = false;
+	}
 }
 
 static inline bool isGameBindingAlive(uint64_t now) {
@@ -1799,6 +1851,7 @@ LRESULT CALLBACK mouseHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 
 VOID CALLBACK winEventProcCallback(HWINEVENTHOOK hWinEventHook, DWORD dwEvent, HWND hwnd, LONG idObject, LONG idChild, DWORD dwEventThread, DWORD dwmsEventTime) {
 	if (dwEvent == EVENT_SYSTEM_FOREGROUND) {
+		GameCandidateFinder::recordForeground(hwnd);
 		if (hwnd && EasyKeyHelper::isWindowElevated(hwnd))
 			AppDelegate::getInstance()->onElevatedWindow(hwnd);
 		//typing in another window usually starts a new sentence
@@ -1806,18 +1859,14 @@ VOID CALLBACK winEventProcCallback(HWINEVENTHOOK hWinEventHook, DWORD dwEvent, H
 		vStartSentence();
 		uint64_t nowTick = GetTickCount64();
 		if (!_gameApps.empty() && hwnd && isGameApp(exeNameOfWindow(hwnd))) {
-			DWORD pid = 0;
-			GetWindowThreadProcessId(hwnd, &pid);
-			_gameHwnd = hwnd;
-			_gamePid = pid;
-			_lastGameForegroundTick = nowTick;
+			bindGameWindow(hwnd);
 			_inGame = true;
 		} else {
 			if (_inGame) {
 				_inGame = false;
 			}
+			exitGameChat();
 		}
-		exitGameChat();
 		recordNavigationSignal(nowTick);
 		updatePasswordFieldState(hwnd, OBJID_WINDOW, CHILDID_SELF, true);
 		//smart switch key

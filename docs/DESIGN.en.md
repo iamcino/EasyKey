@@ -128,17 +128,24 @@ Known limitations:
 
 Game Mode prioritizes protection of control keys. While playing, keys such as `W`, `A`, `S`, `D`, `Q`, `E`, and `R` must reach the game directly without Vietnamese input interference.
 
-- Game chat defaults to raw input to avoid turning fast chat words such as `afk`, `gg`, `wp`, `how`, or `as` into incorrect Vietnamese marks.
-- Users can still switch input mode per application if they want Vietnamese typing inside game chat.
-- Enter opens or closes game chat state, but the key is still passed to the target application.
-- Esc closes chat and clears typing state.
-- Left, right, or middle mouse click exits chat state, returning control keys to the game immediately.
-- Mouse movement, mouse wheel, and extra mouse buttons do not exit chat.
-- Commands starting with `/`, such as `/ff`, `/w`, `/give`, and `/tp`, are preserved as raw input until space or Enter.
+- **Window-Bound Game Mode (Alt+Tab Protection)**: Binds to the game window via `HWND + PID` with a 5-second TTL. When users Alt+Tab out and back, `EVENT_SYSTEM_FOREGROUND` can occasionally be delayed or dropped by DWM/DirectComposition/borderless windowed mode. Fast-path in the low-level hook rebinds game state on the very first keystroke without heavy process queries (`GetWindowThreadProcessId`, `OpenProcess`, `QueryFullProcessImageName`) per key.
+- **Game Crash & Taskkill Guard (IsWindow Check)**: Validates window existence (`IsWindow`) on fast-path to immediately clean up binding if the game abruptly terminates or crashes.
+- **Complete Isolation from SmartSwitchKey**: Game Mode does not overwrite per-app input method memory. While playing, the previous app's language setting remains untouched, and switching back to apps like Chrome or Word preserves their respective input methods.
+- **Raw Input by Default in Game Chat (Model W)**: Prevents butchering fast gaming shorthand such as `afk`, `gg`, `wp`, `how`, `as`, `or`. Users can still explicitly opt in per app if Vietnamese typing is desired.
+- **Immediate Chat Controls**: Enter opens/closes chat; Esc closes chat and clears buffer; Left, right, or middle mouse clicks exit chat instantly to return control keys during combat. Mouse movement, wheel scrolling, and side buttons (XBUTTON) do not close chat.
+- **Slash Game Commands**: Commands starting with `/` (e.g., `/ff`, `/w`, `/give`, `/tp`) remain strictly raw until Space or Enter.
+- **Game Window Picker & Top 3 Suggestions**:
+  - Heuristic Candidate Ranking: Automatically ranks top 3 candidate windows based on MRU recent foreground (`+100`), fullscreen/maximized state (`+30`), while filtering out system processes (`explorer.exe`, `dwm.exe`, `taskmgr.exe`, ...) and office apps (`winword.exe`, `excel.exe`, ...). Helps select the active window/process directly, substantially reducing the risk of selecting a launcher.
+  - Safe Non-blocking Title Fetching: `EnumWindows` does not query titles for all windows to avoid UI hangs on unresponsive external applications. Titles are safely fetched only for the final top candidates via `SendMessageTimeout` (50 ms timeout with `SMTO_ABORTIFHUNG` and `IsHungAppWindow` check).
+  - Clear Privilege Boundaries: Detects elevated/admin processes. If a game runs as Administrator while EasyKey runs standard, the candidate is marked `[Admin required]` and prompts the user that Administrator privileges are needed; EasyKey never attempts silent elevation or background restarts.
+  - Browse `.exe` Fallback Flow: Provides a "Browse .exe file…" fallback in Settings and Tray menu. Saves only the executable base name (`exeBaseName`, matched case-insensitively) to survive game updates, with explicit guidance to select the actual match binary rather than the launcher.
+- **Privacy Guarantees**: Candidate Finder executes strictly on-demand when opening the Tray menu or Settings (never inside the keyboard hook). Window titles are kept transiently in RAM solely for menu rendering, never logged to disk, never written to the Registry, and never transmitted over the network (Zero Telemetry).
 
 Known limitations:
+- Executable Basename Collision: Game Mode identifies targets by executable base name. If different applications share the same exe name (e.g., `game.exe`), the configuration applies to both.
+- UWP / Microsoft Store Games: Certain UWP/MSIX titles or apps hosted via specialized shells (such as `ApplicationFrameHost.exe`) may not be suggested accurately. Browse .exe can be used if accessible, though access to `WindowsApps` directories may be restricted by Windows.
 - Automated tests verify game-mode state-machine logic. Real-world behavior in individual games is covered by manual testing.
-- Some fullscreen exclusive games, custom overlays, or proprietary input paths may behave differently.
+- Some fullscreen exclusive games, kernel-level anti-cheats, or proprietary input paths may behave differently.
 - Game Mode does not read game content, inspect process memory, or send data off-device.
 
 ### Password Field Bypass (Browser & Win32)
