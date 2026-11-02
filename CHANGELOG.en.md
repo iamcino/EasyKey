@@ -2,17 +2,20 @@
 
 [Tiếng Việt](CHANGELOG.md) · **English**
 
-## [Unreleased]
-- Game Mode:
-  - In-game chat defaults to raw keystrokes so common gaming shorthand (`afk`, `gg`, `how`, `wp`) is not altered by Vietnamese marks. Users can still explicitly toggle Vietnamese mode per game if desired.
-  - Smart chat exit: pressing Esc or clicking the left, right, or middle mouse button exits chat immediately, returning WASD/combat keys directly to the game without getting stuck in chat mode. Mouse look, scroll wheel (reading chat history), and side buttons (voice chat, pings) do not exit chat.
-  - Commands starting with `/` (such as `/give`, `/w`, `/ff`, `/tp`) are kept raw until Space or Enter, preventing unwanted Vietnamese diacritics.
-- Password Field Bypass:
-  - When the caret is inside a clearly identified password field, EasyKey automatically switches to raw keystrokes to prevent passwords from being converted into Vietnamese marks, expanded macros, or auto-capitalized text.
-  - Detection executes strictly upon focus changes with HWND + PID cache deduplication, never inspects field contents, stores no keystroke logs, and sends zero data off-device.
-  - Can be toggled in Settings › Advanced › Typing. Enabled by default.
-  - Windows logon and UAC credential prompts reside in isolated Windows secure desktops and are outside the scope of regular user-mode hooks.
-- Application binary `EasyKey.exe` remains at ~638 KB (~638,976 bytes, a minimal ~2.5 KB increase compared to 1.0.17).
+## 1.0.18 - 2026-11-02
+
+### Added
+- **Game Mode**: protect control keys while playing; game chat defaults to raw input to avoid turning fast chat words such as `afk`, `gg`, `wp`, `how`, or `as` into Vietnamese marks.
+- **Game Mode**: Esc and left/right/middle mouse click exit chat state immediately, returning WASD/QWE control to the game; mouse movement, wheel, and extra mouse buttons do not exit chat.
+- **Game Mode**: commands starting with `/`, such as `/ff`, `/w`, `/give`, and `/tp`, are preserved as raw input until space or Enter.
+- **Password field bypass**: when focus enters a clearly identified password field, EasyKey switches to raw typing to avoid Vietnamese marks, macros, Quick Telex, and auto-capitalization.
+- **Password field bypass**: detection runs only on focus change; keyboard and mouse hooks read a cached flag with constant cost; field contents are not read, keystrokes are not logged, and no data is sent off-device.
+- **Code signing**: add Authenticode signing, timestamping, signature verification, and a public certificate for binary integrity checks.
+
+### Notes
+- Password field bypass is enabled by default and can be turned off in Settings › Advanced › Typing.
+- Windows logon, UAC secure prompts, secure desktop, and some custom controls may be outside the supported scope of password field bypass.
+- Game Mode state-machine logic is covered by automated tests; real-world behavior in individual games is covered by manual testing.
 
 ## 1.0.17 (Windows 11 x64)
 - More compact Settings window: tighter spacing and type sizes, single-line **Vietnamese** · **Mixed** · **English** mode buttons with centered badge and label (both in 3-mode and 2-mode layouts), a flat input method tab bar with an accent underline, and a slimmer **Advanced** header.
