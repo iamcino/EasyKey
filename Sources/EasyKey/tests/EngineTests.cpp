@@ -8,6 +8,7 @@
 //  vKeyHandleEvent and check the text an application would end up with.
 //
 
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <iostream>
