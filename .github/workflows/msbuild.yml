@@ -180,11 +180,9 @@ jobs:
         Compress-Archive -Path EasyKey.exe -DestinationPath $zipName
         # the in-app updater reads "<sha256>  EasyKey.exe"
         $hashExe = (Get-FileHash EasyKey.exe -Algorithm SHA256).Hash.ToLower()
-        [IO.File]::WriteAllText("EasyKey.exe.sha256", "$hashExe  EasyKey.exe
-")
+        [IO.File]::WriteAllText("EasyKey.exe.sha256", "$hashExe  EasyKey.exe`n")
         $hashZip = (Get-FileHash $zipName -Algorithm SHA256).Hash.ToLower()
-        [IO.File]::WriteAllText("$zipName.sha256", "$hashZip  $zipName
-")
+        [IO.File]::WriteAllText("$zipName.sha256", "$hashZip  $zipName`n")
     - name: Generate artifact attestation
       uses: actions/attest-build-provenance@v4
       with:
