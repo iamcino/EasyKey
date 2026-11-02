@@ -1,6 +1,19 @@
-# Changelog
+﻿# Changelog
 
 [Tiếng Việt](CHANGELOG.md) · **English**
+
+## 1.0.19 - 2026-11-02
+
+### Added
+- **Browser password field bypass**: EasyKey can detect standard password inputs in Chrome, Edge, Firefox and Electron, then switch to raw typing to avoid Vietnamese marks, macros, Quick Telex, and auto-capitalization.
+- **Non-blocking detection**: modern password-field detection runs asynchronously on a background worker; keyboard and mouse hooks only read cached state.
+- **Sticky password**: once a field is identified as a password field, EasyKey keeps raw input until focus leaves that field, even when the user toggles “Show password”.
+- **Kill switch**: browser detection can be disabled with registry `vPasswordFieldUIA = 0`; classic Win32 password fields continue to work.
+
+### Notes
+- Support is best-effort for standard password controls. Canvas inputs, virtual keyboards, complex shadow DOM, cross-origin iframes, or custom controls may not be detected.
+- Querying accessibility APIs may cause browsers to activate their accessibility tree, increasing local resource usage.
+- EasyKey does not read field contents, does not log keystrokes, and does not send data off-device.
 
 ## 1.0.18 - 2026-11-02
 
