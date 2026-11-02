@@ -66,7 +66,7 @@ int vOtherLanguage = 1;
 int vRememberCode = 1;
 int vRestoreOnEscape = 1;
 int vPasswordFieldBypass = 1;
-int vPasswordFieldUIA = 0;
+int vPasswordFieldUIA = 1;
 int vWarnOtherKeyboards = 1;
 int vLastVersion = 0;
 

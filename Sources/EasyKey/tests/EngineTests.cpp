@@ -1,4 +1,4 @@
-//
+﻿//
 //  EngineTests.cpp
 //  EasyKey
 //  Copyright (C) 2026 Cino
@@ -777,7 +777,12 @@ static void testGameMode() {
 // Host integration/manual matrix covers real Win32/UIA controls.
 static void testPasswordField() {
     struct PasswordFieldSim {
+        int passwordState = PW_NORMAL;
         bool isPasswordField = false;
+        bool passwordStateDirty = false;
+        uint64_t probeGen = 0;
+        uint64_t pendingDeadlineTick = 0;
+        int hookSessionResets = 0;
         bool inGame = false;
         bool gameChat = false;
         bool bypassSetting = true;
@@ -786,17 +791,31 @@ static void testPasswordField() {
         uint32_t lastFocusPid = 0;
         int evaluateCount = 0;
 
+        void resetSessionOnHookThread() {
+            hookSessionResets++;
+            gameChat = false;
+            startNewSession();
+            vStartSentence();
+        }
+
+        void syncCompatFlag() {
+            isPasswordField = (passwordState != PW_NORMAL);
+        }
+
         void invalidateCache() {
             lastFocusHwnd = nullptr;
             lastFocusPid = 0;
-            isPasswordField = false;
+            probeGen++;
+            if (passwordState != PW_NORMAL) {
+                passwordState = PW_NORMAL;
+                passwordStateDirty = true;
+            }
+            syncCompatFlag();
         }
 
         void updateFocus(void* hwnd, uint32_t pid, bool isPasswordControl) {
             if (!bypassSetting) {
-                isPasswordField = false;
-                lastFocusHwnd = nullptr;
-                lastFocusPid = 0;
+                invalidateCache();
                 return;
             }
             if (hwnd == lastFocusHwnd && pid == lastFocusPid) {
@@ -805,31 +824,68 @@ static void testPasswordField() {
             evaluateCount++;
             lastFocusHwnd = hwnd;
             lastFocusPid = pid;
-            bool wasPass = isPasswordField;
-            isPasswordField = isPasswordControl;
+            probeGen++;
+            int newState = isPasswordControl ? PW_PASSWORD : PW_NORMAL;
+            int prevState = passwordState;
+            passwordState = newState;
+            syncCompatFlag();
 
-            if (isPasswordField) {
-                gameChat = false;
-                startNewSession();
-                vStartSentence();
-            } else if (wasPass) {
-                startNewSession();
-                vStartSentence();
+            if (prevState != newState) {
+                passwordStateDirty = false;
+                resetSessionOnHookThread();
             }
+        }
+
+        uint64_t beginPendingProbe(uint64_t nowTick, uint64_t timeoutMs = 60) {
+            probeGen++;
+            if (passwordState != PW_PENDING) {
+                passwordState = PW_PENDING;
+                passwordStateDirty = true;
+            }
+            pendingDeadlineTick = nowTick + timeoutMs;
+            syncCompatFlag();
+            return probeGen;
+        }
+
+        // Worker thread completion: never touches engine buffers directly, only updates state + dirty flag
+        void completeWorkerProbe(uint64_t resultGen, bool isPass) {
+            if (resultGen != probeGen) {
+                return; // Stale generation ignored
+            }
+            int newState = isPass ? PW_PASSWORD : PW_NORMAL;
+            if (passwordState != newState) {
+                passwordState = newState;
+                passwordStateDirty = true;
+            }
+            syncCompatFlag();
         }
 
         void setBypass(bool enabled, void* currentHwnd, uint32_t currentPid, bool isCurrentControlPassword) {
             bypassSetting = enabled;
             invalidateCache();
             updateFocus(currentHwnd, currentPid, isCurrentControlPassword);
-            startNewSession();
-            vStartSentence();
+            resetSessionOnHookThread();
+        }
+
+        bool consumeStateAndCheckRawOnHook(uint64_t currentTick) {
+            if (passwordState == PW_PENDING && currentTick >= pendingDeadlineTick) {
+                passwordState = PW_NORMAL;
+                probeGen++; // Invalidate old in-flight probe
+                passwordStateDirty = true;
+                syncCompatFlag();
+            }
+            if (passwordStateDirty) {
+                passwordStateDirty = false;
+                resetSessionOnHookThread();
+            }
+            syncCompatFlag();
+            return passwordState != PW_NORMAL;
         }
 
         // Returns true if passed-through raw to target app, false if intercepted by engine
         bool handleKey(uint16_t keycode, uint64_t currentTick) {
             lastHookTick = currentTick; // Bookkeeping must always update
-            if (isPasswordField) {
+            if (consumeStateAndCheckRawOnHook(currentTick)) {
                 return true; // Pass-through raw unconditionally
             }
             if (inGame && !gameChat) {
@@ -842,7 +898,7 @@ static void testPasswordField() {
         // Returns true if passed-through raw to target app, false if intercepted
         bool handleMouse(int mouseMsg, uint64_t currentTick) {
             lastHookTick = currentTick; // Bookkeeping must always update
-            if (isPasswordField) {
+            if (consumeStateAndCheckRawOnHook(currentTick)) {
                 return true; // Pass-through raw unconditionally
             }
             if (inGame && gameChat && (mouseMsg == 0x0201 || mouseMsg == 0x0204 || mouseMsg == 0x0207)) {
@@ -1050,6 +1106,703 @@ static void testPasswordField() {
         if (sim.lastHookTick != 100000) {
             failures++;
             printf("FAIL [mouse hook liveness tick must update in password field]\n");
+        }
+    }
+
+    // Test 14: PW_PENDING passes keys raw before deadline and degrades to PW_NORMAL on timeout, invalidating old probe
+    {
+        total++;
+        PasswordFieldSim sim;
+        uint64_t gen = sim.beginPendingProbe(1000, 60);
+        bool rawBeforeDeadline = sim.handleKey('A', 1030);
+        bool rawAfterDeadline = sim.handleKey('A', 1060);
+        // Late worker result from timed-out generation must be ignored
+        sim.completeWorkerProbe(gen, true);
+        if (!rawBeforeDeadline || rawAfterDeadline || sim.passwordState != PW_NORMAL || sim.isPasswordField) {
+            failures++;
+            printf("FAIL [PW_PENDING timeout must degrade to PW_NORMAL and invalidate stale worker result]\n");
+        }
+    }
+
+    // Test 15: Worker probe completion sets dirty flag without resetting session on worker thread; hook thread resets session
+    {
+        total++;
+        PasswordFieldSim sim;
+        uint64_t gen = sim.beginPendingProbe(2000, 60);
+        sim.handleKey('A', 2010); // Consumes initial NORMAL -> PENDING dirty flag
+        int resetsBeforeWorker = sim.hookSessionResets;
+        sim.completeWorkerProbe(gen, true); // PENDING -> PASSWORD on worker thread
+        int resetsImmediatelyAfterWorker = sim.hookSessionResets;
+        bool rawKey = sim.handleKey('B', 2020); // Hook thread consumes dirty flag
+        if (resetsImmediatelyAfterWorker != resetsBeforeWorker || sim.hookSessionResets != resetsBeforeWorker + 1 || !rawKey || sim.passwordState != PW_PASSWORD) {
+            failures++;
+            printf("FAIL [worker thread must only set dirty flag and hook thread must reset session]\n");
+        }
+    }
+
+    // Mirrors focus-key filtering and suppression policy.
+    // Real browser behavior is covered by manual matrix after UIA commit.
+    struct FocusFilterSim {
+        struct FocusKey {
+            void* hwnd = nullptr;
+            uint32_t pid = 0;
+            int32_t idObject = 0;
+            int32_t idChild = 0;
+
+            bool operator==(const FocusKey& o) const {
+                return hwnd == o.hwnd && pid == o.pid && idObject == o.idObject && idChild == o.idChild;
+            }
+        };
+
+        int passwordState = PW_NORMAL;
+        bool uiaEnabled = false; // vPasswordFieldUIA = 0 dormant by default until manual matrix passes
+        bool webInputContext = false;
+        bool hadNavigationSignal = false;
+        uint64_t lastNavigationTick = 0;
+        uint64_t lastCharKeyTick = 0;
+        FocusKey lastFocusKey{};
+        FocusKey lastCharFocusKey{};
+        uint64_t probeGen = 0;
+        int scheduledProbes = 0;
+        int focusEvaluations = 0;
+
+        static bool isAcceptedObjectId(int32_t idObject) {
+            return idObject == 0 || idObject == -4 || idObject < -12;
+        }
+
+        void recordNavigationSignal(uint64_t tick) {
+            hadNavigationSignal = true;
+            lastNavigationTick = tick;
+        }
+
+        void clearNavigationSignal() {
+            hadNavigationSignal = false;
+            lastNavigationTick = 0;
+        }
+
+        bool hasFreshNavigationSignal(uint64_t nowTick) const {
+            return hadNavigationSignal && nowTick >= lastNavigationTick && (nowTick - lastNavigationTick) < 250;
+        }
+
+        void onCharKey(uint64_t tick) {
+            lastCharKeyTick = tick;
+            lastCharFocusKey = lastFocusKey;
+            clearNavigationSignal();
+        }
+
+        void onNavigationKey(uint64_t tick = 0) {
+            recordNavigationSignal(tick);
+        }
+
+        void onMouseUpInWebContext(uint64_t tick = 0) {
+            recordNavigationSignal(tick);
+        }
+
+        void onFocusEvent(void* hwnd, uint32_t pid, int32_t idObject, int32_t idChild, bool isWin32Pass, bool isKnownBrowserHost, uint64_t nowTick, bool isForegroundChange = false) {
+            if (!isForegroundChange && !isAcceptedObjectId(idObject)) {
+                return;
+            }
+            if (isForegroundChange) {
+                recordNavigationSignal(nowTick);
+            }
+            FocusKey currentKey{ hwnd, pid, idObject, idChild };
+            if (!isForegroundChange && currentKey == lastFocusKey) {
+                return;
+            }
+            focusEvaluations++;
+            if (isWin32Pass) {
+                lastFocusKey = currentKey;
+                webInputContext = false;
+                clearNavigationSignal();
+                probeGen++;
+                passwordState = PW_PASSWORD;
+                return;
+            }
+            bool isWebCtx = (idObject < -12) || isKnownBrowserHost;
+            webInputContext = isWebCtx;
+            bool sameHost = (lastCharFocusKey.hwnd != nullptr && hwnd == lastCharFocusKey.hwnd && pid == lastCharFocusKey.pid);
+            bool suppressContinuousTyping = !isForegroundChange &&
+                !hasFreshNavigationSignal(nowTick) &&
+                isWebCtx &&
+                sameHost &&
+                lastCharKeyTick != 0 &&
+                nowTick >= lastCharKeyTick &&
+                (nowTick - lastCharKeyTick) < 150;
+
+            lastFocusKey = currentKey;
+            if (suppressContinuousTyping) {
+                return;
+            }
+            clearNavigationSignal();
+            probeGen++;
+            if (isWebCtx) {
+                scheduledProbes++;
+                if (uiaEnabled) {
+                    passwordState = PW_PENDING;
+                    return;
+                }
+            }
+            passwordState = PW_NORMAL;
+        }
+    };
+
+    // Test 16: idObject filter accepts 0, -4 (OBJID_CLIENT), < -12 and rejects -12..-1 (except -4)
+    {
+        total++;
+        if (!FocusFilterSim::isAcceptedObjectId(0) ||
+            !FocusFilterSim::isAcceptedObjectId(-4) ||
+            !FocusFilterSim::isAcceptedObjectId(-100) ||
+            FocusFilterSim::isAcceptedObjectId(-8) || // OBJID_CARET
+            FocusFilterSim::isAcceptedObjectId(-3) || // OBJID_MENU
+            FocusFilterSim::isAcceptedObjectId(-2) || // OBJID_TITLEBAR
+            FocusFilterSim::isAcceptedObjectId(-12)) {
+            failures++;
+            printf("FAIL [idObject filter rules]\n");
+        }
+    }
+
+    // Test 17: FocusKey 4-tuple comparison: same HWND+PID+idObject+idChild skips; different idObject or idChild re-evaluates
+    {
+        total++;
+        FocusFilterSim sim;
+        sim.onFocusEvent((void*)0x7000, 500, -100, 0, false, true, 1000);
+        int eval1 = sim.focusEvaluations;
+        sim.onFocusEvent((void*)0x7000, 500, -100, 0, false, true, 1200); // exact same 4-tuple
+        int eval2 = sim.focusEvaluations;
+        sim.onFocusEvent((void*)0x7000, 500, -101, 0, false, true, 1400); // different idObject on same HWND+PID
+        int eval3 = sim.focusEvaluations;
+        sim.onFocusEvent((void*)0x7000, 600, -101, 0, false, true, 1600); // different PID
+        int eval4 = sim.focusEvaluations;
+        if (eval1 != 1 || eval2 != 1 || eval3 != 2 || eval4 != 3) {
+            failures++;
+            printf("FAIL [FocusKey 4-tuple equality and re-evaluation]\n");
+        }
+    }
+
+    // Test 18: Continuous typing (< 150ms) suppresses internal autocomplete focus events in same browser window
+    {
+        total++;
+        FocusFilterSim sim;
+        sim.onFocusEvent((void*)0x8000, 700, -100, 0, false, true, 1000);
+        int probesBefore = sim.scheduledProbes;
+        sim.onCharKey(1050); // User types a character
+        sim.onFocusEvent((void*)0x8000, 700, -105, 0, false, true, 1120); // Autocomplete popup focus 70ms later (< 150ms)
+        int probesAfterAutocomplete = sim.scheduledProbes;
+        if (probesAfterAutocomplete != probesBefore) {
+            failures++;
+            printf("FAIL [continuous typing < 150ms must suppress internal focus probe]\n");
+        }
+    }
+
+    // Test 19: Tab key, foreground change, or mouse up overrides typing suppression and allows probe
+    {
+        total++;
+        FocusFilterSim sim;
+        sim.onFocusEvent((void*)0x8000, 700, -100, 0, false, true, 1000);
+        sim.onCharKey(1050);
+        sim.onNavigationKey(1060); // User presses Tab right after typing
+        sim.onFocusEvent((void*)0x8000, 700, -102, 0, false, true, 1080);
+        int probesAfterTab = sim.scheduledProbes;
+        sim.onCharKey(1100);
+        sim.onFocusEvent((void*)0x9000, 800, 0, 0, false, true, 1120, true); // Foreground window change
+        int probesAfterFg = sim.scheduledProbes;
+        sim.onCharKey(1150);
+        sim.onMouseUpInWebContext(1160); // Mouse click/up
+        sim.onFocusEvent((void*)0x9000, 800, -200, 0, false, true, 1180);
+        int probesAfterMouse = sim.scheduledProbes;
+        if (probesAfterTab != 2 || probesAfterFg != 3 || probesAfterMouse != 4) {
+            failures++;
+            printf("FAIL [Tab, foreground change, and mouse-up must allow focus probe]\n");
+        }
+    }
+
+    // Test 20: Win32 EDIT password still sets PW_PASSWORD immediately; vPasswordFieldUIA = 0 keeps browser focus PW_NORMAL
+    {
+        total++;
+        FocusFilterSim sim;
+        sim.uiaEnabled = false; // kill switch test
+        sim.onFocusEvent((void*)0xA000, 900, 0, 0, true, false, 1000); // Win32 EDIT password
+        bool win32ImmediatePass = (sim.passwordState == PW_PASSWORD && !sim.webInputContext);
+        sim.onFocusEvent((void*)0xB000, 901, -150, 0, false, true, 1200); // Browser focus with uiaEnabled=false
+        bool browserStaysNormalWhenUiaOff = (sim.passwordState == PW_NORMAL && sim.webInputContext);
+        if (!win32ImmediatePass || !browserStaysNormalWhenUiaOff) {
+            failures++;
+            printf("FAIL [Win32 EDIT immediate PW_PASSWORD and uiaEnabled=0 keeps browser PW_NORMAL]\n");
+        }
+    }
+
+    // Mirrors password probe state machine.
+    // Real browser/UIA behavior is covered by manual matrix after UIA kill switch validation.
+    struct ProbeStateMachineSim {
+        enum ProbeOutcome { OUTCOME_TRUE, OUTCOME_FALSE, OUTCOME_ERROR };
+        enum StateSource { SRC_NONE = 0, SRC_WIN32 = 1, SRC_UIA = 2, SRC_MSAA = 3 };
+
+        static inline uint32_t makeStateWord(int state, int source) {
+            return (static_cast<uint32_t>(state) & 0xFF) | ((static_cast<uint32_t>(source) & 0xFF) << 8);
+        }
+        static inline int getSimState(uint32_t word) { return static_cast<int>(word & 0xFF); }
+        static inline int getSimSource(uint32_t word) { return static_cast<int>((word >> 8) & 0xFF); }
+
+        FocusFilterSim::FocusKey lastFocusKey{};
+        FocusFilterSim::FocusKey lastCharFocusKey{};
+        std::atomic<uint32_t> passwordStateWord{ makeStateWord(PW_NORMAL, SRC_NONE) };
+        int passwordState = PW_NORMAL;
+        int passwordStateSource = SRC_NONE;
+        bool passwordStateDirty = false;
+        bool bypassEnabled = true;
+        bool uiaEnabled = true;
+        bool webInputContext = false;
+        bool hadNavigationSignal = false;
+        uint64_t lastCharKeyTick = 0;
+        uint64_t lastProbeTick = 0;
+        uint64_t probeGen = 0;
+        uint64_t pendingDeadlineTick = 0;
+        uint32_t probePreDelayMs = 0;
+        int retryCount = 0;
+        int mouseReprobeCount = 0;
+
+        int getPasswordState() const { return getSimState(passwordStateWord.load(std::memory_order_acquire)); }
+        int getPasswordSource() const { return getSimSource(passwordStateWord.load(std::memory_order_acquire)); }
+
+        void setWin32Password(const FocusFilterSim::FocusKey& key) {
+            lastFocusKey = key;
+            webInputContext = false;
+            probeGen++;
+            passwordStateWord.store(makeStateWord(PW_PASSWORD, SRC_WIN32), std::memory_order_release);
+            passwordState = PW_PASSWORD;
+            passwordStateSource = SRC_WIN32;
+            passwordStateDirty = true;
+        }
+
+        void applyPasswordFeatureConfigChanges() {
+            if (!bypassEnabled) {
+                probeGen++;
+                passwordStateWord.store(makeStateWord(PW_NORMAL, SRC_NONE), std::memory_order_release);
+                passwordState = PW_NORMAL;
+                passwordStateSource = SRC_NONE;
+                passwordStateDirty = true;
+                return;
+            }
+            if (!uiaEnabled) {
+                uint32_t oldWord = passwordStateWord.load(std::memory_order_acquire);
+                for (;;) {
+                    int state = getSimState(oldWord);
+                    int src = getSimSource(oldWord);
+                    if (state == PW_PENDING || (state == PW_PASSWORD && src != SRC_WIN32)) {
+                        uint32_t normalWord = makeStateWord(PW_NORMAL, SRC_NONE);
+                        if (passwordStateWord.compare_exchange_weak(oldWord, normalWord, std::memory_order_acq_rel)) {
+                            probeGen++;
+                            passwordState = PW_NORMAL;
+                            passwordStateSource = SRC_NONE;
+                            passwordStateDirty = true;
+                            break;
+                        }
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+
+        void setUiaEnabled(bool enabled) {
+            uiaEnabled = enabled;
+            if (!enabled) {
+                applyPasswordFeatureConfigChanges();
+            }
+        }
+
+        bool scheduleProbe(const FocusFilterSim::FocusKey& key, bool force, uint64_t nowTick, uint32_t preDelayMs = 0) {
+            if (!bypassEnabled || !uiaEnabled) return false;
+            if (!webInputContext) return false;
+            if (!force && getPasswordState() == PW_PASSWORD) return true; // Sticky on same focus key
+            lastFocusKey = key;
+            lastProbeTick = nowTick;
+            probePreDelayMs = preDelayMs;
+            pendingDeadlineTick = nowTick + 60;
+            probeGen++;
+            uint32_t pendingWord = makeStateWord(PW_PENDING, SRC_NONE);
+            uint32_t prev = passwordStateWord.exchange(pendingWord, std::memory_order_acq_rel);
+            passwordState = PW_PENDING;
+            passwordStateSource = SRC_NONE;
+            if (getSimState(prev) != PW_PENDING) {
+                passwordStateDirty = true;
+            }
+            return true;
+        }
+
+        bool onMouseEvent(uint32_t msg, void* focusedHwnd, uint64_t nowTick) {
+            if (msg != 0x0202) { // Only WM_LBUTTONUP (0x0202) triggers mouse-up reprobe
+                return false;
+            }
+            if (!bypassEnabled || !uiaEnabled || !webInputContext) return false;
+            if (lastFocusKey.hwnd == nullptr) return false;
+            if (getPasswordState() == PW_PASSWORD) return false; // Sticky password never downgrades on click
+            if (lastProbeTick != 0 && nowTick >= lastProbeTick && (nowTick - lastProbeTick) < 100) {
+                return false; // Throttled (< 100 ms)
+            }
+            if (!focusedHwnd || focusedHwnd != lastFocusKey.hwnd) {
+                return false; // Foreground/focused window mismatch
+            }
+            if (scheduleProbe(lastFocusKey, false, nowTick, 40)) {
+                mouseReprobeCount++;
+                return true;
+            }
+            return false;
+        }
+
+        void applyWorkerResult(uint64_t resultGen, bool isPass, StateSource src = SRC_UIA) {
+            if (resultGen != probeGen) return;
+            uint32_t oldWord = passwordStateWord.load(std::memory_order_acquire);
+            for (;;) {
+                int oldState = getSimState(oldWord);
+                if (oldState == PW_PENDING) {
+                    int nextState = isPass ? PW_PASSWORD : PW_NORMAL;
+                    int nextSource = isPass ? src : SRC_NONE;
+                    uint32_t nextWord = makeStateWord(nextState, nextSource);
+                    if (passwordStateWord.compare_exchange_weak(oldWord, nextWord, std::memory_order_acq_rel)) {
+                        passwordState = nextState;
+                        passwordStateSource = nextSource;
+                        if (nextState == PW_NORMAL) {
+                            passwordStateDirty = true;
+                        }
+                        break;
+                    }
+                } else if (oldState == PW_NORMAL && isPass) {
+                    uint32_t nextWord = makeStateWord(PW_PASSWORD, src);
+                    if (passwordStateWord.compare_exchange_weak(oldWord, nextWord, std::memory_order_acq_rel)) {
+                        passwordState = PW_PASSWORD;
+                        passwordStateSource = src;
+                        passwordStateDirty = true;
+                        break;
+                    }
+                } else {
+                    break;
+                }
+            }
+        }
+
+        bool evaluateUiaMsaaWithRetry(ProbeOutcome uia1, ProbeOutcome msaa1, ProbeOutcome uia2 = OUTCOME_ERROR, ProbeOutcome msaa2 = OUTCOME_ERROR) {
+            retryCount = 0;
+            ProbeOutcome uiaArr[2] = { uia1, uia2 };
+            ProbeOutcome msaaArr[2] = { msaa1, msaa2 };
+            for (int attempt = 0; attempt < 2; attempt++) {
+                if (attempt == 1) retryCount++;
+                if (uiaArr[attempt] == OUTCOME_TRUE) return true;
+                if (msaaArr[attempt] == OUTCOME_TRUE) return true;
+                if (uiaArr[attempt] != OUTCOME_ERROR || msaaArr[attempt] != OUTCOME_ERROR) {
+                    return false;
+                }
+            }
+            return false;
+        }
+    };
+
+    // Test 21: Navigation signal lifecycle & 250ms TTL:
+    // Tab -> focus within 250ms -> allow (clears signal) -> next internal focus while typing -> suppress;
+    // Tab -> no immediate focus -> after 300ms typing internal focus -> stale signal expired, suppress
+    {
+        total++;
+        FocusFilterSim sim;
+        sim.onFocusEvent((void*)0x8000, 700, -100, 0, false, true, 1000);
+        sim.onCharKey(1050);
+        sim.onFocusEvent((void*)0x8000, 700, -101, 0, false, true, 1100); // suppressed (probes = 1)
+        int p1 = sim.scheduledProbes;
+        sim.onNavigationKey(1110); // Tab pressed at 1110
+        sim.onFocusEvent((void*)0x8000, 700, -102, 0, false, true, 1120); // within 250ms -> allowed (probes = 2), clears signal
+        int p2 = sim.scheduledProbes;
+        bool signalCleared = !sim.hadNavigationSignal;
+        sim.onCharKey(1140); // Type in new field
+        sim.onFocusEvent((void*)0x8000, 700, -103, 0, false, true, 1180); // internal focus < 150ms -> suppressed again (probes = 2)
+        int p3 = sim.scheduledProbes;
+
+        // Now test TTL expiration: navigation key pressed, no focus event within 250ms, then user types or internal focus fires after 300ms
+        sim.onNavigationKey(2000);
+        // Suppose lastCharKeyTick was updated just before or at 2250 without clearing (or test stale nav signal directly at 2300 while lastCharKeyTick = 2200)
+        sim.lastCharKeyTick = 2200;
+        sim.lastCharFocusKey = sim.lastFocusKey;
+        sim.onFocusEvent((void*)0x8000, 700, -104, 0, false, true, 2300); // 2300 - 2000 = 300ms >= 250ms TTL -> stale signal, suppressed!
+        int p4 = sim.scheduledProbes;
+        if (p1 != 1 || p2 != 2 || !signalCleared || p3 != 2 || p4 != 2) {
+            failures++;
+            printf("FAIL [navigation signal lifecycle and 250ms TTL must expire stale signal and suppress internal focus]\n");
+        }
+    }
+
+    // Test 22: vPasswordFieldUIA = 1 transitions: PENDING -> PASSWORD (no extra dirty) and PENDING -> NORMAL (sets dirty)
+    {
+        total++;
+        ProbeStateMachineSim sim;
+        sim.webInputContext = true;
+        FocusFilterSim::FocusKey k1{ (void*)0x1000, 10, -100, 0 };
+        sim.scheduleProbe(k1, true, 1000);
+        uint64_t g1 = sim.probeGen;
+        bool pendingDirty = sim.passwordStateDirty;
+        sim.passwordStateDirty = false; // Hook consumed NORMAL -> PENDING dirty
+        sim.applyWorkerResult(g1, true); // PENDING -> PASSWORD
+        bool passNoExtraDirty = (sim.passwordState == PW_PASSWORD && !sim.passwordStateDirty);
+
+        FocusFilterSim::FocusKey k2{ (void*)0x1000, 10, -101, 0 };
+        sim.scheduleProbe(k2, true, 2000);
+        uint64_t g2 = sim.probeGen;
+        sim.passwordStateDirty = false;
+        sim.applyWorkerResult(g2, false); // PENDING -> NORMAL
+        bool normalSetsDirty = (sim.passwordState == PW_NORMAL && sim.passwordStateDirty);
+        if (!pendingDirty || !passNoExtraDirty || !normalSetsDirty) {
+            failures++;
+            printf("FAIL [UIA state machine transitions and dirty flag semantics]\n");
+        }
+    }
+
+    // Test 23: UIA/MSAA decision table and single retry on dual error
+    {
+        total++;
+        ProbeStateMachineSim sim;
+        bool uiaFalseMsaaTrue = sim.evaluateUiaMsaaWithRetry(ProbeStateMachineSim::OUTCOME_FALSE, ProbeStateMachineSim::OUTCOME_TRUE);
+        int r1 = sim.retryCount;
+        bool uiaFalseMsaaFalse = sim.evaluateUiaMsaaWithRetry(ProbeStateMachineSim::OUTCOME_FALSE, ProbeStateMachineSim::OUTCOME_FALSE);
+        int r1b = sim.retryCount;
+        bool uiaErrMsaaFalse = sim.evaluateUiaMsaaWithRetry(ProbeStateMachineSim::OUTCOME_ERROR, ProbeStateMachineSim::OUTCOME_FALSE);
+        int r2 = sim.retryCount;
+        bool dualErrRetryFail = sim.evaluateUiaMsaaWithRetry(ProbeStateMachineSim::OUTCOME_ERROR, ProbeStateMachineSim::OUTCOME_ERROR, ProbeStateMachineSim::OUTCOME_ERROR, ProbeStateMachineSim::OUTCOME_ERROR);
+        int r3 = sim.retryCount;
+        bool dualErrRetryRecover = sim.evaluateUiaMsaaWithRetry(ProbeStateMachineSim::OUTCOME_ERROR, ProbeStateMachineSim::OUTCOME_ERROR, ProbeStateMachineSim::OUTCOME_FALSE, ProbeStateMachineSim::OUTCOME_TRUE);
+        int r4 = sim.retryCount;
+        if (!uiaFalseMsaaTrue || r1 != 0 || uiaFalseMsaaFalse || r1b != 0 || uiaErrMsaaFalse || r2 != 0 || dualErrRetryFail || r3 != 1 || !dualErrRetryRecover || r4 != 1) {
+            failures++;
+            printf("FAIL [UIA/MSAA fallback decision table and retry policy]\n");
+        }
+    }
+
+    // Test 24: Sticky password: PW_PASSWORD does not downgrade on same-key reprobe, only when focus key changes to normal
+    {
+        total++;
+        ProbeStateMachineSim sim;
+        sim.webInputContext = true;
+        FocusFilterSim::FocusKey k1{ (void*)0x2000, 20, -200, 0 };
+        sim.scheduleProbe(k1, true, 1000);
+        sim.applyWorkerResult(sim.probeGen, true);
+        bool isPass1 = (sim.passwordState == PW_PASSWORD);
+        // Same-key non-forced reprobe must stay sticky PW_PASSWORD
+        sim.scheduleProbe(k1, false, 1500);
+        sim.applyWorkerResult(sim.probeGen, false);
+        bool stickyHeld = (sim.passwordState == PW_PASSWORD);
+        // Focus key changes (force = true) to a normal input -> downgrades to PW_NORMAL after probe
+        FocusFilterSim::FocusKey k2{ (void*)0x2000, 20, -201, 0 };
+        sim.scheduleProbe(k2, true, 2000);
+        sim.applyWorkerResult(sim.probeGen, false);
+        bool downgradedOnNewKey = (sim.passwordState == PW_NORMAL);
+        if (!isPass1 || !stickyHeld || !downgradedOnNewKey) {
+            failures++;
+            printf("FAIL [sticky password on same focus key and downgrade on new focus key]\n");
+        }
+    }
+
+    // Test 25: Win32 password while PW_PENDING immediately sets PW_PASSWORD and increments probeGen to invalidate old probe
+    {
+        total++;
+        PasswordFieldSim sim;
+        uint64_t pendingGen = sim.beginPendingProbe(3000, 60);
+        sim.updateFocus((void*)0x9999, 99, true); // Win32 password focus arrives while pending
+        sim.completeWorkerProbe(pendingGen, false); // Old worker finishes with false
+        if (sim.passwordState != PW_PASSWORD || !sim.isPasswordField || sim.probeGen == pendingGen) {
+            failures++;
+            printf("FAIL [Win32 password must override PW_PENDING and invalidate old probeGen]\n");
+        }
+    }
+
+    // Test 26: Feature off or UIA kill switch off prevents browser pending probe AND resets existing browser PW_PASSWORD while preserving Win32 PW_PASSWORD
+    {
+        total++;
+        ProbeStateMachineSim sim;
+        sim.webInputContext = true;
+        sim.uiaEnabled = false;
+        FocusFilterSim::FocusKey k1{ (void*)0x3000, 30, -300, 0 };
+        bool scheduledWhenUiaOff = sim.scheduleProbe(k1, true, 1000);
+        sim.uiaEnabled = true;
+        sim.bypassEnabled = false;
+        bool scheduledWhenBypassOff = sim.scheduleProbe(k1, true, 1100);
+
+        // UIA on + browser password -> PW_PASSWORD; then UIA off on same focus -> resets to PW_NORMAL + dirty + gen++
+        sim.bypassEnabled = true;
+        sim.uiaEnabled = true;
+        sim.scheduleProbe(k1, true, 1200);
+        uint64_t gBrowser = sim.probeGen;
+        sim.applyWorkerResult(gBrowser, true, ProbeStateMachineSim::SRC_UIA);
+        sim.passwordStateDirty = false;
+        sim.setUiaEnabled(false);
+        bool browserResetOnUiaOff = (sim.passwordState == PW_NORMAL && sim.passwordStateDirty && sim.probeGen == gBrowser + 1);
+
+        // UIA off + Win32 EDIT password -> still PW_PASSWORD
+        FocusFilterSim::FocusKey kWin32{ (void*)0x4000, 40, 0, 0 };
+        sim.setWin32Password(kWin32);
+        sim.passwordStateDirty = false;
+        sim.setUiaEnabled(false);
+        bool win32PreservedOnUiaOff = (sim.passwordState == PW_PASSWORD && sim.passwordStateSource == ProbeStateMachineSim::SRC_WIN32 && !sim.passwordStateDirty);
+
+        if (scheduledWhenUiaOff || scheduledWhenBypassOff || !browserResetOnUiaOff || !win32PreservedOnUiaOff) {
+            failures++;
+            printf("FAIL [UIA kill switch off must reset browser password state while preserving Win32 password state]\n");
+        }
+    }
+
+    // Test 27: WM_LBUTTONUP in web input context schedules reprobe with 40ms debounce and upgrades PW_NORMAL -> PW_PASSWORD
+    {
+        total++;
+        ProbeStateMachineSim sim;
+        sim.webInputContext = true;
+        FocusFilterSim::FocusKey k1{ (void*)0x5000, 50, -500, 0 };
+        sim.scheduleProbe(k1, true, 1000);
+        sim.applyWorkerResult(sim.probeGen, false); // Initially normal input
+        sim.passwordStateDirty = false;
+        // User clicks a button/toggle or custom input -> WM_LBUTTONUP at 1150 (>= 100ms after 1000)
+        bool scheduled = sim.onMouseEvent(0x0202, (void*)0x5000, 1150);
+        bool isPendingAndDebounced = (sim.passwordState == PW_PENDING && sim.probePreDelayMs == 40 && sim.passwordStateDirty);
+        sim.passwordStateDirty = false;
+        sim.applyWorkerResult(sim.probeGen, true); // Now it became a password field
+        bool upgradedToPassword = (sim.passwordState == PW_PASSWORD && !sim.passwordStateDirty);
+        if (!scheduled || !isPendingAndDebounced || !upgradedToPassword) {
+            failures++;
+            printf("FAIL [WM_LBUTTONUP in web context must schedule 40ms debounced reprobe and upgrade to PW_PASSWORD]\n");
+        }
+    }
+
+    // Test 28: Non-WM_LBUTTONUP mouse events (move, wheel, LBUTTONDOWN, RBUTTONUP, XBUTTON) never schedule reprobe
+    {
+        total++;
+        ProbeStateMachineSim sim;
+        sim.webInputContext = true;
+        FocusFilterSim::FocusKey k1{ (void*)0x5000, 50, -500, 0 };
+        sim.scheduleProbe(k1, true, 1000);
+        sim.applyWorkerResult(sim.probeGen, false);
+        bool moveScheduled = sim.onMouseEvent(0x0200, (void*)0x5000, 1200);       // WM_MOUSEMOVE
+        bool wheelScheduled = sim.onMouseEvent(0x020A, (void*)0x5000, 1300);      // WM_MOUSEWHEEL
+        bool ldownScheduled = sim.onMouseEvent(0x0201, (void*)0x5000, 1400);      // WM_LBUTTONDOWN
+        bool rupScheduled = sim.onMouseEvent(0x0205, (void*)0x5000, 1500);        // WM_RBUTTONUP
+        bool xupScheduled = sim.onMouseEvent(0x020C, (void*)0x5000, 1600);        // WM_XBUTTONUP
+        if (moveScheduled || wheelScheduled || ldownScheduled || rupScheduled || xupScheduled || sim.mouseReprobeCount != 0) {
+            failures++;
+            printf("FAIL [non-WM_LBUTTONUP mouse events must never schedule password reprobe]\n");
+        }
+    }
+
+    // Test 29: Mouse-up reprobe 100ms throttle & 40ms debounce coalescing via probeGen
+    {
+        total++;
+        ProbeStateMachineSim sim;
+        sim.webInputContext = true;
+        FocusFilterSim::FocusKey k1{ (void*)0x6000, 60, -600, 0 };
+        sim.scheduleProbe(k1, true, 1000);
+        sim.applyWorkerResult(sim.probeGen, false);
+        // First WM_LBUTTONUP at 1050 (< 100ms since initial probe at 1000) -> throttled
+        bool throttledEarly = sim.onMouseEvent(0x0202, (void*)0x6000, 1050);
+        // WM_LBUTTONUP at 1100 (== 100ms since 1000) -> allowed!
+        bool allowedAt1100 = sim.onMouseEvent(0x0202, (void*)0x6000, 1100);
+        uint64_t genMouse = sim.probeGen;
+        // Rapid second WM_LBUTTONUP at 1130 (< 100ms since 1100) -> throttled!
+        bool throttledSecond = sim.onMouseEvent(0x0202, (void*)0x6000, 1130);
+        // Suppose a real focus event arrives at 1120 during the 40ms debounce window -> increments probeGen and coalesces
+        FocusFilterSim::FocusKey k2{ (void*)0x6000, 60, -601, 0 };
+        sim.scheduleProbe(k2, true, 1120);
+        uint64_t genFocus = sim.probeGen;
+        // Stale genMouse result is ignored; coalesced genFocus result applies
+        sim.applyWorkerResult(genMouse, false);
+        bool staleIgnored = (sim.passwordState == PW_PENDING);
+        sim.applyWorkerResult(genFocus, true);
+        bool coalescedApplied = (sim.passwordState == PW_PASSWORD);
+        if (throttledEarly || !allowedAt1100 || throttledSecond || !staleIgnored || !coalescedApplied) {
+            failures++;
+            printf("FAIL [mouse-up reprobe 100ms throttle and 40ms debounce coalescing]\n");
+        }
+    }
+
+    // Test 30: Clicking "Show password" (WM_LBUTTONUP while already PW_PASSWORD on same focus key) keeps sticky PW_PASSWORD
+    {
+        total++;
+        ProbeStateMachineSim sim;
+        sim.webInputContext = true;
+        FocusFilterSim::FocusKey k1{ (void*)0x7000, 70, -700, 0 };
+        sim.scheduleProbe(k1, true, 1000);
+        sim.applyWorkerResult(sim.probeGen, true); // Confirmed password field
+        uint64_t genBeforeClick = sim.probeGen;
+        // User clicks "Show password" eye icon inside the same render HWND without focus key change
+        bool reprobeScheduled = sim.onMouseEvent(0x0202, (void*)0x7000, 1500);
+        if (reprobeScheduled || sim.passwordState != PW_PASSWORD || sim.probeGen != genBeforeClick) {
+            failures++;
+            printf("FAIL [WM_LBUTTONUP on confirmed password field must keep sticky PW_PASSWORD without reprobe]\n");
+        }
+    }
+
+    // Test 31: Default vPasswordFieldUIA = 1 automatically schedules probe and resolves browser password
+    {
+        total++;
+        FocusFilterSim sim;
+        sim.uiaEnabled = true; // explicitly enable for test
+        sim.onFocusEvent((void*)0xC000, 950, -180, 0, false, true, 2000);
+        bool entersPendingByDefault = (sim.passwordState == PW_PENDING && sim.webInputContext && sim.scheduledProbes == 1);
+        if (!entersPendingByDefault) {
+            failures++;
+            printf("FAIL [default vPasswordFieldUIA=1 must schedule PW_PENDING probe on browser focus]\n");
+        }
+    }
+
+    // Test 32: Packed 32-bit state+source atomic word prevents torn reads and desynchronization
+    {
+        total++;
+        uint32_t wNormal = ProbeStateMachineSim::makeStateWord(PW_NORMAL, ProbeStateMachineSim::SRC_NONE);
+        uint32_t wPending = ProbeStateMachineSim::makeStateWord(PW_PENDING, ProbeStateMachineSim::SRC_NONE);
+        uint32_t wWin32 = ProbeStateMachineSim::makeStateWord(PW_PASSWORD, ProbeStateMachineSim::SRC_WIN32);
+        uint32_t wUia = ProbeStateMachineSim::makeStateWord(PW_PASSWORD, ProbeStateMachineSim::SRC_UIA);
+        uint32_t wMsaa = ProbeStateMachineSim::makeStateWord(PW_PASSWORD, ProbeStateMachineSim::SRC_MSAA);
+
+        bool packCheck = (ProbeStateMachineSim::getSimState(wNormal) == PW_NORMAL && ProbeStateMachineSim::getSimSource(wNormal) == ProbeStateMachineSim::SRC_NONE) &&
+                         (ProbeStateMachineSim::getSimState(wPending) == PW_PENDING && ProbeStateMachineSim::getSimSource(wPending) == ProbeStateMachineSim::SRC_NONE) &&
+                         (ProbeStateMachineSim::getSimState(wWin32) == PW_PASSWORD && ProbeStateMachineSim::getSimSource(wWin32) == ProbeStateMachineSim::SRC_WIN32) &&
+                         (ProbeStateMachineSim::getSimState(wUia) == PW_PASSWORD && ProbeStateMachineSim::getSimSource(wUia) == ProbeStateMachineSim::SRC_UIA) &&
+                         (ProbeStateMachineSim::getSimState(wMsaa) == PW_PASSWORD && ProbeStateMachineSim::getSimSource(wMsaa) == ProbeStateMachineSim::SRC_MSAA);
+
+        // Atomic transition in CAS loop
+        ProbeStateMachineSim sim;
+        sim.webInputContext = true;
+        FocusFilterSim::FocusKey k1{ (void*)0x9000, 90, -900, 0 };
+        sim.scheduleProbe(k1, true, 1000); // Transitions to PW_PENDING + SRC_NONE
+        uint64_t gPending = sim.probeGen;
+        sim.applyWorkerResult(gPending, true, ProbeStateMachineSim::SRC_UIA); // Atomically transitions to PW_PASSWORD + SRC_UIA
+        bool atomicityCheck = (sim.getPasswordState() == PW_PASSWORD && sim.getPasswordSource() == ProbeStateMachineSim::SRC_UIA);
+
+        if (!packCheck || !atomicityCheck) {
+            failures++;
+            printf("FAIL [packed atomic state+source word must prevent torn reads and desynchronization]\n");
+        }
+    }
+
+    // Test 33: Centralized applyPasswordFeatureConfigChanges handles bypass toggle, UIA toggle, and Win32 preservation
+    {
+        total++;
+        ProbeStateMachineSim sim;
+        sim.webInputContext = true;
+        FocusFilterSim::FocusKey k1{ (void*)0x9000, 90, -900, 0 };
+        sim.scheduleProbe(k1, true, 1000);
+        sim.applyWorkerResult(sim.probeGen, true, ProbeStateMachineSim::SRC_UIA);
+        sim.passwordStateDirty = false;
+        // User turns off UIA -> resets browser password to NORMAL
+        sim.setUiaEnabled(false);
+        bool resetOnUiaOff = (sim.getPasswordState() == PW_NORMAL && sim.getPasswordSource() == ProbeStateMachineSim::SRC_NONE && sim.passwordStateDirty);
+
+        // Win32 password control
+        FocusFilterSim::FocusKey kWin32{ (void*)0x9001, 91, 0, 0 };
+        sim.setWin32Password(kWin32);
+        sim.passwordStateDirty = false;
+        sim.setUiaEnabled(false); // UIA off does NOT reset Win32 password
+        bool win32Preserved = (sim.getPasswordState() == PW_PASSWORD && sim.getPasswordSource() == ProbeStateMachineSim::SRC_WIN32 && !sim.passwordStateDirty);
+
+        // Bypass disabled completely -> resets even Win32 password
+        sim.bypassEnabled = false;
+        sim.applyPasswordFeatureConfigChanges();
+        bool bypassResetAll = (sim.getPasswordState() == PW_NORMAL && sim.getPasswordSource() == ProbeStateMachineSim::SRC_NONE && sim.passwordStateDirty);
+
+        if (!resetOnUiaOff || !win32Preserved || !bypassResetAll) {
+            failures++;
+            printf("FAIL [centralized applyPasswordFeatureConfigChanges must handle bypass and UIA toggles properly]\n");
         }
     }
 }

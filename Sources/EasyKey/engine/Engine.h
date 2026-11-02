@@ -205,6 +205,12 @@ extern int vRestoreOnEscape;
  */
 extern int vPasswordFieldBypass;
 
+enum PasswordState {
+    PW_NORMAL = 0,
+    PW_PASSWORD = 1,
+    PW_PENDING = 2
+};
+
 /**
  * Call this function first to receive data pointer
  */

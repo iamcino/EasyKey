@@ -72,8 +72,10 @@ extern void exitGameChat();
 extern void checkHooks();
 extern bool isPasswordFieldActive();
 extern void invalidatePasswordFieldCache();
-extern void updatePasswordFieldState(HWND hwnd);
+extern void updatePasswordFieldState(HWND hwnd, LONG idObject = 0, LONG idChild = 0, bool isForegroundChange = false);
 extern void setPasswordFieldBypass(bool enabled);
+extern void setPasswordFieldUIA(bool enabled);
+extern void applyPasswordFeatureConfigChanges();
 
 extern int vLanguage;
 extern int vMixedEnglish;
