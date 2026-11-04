@@ -3264,6 +3264,108 @@ static void testGameModeState() {
     }
 }
 
+//Extended Game Mode cases (plan 3.2, PR 2): long event chains and cross-path
+//edges beyond the characterization set.
+static void testGameModeStateExtended() {
+    const uint64_t TTL = GameModeState::kArmedTtlMs;
+    {   //a long Alt+Tab chain: the confirmed binding survives every hop, the
+        //chat never survives a hop, and re-entry always works
+        GameModeState s = gameInGame();
+        bool ok = true;
+        for (int i = 0; i < 5; i++) {
+            uint64_t t = 2000 + (uint64_t)i * 100000;
+            s.onGameKeyDown({ 0x0D, false }); //open the chat in game
+            s.onKeyboardBindingCheck(t, true, 200, false); //tab away
+            ok = ok && !s.inGame && !s.chatOpen && s.windowId == 100 && s.confirmed;
+            s.onKeyboardBindingCheck(t + 1, true, 100, true); //tab back
+            ok = ok && s.inGame && !s.chatOpen;
+        }
+        expectRobust("game ext: repeated Alt+Tab keeps the confirmed binding", ok);
+    }
+    {   //no foreground window at all still leaves the game, binding kept
+        GameModeState s = gameInGame();
+        s.onKeyboardBindingCheck(2000, true, 0, false);
+        expectRobust("game ext: empty foreground leaves the game only", !s.inGame && s.windowId == 100);
+    }
+    {   //Enter in the middle of a raw command closes the whole chat
+        GameModeState s = gameInGame();
+        s.onGameKeyDown({ 0x0D, false });
+        s.onGameKeyDown({ 0xBF, false }); // /ff...
+        s.onGameKeyDown({ 0x46, false });
+        GameModeEffects fx = s.onGameKeyDown({ 0x0D, false });
+        expectRobust("game ext: Enter ends a raw command with the chat", !s.chatOpen && !s.chatRawCommand && fx.chatClosed);
+    }
+    {   //Esc in the middle of a raw command closes the whole chat too
+        GameModeState s = gameInGame();
+        s.onGameKeyDown({ 0x0D, false });
+        s.onGameKeyDown({ 0xBF, false });
+        GameModeEffects fx = s.onGameKeyDown({ 0x1B, false });
+        expectRobust("game ext: Esc ends a raw command with the chat", !s.chatOpen && !s.chatRawCommand && fx.chatClosed);
+    }
+    {   //after a command ends with Space, a new / starts a fresh raw command
+        GameModeState s = gameInGame();
+        s.onGameKeyDown({ 0x0D, false });
+        s.onGameKeyDown({ 0xBF, false }); // /w
+        s.onGameKeyDown({ 0x57, false });
+        s.onGameKeyDown({ 0x20, false }); // Space: command over
+        s.onGameKeyDown({ 0xBF, false }); // / again
+        expectRobust("game ext: a second / command goes raw again", s.chatRawCommand);
+    }
+    {   //Enter toggling repeatedly alternates the effects and ends closed
+        GameModeState s = gameInGame();
+        bool ok = true;
+        for (int i = 0; i < 3; i++) {
+            GameModeEffects open = s.onGameKeyDown({ 0x0D, false });
+            GameModeEffects close = s.onGameKeyDown({ 0x0D, false });
+            ok = ok && open.chatOpened && !open.chatClosed && close.chatClosed && !close.chatOpened;
+        }
+        expectRobust("game ext: Enter toggling alternates cleanly", ok && !s.chatOpen);
+    }
+    {   //the game window dying mid-chat clears everything in one check
+        GameModeState s = gameInGame();
+        s.onGameKeyDown({ 0x0D, false });
+        GameModeState::BindingCheck c = s.onKeyboardBindingCheck(2000, false, 0, false);
+        expectRobust("game ext: window destroyed mid-chat clears all", s.windowId == 0 && !s.inGame
+            && !s.chatOpen && c.effects.chatClosed && c.effects.sessionReset);
+    }
+    {   //the armed TTL boundary holds across event kinds: a mouse check at
+        //TTL - 1 keeps the binding, a foreground-away at the TTL clears it
+        GameModeState s = gameArmed();
+        s.onMouseBindingCheck(1000 + TTL - 1, true, 0, false);
+        bool kept = s.windowId == 100;
+        s.onForegroundChangedAway(1000 + TTL, true);
+        expectRobust("game ext: TTL boundary across mouse and foreground events", kept && s.windowId == 0);
+    }
+    {   //rebinding to a new foreground window while chatting in the old one
+        //closes the chat through the enter transition of the new binding
+        GameModeState s = gameInGame();
+        s.onGameKeyDown({ 0x0D, false });
+        GameModeEffects fx = s.bind(200, 43, true, 9000, true);
+        expectRobust("game ext: rebind while chatting closes the chat", s.windowId == 200 && s.inGame
+            && !s.chatOpen && fx.chatClosed && fx.sessionReset);
+    }
+    {   //a click with no foreground window changes nothing
+        GameModeState s = gameArmed();
+        GameModeEffects fx = s.onMouseBindingCheck(2000, true, 0, false);
+        expectRobust("game ext: click with no foreground is a no-op", s.windowId == 100 && !s.inGame && !fx.any());
+    }
+    {   //a destroyed armed window is cleared by the mouse path as well
+        GameModeState s = gameArmed();
+        s.onMouseBindingCheck(2000, false, 0, false);
+        expectRobust("game ext: mouse check clears a destroyed window", s.windowId == 0);
+    }
+    {   //huge ticks (GetTickCount64 uptime territory) behave linearly:
+        //an armed binding created near 2^42 still expires by plain subtraction
+        GameModeState s;
+        uint64_t base = (uint64_t)1 << 42;
+        s.bind(100, 42, false, base, false);
+        s.onKeyboardBindingCheck(base + TTL - 1, true, 200, false);
+        bool kept = s.windowId == 100;
+        s.onKeyboardBindingCheck(base + TTL, true, 200, false);
+        expectRobust("game ext: TTL arithmetic at very large ticks", kept && s.windowId == 0);
+    }
+}
+
 //EngineTests --render: for each word read, print it and what Telex makes of it (tools/make_mixed_words.py uses this)
 static int renderWords() {
     vInputType = vTelex;
@@ -3296,6 +3398,7 @@ int main(int argc, char** argv) {
     testMixedWordsParser();
     testSaveDataLimits();
     testGameModeState();
+    testGameModeStateExtended();
     printf("%d/%d engine tests passed\n", total - failures, total);
     return failures == 0 ? 0 : 1;
 }
