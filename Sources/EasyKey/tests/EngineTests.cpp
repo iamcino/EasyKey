@@ -778,84 +778,167 @@ static void testGameMode() {
     }
 
     struct WindowBindingSim {
-        const uint64_t GAME_BINDING_TTL_MS = 5000;
+        const uint64_t GAME_ARMED_TTL_MS = 10 * 60 * 1000; // 10 minutes for armed candidate bindings only
         void* gameHwnd = nullptr;
         uint32_t gamePid = 0;
+        bool gameConfirmed = false;
         uint64_t lastGameForegroundTick = 0;
         bool inGame = false;
         bool gameChat = false;
         int sessionResets = 0;
         bool isPasswordRaw = false;
+        uint32_t flag = 0;
+        uint32_t lastFlag = 0;
+        int languageSwitches = 0;
+
+        void resetModifierState() {
+            flag = 0;
+            lastFlag = 0;
+        }
+
+        void enterGameState() {
+            inGame = true;
+            exitGameChat();
+            resetModifierState();
+            sessionResets++;
+        }
+
+        void leaveGameState() {
+            if (!inGame) return;
+            exitGameChat();
+            inGame = false;
+            resetModifierState();
+            sessionResets++;
+        }
 
         void clearGameBinding() {
+            leaveGameState();
             gameHwnd = nullptr;
             gamePid = 0;
+            gameConfirmed = false;
             lastGameForegroundTick = 0;
-            inGame = false;
-            exitGameChat();
+        }
+
+        void bindGameWindow(void* hwnd, uint32_t pid, void* currentFg, bool confirmed, uint64_t now) {
+            if (!hwnd || !pid) return;
+            gameHwnd = hwnd;
+            gamePid = pid;
+            gameConfirmed = confirmed;
+            lastGameForegroundTick = now;
+            if (currentFg == hwnd) {
+                gameConfirmed = true;
+                enterGameState();
+            } else {
+                if (inGame) leaveGameState();
+                else inGame = false;
+            }
         }
 
         void exitGameChat() {
             gameChat = false;
         }
 
-        bool isGameBindingAlive(uint64_t now) const {
-            return gameHwnd != nullptr && (now >= lastGameForegroundTick) && ((now - lastGameForegroundTick) < GAME_BINDING_TTL_MS);
+        void setPasswordRaw(bool active) {
+            if (active && !isPasswordRaw) {
+                // Transitioning into password field clears any stale _gameChat state
+                exitGameChat();
+                resetModifierState();
+            } else if (!active && isPasswordRaw) {
+                exitGameChat();
+                resetModifierState();
+            }
+            isPasswordRaw = active;
         }
 
         void onWinEventForeground(void* hwnd, uint32_t pid, bool isGame, uint64_t now) {
             if (isGame && hwnd) {
-                gameHwnd = hwnd;
-                gamePid = pid;
-                lastGameForegroundTick = now;
-                inGame = true;
+                bindGameWindow(hwnd, pid, hwnd, true, now);
             } else {
-                if (inGame) inGame = false;
+                leaveGameState();
             }
-            exitGameChat();
         }
 
-        bool onKeyboardHookKey(void* fgHwnd, uint32_t fgPid, bool fgIsWindow, uint16_t keycode, uint64_t now) {
+        void onMouseClick(void* fgHwnd, uint32_t fgPid, bool fgIsWindow, uint64_t now, uint32_t selfPid = 9999, bool fgIsTopLevelVisible = true) {
+            if (isPasswordRaw) return;
+            if (gamePid != 0 && !inGame) {
+                if (gameHwnd != nullptr && !fgIsWindow && fgHwnd == gameHwnd) {
+                    clearGameBinding();
+                } else if (!gameConfirmed && lastGameForegroundTick != 0 &&
+                    (now < lastGameForegroundTick || (now - lastGameForegroundTick) >= GAME_ARMED_TTL_MS)) {
+                    clearGameBinding();
+                } else if (fgHwnd == gameHwnd && fgHwnd != nullptr) {
+                    if (fgPid == gamePid && fgPid != selfPid && fgIsWindow && fgIsTopLevelVisible) {
+                        gameConfirmed = true;
+                        lastGameForegroundTick = now;
+                        enterGameState();
+                    } else {
+                        clearGameBinding();
+                    }
+                } else if (fgHwnd != nullptr && fgPid == gamePid && fgPid != selfPid && fgIsWindow && fgIsTopLevelVisible) {
+                    gameHwnd = fgHwnd;
+                    gameConfirmed = true;
+                    lastGameForegroundTick = now;
+                    enterGameState();
+                }
+            }
+            if (inGame && gameChat) {
+                exitGameChat();
+            }
+        }
+
+        bool onKeyboardHookEvent(void* fgHwnd, uint32_t fgPid, bool fgIsWindow, uint16_t keycode, bool isKeyDown, bool isModifierKey, uint32_t modMaskBit, uint64_t now) {
             // 1. Password field bypass always wins
             if (isPasswordRaw) {
                 return true;
             }
 
-            // 2. Fast-path game window binding check
-            if (isGameBindingAlive(now)) {
-                if (fgHwnd == gameHwnd) {
-                    if (!inGame) {
-                        if (fgPid == gamePid && fgIsWindow) {
-                            inGame = true;
-                            lastGameForegroundTick = now;
-                            exitGameChat();
-                            sessionResets++;
-                        } else {
-                            clearGameBinding();
-                        }
-                    } else if (!fgIsWindow) {
-                        clearGameBinding();
-                    } else {
-                        lastGameForegroundTick = now;
-                    }
+            // 2. Fast-path game window binding check (confirmed bindings persist; armed bindings have TTL)
+            if (gameHwnd != nullptr) {
+                if (!gameConfirmed && (now < lastGameForegroundTick || (now - lastGameForegroundTick) >= GAME_ARMED_TTL_MS)) {
+                    clearGameBinding();
                 } else {
-                    if (inGame) {
-                        exitGameChat();
-                        inGame = false;
+                    if (fgHwnd == gameHwnd) {
+                        if (!gameConfirmed || !inGame) {
+                            if (fgPid == gamePid && fgIsWindow) {
+                                gameConfirmed = true;
+                                if (!inGame) enterGameState();
+                                lastGameForegroundTick = now;
+                            } else {
+                                clearGameBinding();
+                            }
+                        } else if (!fgIsWindow) {
+                            clearGameBinding();
+                        } else {
+                            lastGameForegroundTick = now;
+                        }
+                    } else {
+                        if (inGame) {
+                            leaveGameState();
+                        }
                     }
                 }
-            } else if (gameHwnd != nullptr) {
-                clearGameBinding();
             }
 
-            // 3. Game mode handling
+            // Update modifier state cheaply
+            if (isModifierKey) {
+                if (isKeyDown) flag |= modMaskBit;
+                else flag &= ~modMaskBit;
+            } else if (!isKeyDown && flag == 0) {
+                lastFlag = 0;
+            }
+
+            // 3. Game mode handling (both key down and key up bypass hotkey/language switch)
             if (inGame) {
-                if (keycode == 13 /* Enter */) {
+                lastFlag = 0;
+                if (!isKeyDown) {
+                    return true; // KeyUp in game passes straight through without hotkey evaluation
+                }
+                if (keycode == 13 /* Enter */ && flag == 0) {
                     if (gameChat) exitGameChat();
                     else gameChat = true;
                     return true;
                 }
-                if (keycode == 27 /* Esc */) {
+                if (keycode == 27 /* Esc */ && flag == 0) {
                     exitGameChat();
                     return true;
                 }
@@ -863,11 +946,36 @@ static void testGameMode() {
                 return true;
             }
 
+            // Outside game mode: simulate modifier-release hotkey check
+            if (isModifierKey) {
+                if (lastFlag == 0 || lastFlag < flag) {
+                    lastFlag = flag;
+                } else if (lastFlag > flag) {
+                    // If a modifier-only hotkey was armed and not cancelled by a non-hotkey key
+                    if (lastFlag != 0 && keycode == 0xFE) {
+                        languageSwitches++;
+                    }
+                    lastFlag = flag;
+                }
+                return true;
+            }
+
+            if (isKeyDown) {
+                // Non-hotkey key pressed with modifier resets lastFlag
+                lastFlag = 0;
+            } else {
+                return true;
+            }
+
             return false; // Engine processes key for normal app
+        }
+
+        bool onKeyboardHookKey(void* fgHwnd, uint32_t fgPid, bool fgIsWindow, uint16_t keycode, uint64_t now) {
+            return onKeyboardHookEvent(fgHwnd, fgPid, fgIsWindow, keycode, true, false, 0, now);
         }
     };
 
-    // Test 7: Alt+Tab missed WinEvent foreground recovery via fast-path within TTL
+    // Test 7: Alt+Tab missed WinEvent foreground recovery via fast-path (even after > 10s away!)
     {
         total++;
         WindowBindingSim sim;
@@ -876,43 +984,59 @@ static void testGameMode() {
 
         // Initial foreground binding
         sim.onWinEventForeground(gameWnd, gamePid, true, 1000);
-        bool initialInGame = sim.inGame;
+        bool initialInGame = sim.inGame && sim.gameConfirmed;
 
-        // User Alt+Tabs away to explorer/browser
+        // User Alt+Tabs away to explorer/browser for 15 seconds (> old 5s TTL)
         sim.onWinEventForeground((void*)0x9999, 1000, false, 2000);
-        bool outOfGame = !sim.inGame && sim.isGameBindingAlive(2000);
+        bool outOfGame = !sim.inGame && (sim.gameHwnd == gameWnd) && sim.gameConfirmed;
 
-        // User Alt+Tabs BACK to game at tick 3500, but WinEvent was missed/delayed by Windows/DWM!
-        // The very first key pressed in the game triggers fast-path rebind
-        bool keyPassedRaw = sim.onKeyboardHookKey(gameWnd, gamePid, true, 'W', 3500);
-        bool recoveredInGame = sim.inGame && (sim.sessionResets == 1) && (sim.lastGameForegroundTick == 3500);
+        // User types in browser at tick 10000: confirmed game binding stays alive in background while _inGame is false
+        bool browserKeyHandledByEngine = !sim.onKeyboardHookKey((void*)0x9999, 1000, true, 'A', 10000);
+        bool bindingKeptAlive = (sim.gameHwnd == gameWnd) && sim.gameConfirmed && !sim.inGame;
 
-        if (!initialInGame || !outOfGame || !keyPassedRaw || !recoveredInGame) {
+        // User Alt+Tabs BACK to game at tick 17000, and WinEvent was missed/delayed by Windows/DWM!
+        // The very first key pressed in the game triggers fast-path re-activation
+        bool keyPassedRaw = sim.onKeyboardHookKey(gameWnd, gamePid, true, 'W', 17000);
+        bool recoveredInGame = sim.inGame && (sim.lastGameForegroundTick == 17000);
+
+        if (!initialInGame || !outOfGame || !browserKeyHandledByEngine || !bindingKeptAlive || !keyPassedRaw || !recoveredInGame) {
             failures++;
-            printf("FAIL [window-bound game mode fast-path recovery after missed WinEvent]\n");
+            printf("FAIL [window-bound game mode persistent fast-path recovery after >10s Alt+Tab]\n");
         }
     }
 
-    // Test 8: Binding expires after TTL, clearing cached HWND/PID to avoid polling
+    // Test 8: 10s+ mouse-only movement in LoL without keystrokes keeps confirmed binding active (W stays W, never Ư)
     {
         total++;
         WindowBindingSim sim;
         void* gameWnd = (void*)0x1234;
         uint32_t gamePid = 5001;
 
+        // Bind LoL window at tick 1000
         sim.onWinEventForeground(gameWnd, gamePid, true, 1000);
-        sim.onWinEventForeground((void*)0x9999, 1000, false, 1500);
 
-        // Typing in normal app after TTL (1000 + 5000 = 6000ms; now = 7000ms)
-        bool keyHandledByEngine = !sim.onKeyboardHookKey((void*)0x9999, 1000, true, 'A', 7000);
-        bool bindingCleared = (sim.gameHwnd == nullptr) && (sim.gamePid == 0) && (sim.lastGameForegroundTick == 0);
+        // Player only right-clicks to move for 12 seconds (no keyboard input)
+        sim.onMouseClick(gameWnd, gamePid, true, 5000);
+        sim.onMouseClick(gameWnd, gamePid, true, 9000);
+        sim.onMouseClick(gameWnd, gamePid, true, 13000);
 
-        // Subsequent keystrokes do not invoke binding checks
-        bool isAliveAfterExpiry = sim.isGameBindingAlive(8000);
-
-        if (!keyHandledByEngine || !bindingCleared || isAliveAfterExpiry) {
+        // At tick 13500 (12.5s later), player presses 'W' skill
+        bool wPassedRaw = sim.onKeyboardHookKey(gameWnd, gamePid, true, 'W', 13500);
+        if (!wPassedRaw || !sim.inGame || sim.gameHwnd != gameWnd) {
             failures++;
-            printf("FAIL [window-bound game mode TTL expiry must clear binding]\n");
+            printf("FAIL [confirmed game binding must not expire during >10s mouse-only gameplay]\n");
+        }
+
+        // Also test unconfirmed armed binding TTL expiry after GAME_ARMED_TTL_MS (10 minutes)
+        WindowBindingSim armedSim;
+        armedSim.bindGameWindow(gameWnd, gamePid, (void*)0x9999 /* Settings fg */, false /* armed */, 1000);
+        bool armedInitially = (armedSim.gameHwnd == gameWnd) && !armedSim.gameConfirmed && !armedSim.inGame;
+        // After 10 minutes + 1s without ever focusing the game, armed binding expires cleanly
+        bool normalKeyAfterArmedExpiry = !armedSim.onKeyboardHookKey((void*)0x9999, 1000, true, 'A', 1000 + armedSim.GAME_ARMED_TTL_MS + 1000);
+        bool armedCleared = (armedSim.gameHwnd == nullptr) && (armedSim.gamePid == 0);
+        if (!armedInitially || !normalKeyAfterArmedExpiry || !armedCleared) {
+            failures++;
+            printf("FAIL [unconfirmed armed game binding must expire after GAME_ARMED_TTL_MS]\n");
         }
     }
 
@@ -1004,7 +1128,7 @@ static void testGameMode() {
         }
     }
 
-    // Test 13: Alt+Z / hotkeys during combat pass straight to game without mutating language or triggering hotkey
+    // Test 13: Alt+Z / Alt+W (self-cast skill) keydown & keyup during combat pass straight to game without mutating language or triggering hotkey
     {
         total++;
         WindowBindingSim sim;
@@ -1017,12 +1141,98 @@ static void testGameMode() {
         // User presses Alt+Z (GeForce Experience or game skill) while in combat
         bool keyPassedRaw = sim.onKeyboardHookKey(gameWnd, gamePid, true, 'Z', 1200);
 
-        // Language must NOT have been toggled by in-game combat key
-        bool langPreserved = (vLanguage == originalLang);
+        // User presses Alt down -> W down (self-cast) -> W up -> Alt up
+        const uint32_t ALT_BIT = 0x04;
+        bool altDown = sim.onKeyboardHookEvent(gameWnd, gamePid, true, 0xFE /* modifier */, true, true, ALT_BIT, 1300);
+        bool wDown = sim.onKeyboardHookEvent(gameWnd, gamePid, true, 'W', true, false, 0, 1320);
+        bool wUp = sim.onKeyboardHookEvent(gameWnd, gamePid, true, 'W', false, false, 0, 1350);
+        bool altUp = sim.onKeyboardHookEvent(gameWnd, gamePid, true, 0xFE /* modifier */, false, true, ALT_BIT, 1380);
 
-        if (!keyPassedRaw || !langPreserved || !sim.inGame) {
+        // Next W press must still be in game mode and pass raw!
+        bool nextW = sim.onKeyboardHookEvent(gameWnd, gamePid, true, 'W', true, false, 0, 1500);
+
+        // Language must NOT have been toggled by in-game combat key or modifier release
+        bool langPreserved = (vLanguage == originalLang) && (sim.languageSwitches == 0) && (sim.lastFlag == 0);
+
+        if (!keyPassedRaw || !altDown || !wDown || !wUp || !altUp || !nextW || !langPreserved || !sim.inGame) {
             failures++;
-            printf("FAIL [hotkeys in combat must pass raw to game without mutating vLanguage]\n");
+            printf("FAIL [hotkeys and Alt+W self-cast in combat must pass raw without mutating vLanguage]\n");
+        }
+    }
+
+    // Test 13b: Leaving game while holding Alt resets modifier state cleanly; Mouse click rebind guards PID/EasyKey/Password
+    {
+        total++;
+        WindowBindingSim sim;
+        void* gameWnd = (void*)0x1234;
+        void* gameSubWnd = (void*)0x1235;
+        void* browserWnd = (void*)0x9999;
+        uint32_t gamePid = 5001;
+        uint32_t selfPid = 8888;
+        const uint32_t ALT_BIT = 0x04;
+
+        sim.onWinEventForeground(gameWnd, gamePid, true, 1000);
+        // Hold Alt down in game (e.g. beginning of Alt+Tab)
+        sim.onKeyboardHookEvent(gameWnd, gamePid, true, 0xFE, true, true, ALT_BIT, 1100);
+        // Foreground switches to browser while Alt was held
+        sim.onWinEventForeground(browserWnd, 2000, false, 1150);
+        // Releasing Alt in browser must NOT trigger a phantom language switch because leaveGameState reset modifier state
+        sim.onKeyboardHookEvent(browserWnd, 2000, true, 0xFE, false, true, ALT_BIT, 1200);
+        bool noPhantomSwitchOnLeave = (sim.languageSwitches == 0) && (sim.flag == 0) && (sim.lastFlag == 0) && !sim.inGame;
+
+        // Mouse click in browser (wrong PID) must not rebind
+        sim.onMouseClick(browserWnd, 2000, true, 1300, selfPid, true);
+        bool noRebindWrongPid = !sim.inGame && (sim.gameHwnd == gameWnd);
+
+        // Mouse click on EasyKey own window (fgPid == selfPid) must not rebind
+        sim.onMouseClick((void*)0x7777, selfPid, true, 1350, selfPid, true);
+        bool noRebindSelf = !sim.inGame && (sim.gameHwnd == gameWnd);
+
+        // Mouse click when password bypass is active must not rebind or enter game state
+        sim.isPasswordRaw = true;
+        sim.onMouseClick(gameSubWnd, gamePid, true, 1400, selfPid, true);
+        bool noRebindPassword = !sim.inGame && (sim.gameHwnd == gameWnd);
+        sim.isPasswordRaw = false;
+
+        // Mouse click on top-level visible window of same game PID rebinds and enters game state
+        sim.onMouseClick(gameSubWnd, gamePid, true, 1500, selfPid, true);
+        bool reboundSamePid = sim.inGame && (sim.gameHwnd == gameSubWnd) && sim.gameConfirmed;
+
+        // Test password field transition while _gameChat is open: must clear stale _gameChat immediately
+        // and Test Alt+Enter / Ctrl+Enter in combat & chat: must NOT toggle _gameChat
+        const uint32_t CTRL_BIT = 0x02;
+        // Alt+Enter in combat (gameChat == false) must not open chat
+        sim.onKeyboardHookEvent(gameSubWnd, gamePid, true, 0xFE, true, true, ALT_BIT, 1600);
+        sim.onKeyboardHookEvent(gameSubWnd, gamePid, true, 13 /* Enter */, true, false, 0, 1610);
+        sim.onKeyboardHookEvent(gameSubWnd, gamePid, true, 13 /* Enter */, false, false, 0, 1620);
+        sim.onKeyboardHookEvent(gameSubWnd, gamePid, true, 0xFE, false, true, ALT_BIT, 1630);
+        bool altEnterDidNotOpenChat = !sim.gameChat;
+
+        // Plain Enter opens chat
+        sim.onKeyboardHookEvent(gameSubWnd, gamePid, true, 13 /* Enter */, true, false, 0, 1700);
+        bool plainEnterOpenedChat = sim.gameChat;
+
+        // Ctrl+Enter while in chat must not close chat
+        sim.onKeyboardHookEvent(gameSubWnd, gamePid, true, 0xFE, true, true, CTRL_BIT, 1750);
+        sim.onKeyboardHookEvent(gameSubWnd, gamePid, true, 13 /* Enter */, true, false, 0, 1760);
+        sim.onKeyboardHookEvent(gameSubWnd, gamePid, true, 13 /* Enter */, false, false, 0, 1770);
+        sim.onKeyboardHookEvent(gameSubWnd, gamePid, true, 0xFE, false, true, CTRL_BIT, 1780);
+        bool ctrlEnterDidNotCloseChat = sim.gameChat;
+
+        // Focus enters password field while _gameChat is true -> _gameChat is cleared immediately on transition,
+        // and Enter/Esc inside password field pass raw without re-opening game chat
+        sim.setPasswordRaw(true);
+        bool passwordClearedStaleChat = !sim.gameChat;
+        sim.onKeyboardHookEvent(gameSubWnd, gamePid, true, 13 /* Enter */, true, false, 0, 1850);
+        bool enterInPasswordDidNotOpenChat = !sim.gameChat;
+        sim.setPasswordRaw(false);
+        bool cleanAfterPasswordExit = !sim.gameChat && sim.inGame;
+
+        if (!noPhantomSwitchOnLeave || !noRebindWrongPid || !noRebindSelf || !noRebindPassword || !reboundSamePid ||
+            !altEnterDidNotOpenChat || !plainEnterOpenedChat || !ctrlEnterDidNotCloseChat ||
+            !passwordClearedStaleChat || !enterInPasswordDidNotOpenChat || !cleanAfterPasswordExit) {
+            failures++;
+            printf("FAIL [leaveGameState modifier reset, mouse rebind guards, and password stale chat cleanup]\n");
         }
     }
 

@@ -187,7 +187,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 							   "The game is running as Admin. EasyKey must run as Admin to support it."));
 					} else {
 						bool on = !isGameApp(cand.exeBaseName);
-						setGameApp(cand.exeBaseName, on);
+						setGameApp(cand.exeBaseName, on, cand.hwnd);
 						wstring app = utf8ToWideString(cand.exeBaseName);
 						if (on)
 							AppDelegate::getInstance()->showNotice(TR("Đã bật chế độ game", "Game mode on"),
