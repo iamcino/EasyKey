@@ -244,6 +244,31 @@ static void testTelex() {
     expectTyping("Telex abbr DDT", "DDT ", L"ĐT ");
     expectTyping("Telex abbr DDHQG", "DDHQG ", L"ĐHQG ");
     expectTyping("Telex abbr Ddc", "Ddc ", L"Đc ");
+    //q + w / qu + w must never produce "qư", while "quơ", "quở", "quờ", "quốc", "quân", "quên" work normally
+    expectTyping("Telex qwen", "qwen ", L"qwen ");
+    expectTyping("Telex qw", "qw ", L"qw ");
+    expectTyping("Telex quw", "quw ", L"quw ");
+    expectTyping("Telex quow", "quow ", L"qu\u01a1 ");
+    expectTyping("Telex quowr", "quowr ", L"qu\u1edf ");
+    expectTyping("Telex quowf", "quowf ", L"qu\u1edd ");
+    expectTyping("Telex quoocs", "quoocs ", L"qu\u1ed1c ");
+    expectTyping("Telex quaan", "quaan ", L"qu\u00e2n ");
+    expectTyping("Telex queen", "queen ", L"qu\u00ean ");
+    expectTyping("Telex quee", "quee ", L"qu\u00ea ");
+    // Simple Telex: qwen and qw must never produce qư
+    vInputType = vSimpleTelex1;
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("SimpleTelex1 qwen", "qwen ", L"qwen ");
+    expectTyping("SimpleTelex1 qw", "qw ", L"qw ");
+    expectTyping("SimpleTelex1 quw", "quw ", L"quw ");
+    expectTyping("SimpleTelex1 quow", "quow ", L"qu\u01a1 ");
+    vInputType = vSimpleTelex2;
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    expectTyping("SimpleTelex2 qwen", "qwen ", L"qwen ");
+    expectTyping("SimpleTelex2 qw", "qw ", L"qw ");
+    expectTyping("SimpleTelex2 quw", "quw ", L"quw ");
+    expectTyping("SimpleTelex2 quow", "quow ", L"qu\u01a1 ");
+    vInputType = vTelex;
     //quick telex: initial pp/tt/gg/kk/qq/cc/nn convert, but non-initial only cc and nn
     vQuickTelex = 1;
     vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
@@ -445,6 +470,11 @@ static void testVNI() {
     expectTyping("VNI", "me5 ", L"mẹ ");
     expectTyping("VNI", "la2 ", L"là ");
     expectTyping("VNI", "ba2 ", L"bà ");
+    expectTyping("VNI qwen", "qwen ", L"qwen ");
+    expectTyping("VNI qu7 invalid", "qu7 ", L"qu7 ");
+    expectTyping("VNI quo7", "quo7 ", L"qu\u01a1 ");
+    expectTyping("VNI quo73", "quo73 ", L"qu\u1edf ");
+    expectTyping("VNI quo72", "quo72 ", L"qu\u1edd ");
     vMixedEnglish = 1;
     expectTyping("VNI EV me5", "me5 ", L"m\u1eb9 ");
     expectTyping("VNI EV la2", "la2 ", L"l\u00e0 ");

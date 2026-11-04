@@ -377,7 +377,7 @@ vector<vector<Uint16>> _endConsonantTable = {
 };
 
 vector<Uint16> _standaloneWbad = {
-    KEY_W, KEY_E, KEY_Y, KEY_F, KEY_J, KEY_K, KEY_Z
+    KEY_W, KEY_E, KEY_Y, KEY_F, KEY_J, KEY_K, KEY_Z, KEY_Q
 };
 
 vector<vector<Uint16>> _doubleWAllowed = {

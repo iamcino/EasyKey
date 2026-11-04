@@ -276,8 +276,9 @@ void checkSpelling(const bool& forceCheckVowel=false) {
         //check next vowel
         k = j;
         VSI = k;
-        //August 23rd, 2019: fix case "que't"
-        if (CHR(VSI) == KEY_U && k > 0 && k < _spellingEndIndex-1 && CHR(VSI-1) == KEY_Q) {
+        //August 23rd, 2019: fix case "que't" (only when 'u' after 'q' is plain 'u', never 'ư'/'ú')
+        if (CHR(VSI) == KEY_U && !(TypingWord[VSI] & (TONEW_MASK | TONE_MASK | MARK_MASK)) &&
+            k > 0 && k < _spellingEndIndex-1 && CHR(VSI-1) == KEY_Q) {
             k = k + 1;
             j = k;
             VSI = k;
@@ -311,6 +312,9 @@ void checkSpelling(const bool& forceCheckVowel=false) {
                 }
             } else if (!IS_CONSONANT(CHR(j))) {
                 _spellingVowelOK = true;
+            }
+            if (j > 0 && CHR(j - 1) == KEY_Q && (CHR(j) != KEY_U || (TypingWord[j] & (TONEW_MASK | TONE_MASK | MARK_MASK)))) {
+                _spellingVowelOK = false;
             }
             
             //continue check last consonant
