@@ -93,6 +93,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\app-core\VersionInfo.h" />
+    <ClInclude Include="..\..\..\app-core\GameModeState.h" />
     <ClInclude Include="..\..\..\engine\ConvertTool.h" />
     <ClInclude Include="..\..\..\engine\DataType.h" />
     <ClInclude Include="..\..\..\engine\Engine.h" />
@@ -126,6 +127,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\app-core\VersionInfo.cpp" />
+    <ClCompile Include="..\..\..\app-core\GameModeState.cpp" />
     <ClCompile Include="..\..\..\engine\ConvertTool.cpp" />
     <ClCompile Include="..\..\..\engine\Engine.cpp" />
     <ClCompile Include="..\..\..\engine\Macro.cpp" />
