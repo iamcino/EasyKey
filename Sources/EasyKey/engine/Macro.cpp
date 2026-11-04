@@ -121,23 +121,31 @@ void initMacroMap(const Byte* pData, const int& size) {
 }
 
 void getMacroSaveData(vector<Byte>& outData) {
-    Uint16 totalMacro = (Uint16)macroMap.size();
-    outData.push_back((Byte)totalMacro);
-    outData.push_back((Byte)(totalMacro>>8));
-    
-    for (std::map<vector<Uint32>, MacroData>::iterator it = macroMap.begin(); it != macroMap.end(); ++it) {
-        outData.push_back((Byte)it->second.macroText.size());
+    //same rule as the smart switch save data: an entry the format cannot
+    //represent (name over the one-byte length, content over the two-byte
+    //length) is skipped instead of truncating its length and corrupting the
+    //entries after it (finding F7); the count covers the written entries
+    vector<Byte> body;
+    Uint16 totalMacro = 0;
+    for (std::map<vector<Uint32>, MacroData>::iterator it = macroMap.begin(); it != macroMap.end() && totalMacro < 0xFFFF; ++it) {
+        if (it->second.macroText.size() > 0xFF || it->second.macroContent.size() > 0xFFFF)
+            continue;
+        body.push_back((Byte)it->second.macroText.size());
         for (int j = 0; j < it->second.macroText.size(); j++) {
-            outData.push_back(it->second.macroText[j]);
+            body.push_back(it->second.macroText[j]);
         }
         
         Uint16 macroContentSize = (Uint16)it->second.macroContent.size();
-        outData.push_back((Byte)macroContentSize);
-        outData.push_back(macroContentSize>>8);
+        body.push_back((Byte)macroContentSize);
+        body.push_back(macroContentSize>>8);
         for (int j = 0; j < macroContentSize; j++) {
-            outData.push_back(it->second.macroContent[j]);
+            body.push_back(it->second.macroContent[j]);
         }
+        totalMacro++;
     }
+    outData.push_back((Byte)totalMacro);
+    outData.push_back((Byte)(totalMacro>>8));
+    outData.insert(outData.end(), body.begin(), body.end());
 }
 
 static bool modifyCaseUnicode(Uint32& code, const bool& isUpperCase=true) {

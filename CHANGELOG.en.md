@@ -6,6 +6,8 @@
 
 ### Fixed
 - Fixed out-of-bounds reads when macro data or the per-app remembered list is corrupted.
+- Fixed EasyKey possibly shutting down unexpectedly when quick end consonant is on and a very long word is typed.
+- Fixed entries being lost when saving macros or the per-app remembered list with over-long names.
 
 ## 1.0.21 - 2026-11-04
 

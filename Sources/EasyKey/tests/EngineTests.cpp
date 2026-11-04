@@ -21,6 +21,7 @@
 #include <vector>
 #include "../engine/Engine.h"
 #include "../engine/ConvertTool.h"
+#include "../engine/MixedWords.h"
 #include "../app-core/VersionInfo.h"
 
 //engine settings, normally defined by each platform app (see Engine.h)
@@ -2946,6 +2947,115 @@ static void testParserTruncation() {
     }
 }
 
+static void testQuickEndConsonant() {
+    //quick end consonant (g -> ng, h -> nh, k -> ch) had no test coverage at all;
+    //the audit sweep found a crash at the typing buffer cap (finding F4).
+    //Spelling is switched off so the long filler words below are not treated as
+    //foreign words before the quick end check runs.
+    vInputType = vTelex;
+    vCheckSpelling = 0;
+    vRestoreIfWrongSpelling = 0;
+    vQuickEndConsonant = 1;
+    expectTyping("QuickEnd", "ag ", L"ang ");
+    expectTyping("QuickEnd", "ah ", L"anh ");
+    expectTyping("QuickEnd", "ak ", L"ach ");
+    //one below the cap the expansion still applies
+    expectTyping("QuickEnd", string(28, 'n') + "ag ", wstring(28, L'n') + L"ang ");
+    //at the cap (31 chars = MAX_BUFF-1) the word is left as typed; before the F4
+    //fix this crashed the engine with a read of an empty map vector
+    expectTyping("QuickEnd", string(29, 'n') + "ag ", wstring(29, L'n') + L"ag ");
+    expectTyping("QuickEnd", string(29, 'n') + "ak ", wstring(29, L'n') + L"ak ");
+    //a consonant before the final key never triggers the expansion, cap or not
+    expectTyping("QuickEnd", string(29, 'n') + "tg ", wstring(29, L'n') + L"tg ");
+    vQuickEndConsonant = 0;
+    vCheckSpelling = 1;
+    vRestoreIfWrongSpelling = 1;
+}
+
+static void testCodeTableInvariants() {
+    //unchecked indexing in Macro::convert, Macro::modifyCaseUnicode and
+    //ConvertTool relies on these properties of the code table data (finding F5):
+    //every row has even length (the case flip moves the index by one within the
+    //row), and every key of the Unicode table exists in the other tables with a
+    //row at least as long (convert() reuses the index found in table 0)
+    for (int t = 0; t < 5; t++) {
+        for (const auto& row : _codeTable[t]) {
+            char name[96];
+            snprintf(name, sizeof(name), "code table %d key 0x%X row length is even", t, row.first);
+            expectRobust(name, row.second.size() % 2 == 0);
+        }
+    }
+    for (const auto& row : _codeTable[0]) {
+        for (int t = 1; t < 5; t++) {
+            auto it = _codeTable[t].find(row.first);
+            char name[96];
+            snprintf(name, sizeof(name), "code table %d key 0x%X row is at least as long as table 0", t, row.first);
+            expectRobust(name, it != _codeTable[t].end() && it->second.size() >= row.second.size());
+        }
+    }
+}
+
+static void testMixedWordsParser() {
+    //word-list parser (finding F6): the scan for the line end must stop at the
+    //end of the data. Before the fix, a last line without a newline made it read
+    //past the string (ASan global-buffer-overflow); the built-in data is only
+    //safe because the generator happens to end it with a newline.
+    unordered_map<string, unsigned short> out;
+    parseMixedWords("abc12\ndef34\n", out);
+    expectRobust("mixed words: two whole lines parse", out.size() == 2
+        && out["abc"] == ((1 << 8) | 2) && out["def"] == ((3 << 8) | 4));
+    out.clear();
+    parseMixedWords("abc12\ndef34", out);
+    expectRobust("mixed words: unterminated last line is dropped", out.size() == 1
+        && out.find("abc") != out.end() && out.find("def") == out.end());
+    out.clear();
+    parseMixedWords("", out);
+    expectRobust("mixed words: empty data parses to nothing", out.empty());
+    out.clear();
+    parseMixedWords("ab\nlong99\n", out);
+    expectRobust("mixed words: lines too short for key + codes are skipped", out.size() == 1
+        && out["long"] == ((9 << 8) | 9));
+}
+
+static void testSaveDataLimits() {
+    //save-side length limits (finding F7): an entry the binary format cannot
+    //represent must be skipped when saving, not written with a truncated
+    //length that loses the entry (and risks the ones after it) on load.
+    //A name/id of exactly 255 bytes still fits and must round-trip.
+    const Byte emptyData[2] = { 0, 0 };
+    {
+        initSmartSwitchKey(emptyData, 2);
+        string id255(255, 'a');
+        string id300(300, 'b');
+        setAppInputMethodStatus("ok.exe", 0);
+        setAppInputMethodStatus(id255, 1);
+        setAppInputMethodStatus(id300, 1);
+        vector<Byte> blob;
+        getSmartSwitchKeySaveData(blob);
+        initSmartSwitchKey(blob.data(), (int)blob.size());
+        getAppInputMethodStatus("zz-prime.exe", 0); //prime the lookup cache with a third id
+        expectRobust("smart switch save: normal entry round-trips", getAppInputMethodStatus("ok.exe", 9) == 0);
+        expectRobust("smart switch save: 255-byte id round-trips", getAppInputMethodStatus(id255, 9) == 1);
+        expectRobust("smart switch save: 300-byte id is skipped, not corrupted", getAppInputMethodStatus(id300, 9) == -1);
+    }
+    {
+        initMacroMap(emptyData, 2);
+        string name255(255, 'c');
+        string name300(300, 'd');
+        addMacro("ok", "fine");
+        addMacro(name255, "boundary");
+        addMacro(name300, "too long");
+        addMacro("big", string(70000, 'x')); //content over the two-byte length
+        vector<Byte> blob;
+        getMacroSaveData(blob);
+        initMacroMap(blob.data(), (int)blob.size());
+        expectRobust("macro save: normal entry round-trips", hasMacro("ok"));
+        expectRobust("macro save: 255-byte name round-trips", hasMacro(name255));
+        expectRobust("macro save: 300-byte name is skipped, not corrupted", !hasMacro(name300));
+        expectRobust("macro save: over-long content is skipped, not corrupted", !hasMacro("big"));
+    }
+}
+
 //EngineTests --render: for each word read, print it and what Telex makes of it (tools/make_mixed_words.py uses this)
 static int renderWords() {
     vInputType = vTelex;
@@ -2973,6 +3083,10 @@ int main(int argc, char** argv) {
     testVersionInfo();
     testParserRobustness();
     testParserTruncation();
+    testQuickEndConsonant();
+    testCodeTableInvariants();
+    testMixedWordsParser();
+    testSaveDataLimits();
     printf("%d/%d engine tests passed\n", total - failures, total);
     return failures == 0 ? 0 : 1;
 }

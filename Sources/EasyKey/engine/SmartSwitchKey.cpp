@@ -47,17 +47,25 @@ void initSmartSwitchKey(const Byte* pData, const int& size) {
 
 void getSmartSwitchKeySaveData(vector<Byte>& outData) {
     outData.clear();
-    Uint16 count = (Uint16)_smartSwitchKeyData.size();
+    //build the entries first: the count must be the number of entries that
+    //actually follow, and an entry whose id does not fit the one-byte length
+    //is skipped instead of truncating the length and corrupting every entry
+    //after it (finding F7)
+    vector<Byte> body;
+    Uint16 count = 0;
+    for (std::map<string, Int8>::iterator it = _smartSwitchKeyData.begin(); it != _smartSwitchKeyData.end() && count < 0xFFFF; ++it) {
+        if (it->first.length() > 0xFF)
+            continue;
+        body.push_back((Byte)it->first.length());
+        for (int j = 0; j < it->first.length(); j++) {
+            body.push_back(it->first[j]);
+        }
+        body.push_back(it->second);
+        count++;
+    }
     outData.push_back((Byte)count);
     outData.push_back((Byte)(count>>8));
-    
-    for (std::map<string, Int8>::iterator it = _smartSwitchKeyData.begin(); it != _smartSwitchKeyData.end(); ++it) {
-        outData.push_back((Byte)it->first.length());
-        for (int j = 0; j < it->first.length(); j++) {
-            outData.push_back(it->first[j]);
-        }
-        outData.push_back(it->second);
-    }
+    outData.insert(outData.end(), body.begin(), body.end());
 }
 
 int getAppInputMethodStatus(const string& bundleId, const int& currentInputMethod) {
