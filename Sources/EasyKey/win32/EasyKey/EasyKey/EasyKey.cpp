@@ -115,9 +115,10 @@ static vector<Byte> savedSmartSwitchKeyData; ////use for smart switch key
 
 static bool _hasJustUsedHotKey = false;
 //game mode, see isGameApp
-static constexpr uint64_t GAME_BINDING_TTL_MS = 5000;
+static constexpr uint64_t GAME_ARMED_TTL_MS = 10 * 60 * 1000; // 10 minutes for armed candidate bindings only
 static HWND _gameHwnd = NULL;
 static DWORD _gamePid = 0;
+static bool _gameConfirmed = false;
 static uint64_t _lastGameForegroundTick = 0;
 static vector<string> _gameApps;
 static bool _inGame = false;   //the foreground app is in game mode
@@ -139,8 +140,12 @@ LRESULT CALLBACK mouseHookProcess(int nCode, WPARAM wParam, LPARAM lParam);
 VOID CALLBACK winEventProcCallback(HWINEVENTHOOK hWinEventHook, DWORD dwEvent, HWND hwnd, LONG idObject, LONG idChild, DWORD dwEventThread, DWORD dwmsEventTime);
 static void watchRawKeyboard();
 static void syncModifierMask();
+static bool SetModifierMask(const Uint16& vkCode);
+static bool UnsetModifierMask(const Uint16& vkCode);
+static void enterGameState();
+static void leaveGameState();
 static void clearGameBinding();
-static void bindGameWindow(HWND hwnd);
+static void bindGameWindow(HWND hwnd, bool confirmed);
 
 void EasyKeyFree() {
 	stopPasswordProbeWorker();
@@ -330,7 +335,36 @@ bool isGameApp(const string& exe) {
 	}) != _gameApps.end();
 }
 
-void setGameApp(const string& exe, const bool& on) {
+struct FindGameWindowCtx {
+	const string* targetExe = nullptr;
+	DWORD selfPid = 0;
+	HWND found = NULL;
+};
+
+static BOOL CALLBACK findGameWindowEnumProc(HWND hwnd, LPARAM lParam) {
+	if (!IsWindowVisible(hwnd) || IsIconic(hwnd))
+		return TRUE;
+	FindGameWindowCtx* ctx = reinterpret_cast<FindGameWindowCtx*>(lParam);
+	DWORD pid = 0;
+	GetWindowThreadProcessId(hwnd, &pid);
+	if (!pid || pid == ctx->selfPid)
+		return TRUE;
+	if (isSameExe(exeNameOfWindow(hwnd), *ctx->targetExe)) {
+		ctx->found = hwnd;
+		return FALSE;
+	}
+	return TRUE;
+}
+
+static HWND findRunningWindowForExe(const string& exe) {
+	if (exe.empty())
+		return NULL;
+	FindGameWindowCtx ctx{ &exe, GetCurrentProcessId(), NULL };
+	EnumWindows(findGameWindowEnumProc, reinterpret_cast<LPARAM>(&ctx));
+	return ctx.found;
+}
+
+void setGameApp(const string& exe, const bool& on, HWND candidateHwnd) {
 	if (exe.empty() || exe.length() > MAX_PATH)
 		return;
 	for (char ch : exe) {
@@ -348,12 +382,33 @@ void setGameApp(const string& exe, const bool& on) {
 	EasyKeyHelper::setRegBinary(_T("gameApps"), (BYTE*)list.data(), (int)list.size());
 	if (on) {
 		HWND fg = GetForegroundWindow();
-		if (fg && isGameApp(exeNameOfWindow(fg))) {
-			bindGameWindow(fg);
+		if (fg && isSameExe(exeNameOfWindow(fg), exe)) {
+			bindGameWindow(fg, true);
 			return;
 		}
+		if (candidateHwnd && IsWindow(candidateHwnd)) {
+			bindGameWindow(candidateHwnd, false);
+			return;
+		}
+		HWND lastFg = GameCandidateFinder::getLastRealForeground();
+		if (lastFg && IsWindow(lastFg) && isSameExe(exeNameOfWindow(lastFg), exe)) {
+			bindGameWindow(lastFg, false);
+			return;
+		}
+		HWND found = findRunningWindowForExe(exe);
+		if (found) {
+			bindGameWindow(found, false);
+			return;
+		}
+		if (_gameHwnd != NULL && IsWindow(_gameHwnd) && isGameApp(exeNameOfWindow(_gameHwnd))) {
+			return;
+		}
+		clearGameBinding();
+		return;
 	}
-	clearGameBinding();
+	if (_gameHwnd != NULL && (!IsWindow(_gameHwnd) || !isGameApp(exeNameOfWindow(_gameHwnd)))) {
+		clearGameBinding();
+	}
 }
 
 bool isPasswordFieldActive() {
@@ -1003,38 +1058,79 @@ void exitGameChat() {
 	}
 }
 
-static void clearGameBinding() {
-	_gameHwnd = NULL;
-	_gamePid = 0;
-	_lastGameForegroundTick = 0;
-	_inGame = false;
-	exitGameChat();
+static void resetModifierState() {
+	syncModifierMask();
+	_lastFlag = 0;
+	_isFlagKey = false;
+	_hasJustUsedHotKey = false;
+	_keycode = 0;
 }
 
-static void bindGameWindow(HWND hwnd) {
+static void updateModifierMaskOnly(WPARAM wParam) {
+	if (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN) {
+		SetModifierMask((Uint16)keyboardData->vkCode);
+		if (keyboardData->vkCode == VK_ESCAPE)
+			_escapeRestored = false;
+	} else if (wParam == WM_KEYUP || wParam == WM_SYSKEYUP) {
+		UnsetModifierMask((Uint16)keyboardData->vkCode);
+		if (keyboardData->vkCode == VK_ESCAPE)
+			_escapeRestored = false;
+	}
+}
+
+static void enterGameState() {
+	_inGame = true;
+	exitGameChat();
+	resetModifierState();
+	startNewSession();
+	vStartSentence();
+	if (IS_DOUBLE_CODE(vCodeTable)) {
+		_syncKey.clear();
+	}
+}
+
+static void leaveGameState() {
+	if (!_inGame)
+		return;
+	exitGameChat();
+	_inGame = false;
+	resetModifierState();
+	startNewSession();
+	vStartSentence();
+	if (IS_DOUBLE_CODE(vCodeTable)) {
+		_syncKey.clear();
+	}
+}
+
+static void clearGameBinding() {
+	leaveGameState();
+	_gameHwnd = NULL;
+	_gamePid = 0;
+	_gameConfirmed = false;
+	_lastGameForegroundTick = 0;
+}
+
+static void bindGameWindow(HWND hwnd, bool confirmed) {
 	if (!hwnd || !IsWindow(hwnd))
 		return;
 	DWORD pid = 0;
 	GetWindowThreadProcessId(hwnd, &pid);
-	if (!pid)
+	if (!pid || pid == GetCurrentProcessId())
 		return;
 	_gameHwnd = hwnd;
 	_gamePid = pid;
+	_gameConfirmed = confirmed;
 	_lastGameForegroundTick = GetTickCount64();
 	HWND fg = GetForegroundWindow();
 	if (fg == hwnd) {
-		_inGame = true;
-		exitGameChat();
-		startNewSession();
-		vStartSentence();
+		_gameConfirmed = true;
+		enterGameState();
 	} else {
-		// Arm binding without enabling _inGame yet
-		_inGame = false;
+		if (_inGame)
+			leaveGameState();
+		else
+			_inGame = false;
 	}
-}
-
-static inline bool isGameBindingAlive(uint64_t now) {
-	return _gameHwnd != NULL && (now >= _lastGameForegroundTick) && ((now - _lastGameForegroundTick) < GAME_BINDING_TTL_MS);
 }
 
 void saveSmartSwitchKeyData() {
@@ -1547,76 +1643,52 @@ LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 		return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
 	}
 
-	//fast-path game window binding check
+	//fast-path game window binding check (confirmed bindings persist for the lifetime of the game window;
+	//only unconfirmed armed bindings expire after GAME_ARMED_TTL_MS)
 	HWND fg = NULL;
-	if (isGameBindingAlive(nowTick)) {
-		fg = GetForegroundWindow();
-		if (fg == _gameHwnd) {
-			if (!_inGame) {
-				DWORD pid = 0;
-				GetWindowThreadProcessId(fg, &pid);
-				if (pid == _gamePid && IsWindow(fg)) {
-					_inGame = true;
-					_lastGameForegroundTick = nowTick;
-					exitGameChat();
-					startNewSession();
-					vStartSentence();
-				} else {
-					clearGameBinding();
-				}
-			} else if (!IsWindow(_gameHwnd)) {
-				clearGameBinding();
-			} else {
-				_lastGameForegroundTick = nowTick;
-			}
+	if (_gameHwnd != NULL) {
+		if (!IsWindow(_gameHwnd)) {
+			clearGameBinding();
+		} else if (!_gameConfirmed && (nowTick < _lastGameForegroundTick || (nowTick - _lastGameForegroundTick) >= GAME_ARMED_TTL_MS)) {
+			clearGameBinding();
 		} else {
-			if (_inGame) {
-				exitGameChat();
-				_inGame = false;
+			fg = GetForegroundWindow();
+			if (fg == _gameHwnd) {
+				if (!_gameConfirmed || !_inGame) {
+					DWORD pid = 0;
+					GetWindowThreadProcessId(fg, &pid);
+					if (pid == _gamePid && IsWindow(fg)) {
+						_gameConfirmed = true;
+						if (!_inGame)
+							enterGameState();
+						_lastGameForegroundTick = nowTick;
+					} else {
+						clearGameBinding();
+						fg = NULL;
+					}
+				} else {
+					_lastGameForegroundTick = nowTick;
+				}
+			} else {
+				if (_inGame) {
+					leaveGameState();
+				}
 			}
 		}
-	} else if (_gameHwnd != NULL) {
-		clearGameBinding();
 	}
 
-	//ignore if IME pad is open when typing Japanese/Chinese...
-	HWND hWnd = (fg != NULL) ? fg : GetForegroundWindow();
-	DWORD_PTR isImeON = 0;
-	DWORD foregroundProcess = 0;
-	GetWindowThreadProcessId(hWnd, &foregroundProcess);
-	//EasyKey's own windows (the shortcut list) take Vietnamese and never an IME
-	if (foregroundProcess != GetCurrentProcessId()) {
-		HWND hIME = ImmGetDefaultIMEWnd(hWnd);
-		//don't block the hook on a hung window, Windows removes hooks that exceed LowLevelHooksTimeout
-		SendMessageTimeout(hIME, WM_IME_CONTROL, IMC_GETOPENSTATUS, 0, SMTO_ABORTIFHUNG, 50, &isImeON);
-	}
-	if (vDebugKeyLog) {
-		writeDebugKeyLog(wParam, isImeON);
-	}
-	if (isImeON) {
-		return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
-	}
-	
-	//check modifier key
-	if (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN) {
-		//LOG(L"Key down: %d\n", keyboardData->vkCode);
-		SetModifierMask((Uint16)keyboardData->vkCode);
-		if (keyboardData->vkCode == VK_ESCAPE)
-			_escapeRestored = false;
-	} else if (wParam == WM_KEYUP || wParam == WM_SYSKEYUP) {
-		//LOG(L"Key up: %d\n", keyboardData->vkCode);
-		UnsetModifierMask((Uint16)keyboardData->vkCode);
-		if (keyboardData->vkCode == VK_ESCAPE && _escapeRestored) {
-			_escapeRestored = false;
-			return -1;
+	//game mode: keys go straight to the game (skills on Q, W, E, R, Alt+W...) until Enter opens the chat;
+	//Enter (send) or Esc (close) ends the chat. All key-up events and modifier combinations in game mode
+	//bypass hotkey/language-switch evaluation completely.
+	if (_inGame) {
+		updateModifierMaskOnly(wParam);
+		_lastFlag = 0;
+		_hasJustUsedHotKey = false;
+		if (wParam != WM_KEYDOWN && wParam != WM_SYSKEYDOWN) {
+			return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
 		}
-	}
-	if (!_isFlagKey && wParam != WM_KEYUP && wParam != WM_SYSKEYUP)
-		_keycode = (Uint16)keyboardData->vkCode;
-
-	//game mode: keys go straight to the game (skills on Q, W, E, R...) until Enter opens the chat;
-	//Enter (send) or Esc (close) ends the chat
-	if (_inGame && (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN)) {
+		if (!_isFlagKey)
+			_keycode = (Uint16)keyboardData->vkCode;
 		if ((_keycode == VK_RETURN || _keycode == VK_ESCAPE) && !(_flag & (MASK_ALT | MASK_CONTROL))) { //not Alt + Enter
 			if (_keycode == VK_RETURN) {
 				if (_gameChat)
@@ -1658,6 +1730,45 @@ LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 		// Model W: game chat is raw by default without mutating normal app language
 		return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
 	}
+
+	//ignore if IME pad is open when typing Japanese/Chinese...
+	HWND hWnd = (fg != NULL) ? fg : GetForegroundWindow();
+	DWORD_PTR isImeON = 0;
+	DWORD foregroundProcess = 0;
+	GetWindowThreadProcessId(hWnd, &foregroundProcess);
+	//EasyKey's own windows (the shortcut list) take Vietnamese and never an IME
+	if (foregroundProcess != GetCurrentProcessId()) {
+		HWND hIME = ImmGetDefaultIMEWnd(hWnd);
+		//don't block the hook on a hung window, Windows removes hooks that exceed LowLevelHooksTimeout
+		SendMessageTimeout(hIME, WM_IME_CONTROL, IMC_GETOPENSTATUS, 0, SMTO_ABORTIFHUNG, 50, &isImeON);
+	}
+	if (vDebugKeyLog) {
+		writeDebugKeyLog(wParam, isImeON);
+	}
+	if (isImeON) {
+		return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
+	}
+
+	//check modifier key
+	if (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN) {
+		//LOG(L"Key down: %d\n", keyboardData->vkCode);
+		SetModifierMask((Uint16)keyboardData->vkCode);
+		if (keyboardData->vkCode == VK_ESCAPE)
+			_escapeRestored = false;
+	} else if (wParam == WM_KEYUP || wParam == WM_SYSKEYUP) {
+		//LOG(L"Key up: %d\n", keyboardData->vkCode);
+		UnsetModifierMask((Uint16)keyboardData->vkCode);
+		if (_flag == 0 && !_isFlagKey) {
+			_lastFlag = 0;
+			_hasJustUsedHotKey = false;
+		}
+		if (keyboardData->vkCode == VK_ESCAPE && _escapeRestored) {
+			_escapeRestored = false;
+			return -1;
+		}
+	}
+	if (!_isFlagKey && wParam != WM_KEYUP && wParam != WM_SYSKEYUP)
+		_keycode = (Uint16)keyboardData->vkCode;
 
 	//switch language shortcut; convert hotkey
 	if ((wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN) && !_isFlagKey && _keycode != 0) {
@@ -1820,6 +1931,39 @@ LRESULT CALLBACK mouseHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 	if (isPasswordRawActiveOnHookThread(nowTick))
 		return CallNextHookEx(hMouseHook, nCode, wParam, lParam);
 
+	if (wParam == WM_LBUTTONDOWN || wParam == WM_RBUTTONDOWN || wParam == WM_MBUTTONDOWN) {
+		if (_gamePid != 0 && !_inGame) {
+			if (_gameHwnd != NULL && !IsWindow(_gameHwnd)) {
+				clearGameBinding();
+			} else if (!_gameConfirmed && _lastGameForegroundTick != 0 &&
+				(nowTick < _lastGameForegroundTick || (nowTick - _lastGameForegroundTick) >= GAME_ARMED_TTL_MS)) {
+				clearGameBinding();
+			} else {
+				HWND fg = GetForegroundWindow();
+				if (fg == _gameHwnd && fg != NULL) {
+					DWORD pid = 0;
+					GetWindowThreadProcessId(fg, &pid);
+					if (pid == _gamePid && pid != GetCurrentProcessId() && IsWindow(fg) && IsWindowVisible(fg) && GetAncestor(fg, GA_ROOT) == fg) {
+						_gameConfirmed = true;
+						_lastGameForegroundTick = nowTick;
+						enterGameState();
+					} else {
+						clearGameBinding();
+					}
+				} else if (fg != NULL) {
+					DWORD pid = 0;
+					GetWindowThreadProcessId(fg, &pid);
+					if (pid == _gamePid && pid != GetCurrentProcessId() && IsWindow(fg) && IsWindowVisible(fg) && GetAncestor(fg, GA_ROOT) == fg) {
+						_gameHwnd = fg;
+						_gameConfirmed = true;
+						_lastGameForegroundTick = nowTick;
+						enterGameState();
+					}
+				}
+			}
+		}
+	}
+
 	//game mode: click to exit chat
 	if (_inGame && _gameChat) {
 		if (wParam == WM_LBUTTONDOWN || wParam == WM_RBUTTONDOWN || wParam == WM_MBUTTONDOWN) {
@@ -1859,13 +2003,14 @@ VOID CALLBACK winEventProcCallback(HWINEVENTHOOK hWinEventHook, DWORD dwEvent, H
 		vStartSentence();
 		uint64_t nowTick = GetTickCount64();
 		if (!_gameApps.empty() && hwnd && isGameApp(exeNameOfWindow(hwnd))) {
-			bindGameWindow(hwnd);
+			bindGameWindow(hwnd, true);
 			_inGame = true;
 		} else {
-			if (_inGame) {
-				_inGame = false;
+			leaveGameState();
+			if (_gameHwnd != NULL && (!IsWindow(_gameHwnd) ||
+				(!_gameConfirmed && (nowTick < _lastGameForegroundTick || (nowTick - _lastGameForegroundTick) >= GAME_ARMED_TTL_MS)))) {
+				clearGameBinding();
 			}
-			exitGameChat();
 		}
 		recordNavigationSignal(nowTick);
 		updatePasswordFieldState(hwnd, OBJID_WINDOW, CHILDID_SELF, true);

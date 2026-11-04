@@ -2,7 +2,7 @@
 
 **Tiếng Việt** · [English](DESIGN.en.md)
 
-> Phiên bản 1.0.17 · Windows 11 x64 · C++ / Win32, Direct2D, DirectWrite
+> Phiên bản 1.0.21 · Windows 11 x64 · C++ / Win32, Direct2D, DirectWrite
 
 Tài liệu này giải thích EasyKey hoạt động thế nào và mã nguồn được tổ chức ra sao. Đối tượng là người muốn đọc, sửa hoặc đóng góp mã. Hướng dẫn dùng nằm ở [README](../README.md), cách build ở [BUILD](BUILD.md), quy tắc đóng góp ở [CONTRIBUTING](../CONTRIBUTING.md).
 
@@ -112,6 +112,7 @@ Test engine ở `Sources/EasyKey/tests/EngineTests.cpp` (Telex, VNI, chuyển m�
 
 Chế độ Anh–Việt được thiết kế theo nguyên tắc an toàn hơn thông minh. Bộ gõ chỉ chuyển sang phím tiếng Anh thô khi có bằng chứng đủ mạnh, và mặc định không sửa ngược từ đã gõ trước đó.
 
+- Chế độ Anh–Việt sử dụng quy trình đánh giá phân tầng tất định (deterministic cascade): chuỗi dạng mã nguồn (`code-like`), danh sách từ tiếng Anh chọn lọc và từ viết tắt ALL-CAPS (`US`, `AI`, `ER`, `UK`, `AS`, `IS`, `IF`, `OR`...), quy tắc cụm hai từ (`xe bus`, `with us`, `me too`, `mập ú`, `một tô`, `đi ẻ`, `bánh tét`, `thịt tét`...), bảo vệ các từ tiếng Việt ngắn/khẩu ngữ có dấu (`bus` → `bú`, `us` → `ú`, `too` → `tô`, `er` → `ẻ`), điểm tần suất động và mặc định an toàn là tiếng Việt.
 - Từ tiếng Việt hợp lệ có dấu không bị thay thế chỉ vì một chuỗi tiếng Anh hiếm, viết tắt hoặc danh từ riêng tình cờ trùng phím gõ.
 - Từ điển hỗ trợ chế độ Anh–Việt được sinh ngoại tuyến từ dữ liệu tần suất ngôn ngữ và được lọc để giảm nhiễu từ các token không phải từ tiếng Anh thông dụng.
 - Việc đánh giá ngôn ngữ diễn ra theo từng từ, tại ranh giới từ, không can thiệp vào các từ đứng trước.
@@ -128,7 +129,8 @@ Giới hạn đã biết:
 
 Chế độ Game ưu tiên bảo vệ phím điều khiển. Khi đang chơi, các phím như `W`, `A`, `S`, `D`, `Q`, `E`, `R` phải đi thẳng vào game mà không bị bộ gõ tiếng Việt xen vào.
 
-- **Window-Bound Game Mode (Bảo vệ Alt+Tab)**: Ràng buộc cửa sổ theo cặp `HWND + PID` với TTL 5 giây. Khi người dùng Alt+Tab ra ngoài rồi quay lại game, sự kiện `EVENT_SYSTEM_FOREGROUND` đôi khi bị trễ hoặc nuốt bởi DWM/DirectComposition/borderless windowed mode. Cơ chế fast-path trong hook tái gắn kết trạng thái game ngay phím đầu tiên mà không phải gọi API nặng (`GetWindowThreadProcessId`, `OpenProcess`, `QueryFullProcessImageName`) trên từng phím.
+- **Window-Bound Game Mode (Bảo vệ suốt vòng đời cửa sổ & Alt+Tab)**: Ràng buộc cửa sổ game đã xác nhận theo cặp `HWND + PID` đã lưu cache. Khi đã xác nhận, liên kết được giữ hiệu lực suốt vòng đời của cửa sổ đó và chỉ bị xoá khi cửa sổ bị huỷ, PID không còn khớp, người dùng gỡ game khỏi danh sách, hoặc gắn sang cửa sổ game khác (TTL tạm thời chỉ áp dụng cho ứng viên vừa chọn từ Picker nhưng chưa từng vào foreground). Cơ chế fast-path trong hook tái gắn kết trạng thái game ngay phím đầu tiên khi Alt+Tab quay lại mà không phải gọi API nặng trên từng phím.
+- **Pass-through bàn phím & Cách ly Modifier/Hotkey**: Khi Chế độ Game đang kích hoạt, các sự kiện bàn phím đi thẳng vào game. Trạng thái phím bổ trợ (modifier) vẫn được cập nhật nội bộ nhẹ nhàng, nhưng toàn bộ phím tắt ứng dụng, chuyển ngôn ngữ và xử lý bộ gõ đều được bỏ qua; trạng thái modifier được làm sạch khi vào hoặc rời game.
 - **Bảo vệ sự cố sập game (IsWindow Guard)**: Kiểm tra tính hợp lệ của cửa sổ (`IsWindow`) trong fast-path để tự động dọn sạch binding khi game bị crash hoặc taskkill đột ngột.
 - **Cách ly hoàn toàn khỏi SmartSwitchKey**: Game Mode hoàn toàn tách biệt khỏi bộ nhớ chế độ gõ theo ứng dụng. Khi chơi game, EasyKey không ghi đè chế độ tiếng Anh/thô vào ứng dụng trước đó; khi Alt+Tab ra ngoài, các ứng dụng như Chrome, Word vẫn giữ nguyên đúng chế độ gõ đã nhớ.
 - **Khung chat mặc định dùng phím thô (Model W)**: Tránh biến các từ chat nhanh như `afk`, `gg`, `wp`, `how`, `as`, `or` thành ký tự tiếng Việt sai. Người dùng có thể chủ động chuyển chế độ gõ cho từng ứng dụng nếu có nhu cầu gõ tiếng Việt trong chat game.

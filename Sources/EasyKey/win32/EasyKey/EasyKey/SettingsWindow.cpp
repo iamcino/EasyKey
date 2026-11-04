@@ -1400,7 +1400,7 @@ void SettingsWindow::showGameApps(const Item& item) {
 				  _T("The game is running as Admin. EasyKey must run as Admin to support it.")));
 		} else {
 			bool on = !isGameApp(cand.exeBaseName);
-			setGameApp(cand.exeBaseName, on);
+			setGameApp(cand.exeBaseName, on, cand.hwnd);
 			if (on)
 				AppDelegate::getInstance()->showNotice(T(_T("Đã bật chế độ game"), _T("Game mode on")),
 					utf8ToWideString(cand.exeBaseName) + T(_T(": bấm Enter để chat tiếng Việt"), _T(": press Enter to chat in Vietnamese")));

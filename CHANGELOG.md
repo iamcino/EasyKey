@@ -2,6 +2,19 @@
 
 **Tiếng Việt** · [English](CHANGELOG.en.md)
 
+## 1.0.21 - 2026-11-04
+
+### Fixed
+- **Game Mode**: giữ liên kết cửa sổ game đã xác nhận suốt vòng đời window, tránh mất chế độ game khi người chơi chỉ di chuột lâu hoặc Alt+Tab ra ngoài rồi quay lại. Phím điều khiển như `W`, `Q`, `E`, `R`, `Alt+W` đi thẳng vào game.
+- **Game Mode**: chặn nhầm hotkey khi nhả phím `Alt` / `SysKey`, reset trạng thái modifier khi vào/ra game; `Alt+Enter` và `Ctrl+Enter` không bật/tắt nhầm chat game.
+- **Bộ gõ**: sửa trường hợp `q` + `w` tạo thành `qư`, giữ nguyên các tên riêng/công nghệ như `qwen`, đồng thời bảo toàn các từ tiếng Việt hợp lệ như `quơ`, `quở`, `quờ`, `quốc`, `quân`, `quên`, `quê`.
+
+### Added
+- **Mixed mode**: bảo vệ các từ tiếng Việt ngắn/khẩu ngữ trong ngữ cảnh trung tính, ví dụ `bus` → `bú`, `us` → `ú`, `too` → `tô`, `er` → `ẻ`.
+- **Mixed mode**: nhận diện cụm từ hai từ để giữ đúng ngữ cảnh tiếng Anh hoặc tiếng Việt, ví dụ `xe bus`, `tuyến bus`, `with us`, `contact us`, `me too`, `mập ú`, `béo ú`, `một tô`, `đi ẻ`.
+- **Mixed mode**: tôn trọng từ viết tắt ALL-CAPS như `US`, `AI`, `ER`, `UK`, `AS`, `IS`, `IF`, `OR`, trong khi dạng thường vẫn ưu tiên tiếng Việt phù hợp, ví dụ `us` → `ú`, `ai` → `ai`, `er` → `ẻ`.
+- **Mixed mode**: bổ sung danh sách tên riêng AI/dev phổ biến như `qwen`, `deepseek`, `claude`, `gemini`, `chatgpt`, `openai`, `llama`, `mistral`, `ollama`, `vllm`, `cursor`, `perplexity`, `anthropic`, `midjourney`.
+
 ## 1.0.20 - 2026-11-03
 
 ### Added
