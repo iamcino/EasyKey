@@ -18,6 +18,8 @@ See LICENSE and NOTICE.
 #include "AppDelegate.h"
 #include "GameCandidateFinder.h"
 #include "../../../app-core/GameModeState.h"
+#include "../../../app-core/PasswordState.h"
+#include "../../../app-core/ExeName.h"
 #include <algorithm>
 #include <atomic>
 #include <cstdint>
@@ -72,16 +74,7 @@ enum PasswordStateSource {
 	PW_SRC_MSAA = 3
 };
 
-inline uint32_t makePasswordStateWord(int state, int source) {
-	return (static_cast<uint32_t>(state) & 0xFF) | ((static_cast<uint32_t>(source) & 0xFF) << 8);
-}
-inline int getPasswordState(uint32_t word) {
-	return static_cast<int>(word & 0xFF);
-}
-inline int getPasswordSource(uint32_t word) {
-	return static_cast<int>((word >> 8) & 0xFF);
-}
-
+//the state word codec and the next-state decisions live in app-core/PasswordState
 static std::atomic<uint32_t> _passwordStateWord{ makePasswordStateWord(PW_NORMAL, PW_SRC_NONE) };
 
 static std::atomic<uint64_t> _probeGen{ 0 };
@@ -90,7 +83,7 @@ static std::atomic<bool> _passwordStateDirty{ false };
 static HANDLE _probeThread = NULL;
 static HANDLE _probeWakeEvent = NULL;
 static HANDLE _probeStopEvent = NULL;
-static constexpr uint64_t PW_PENDING_TIMEOUT_MS = 60;
+static constexpr uint64_t PW_PENDING_TIMEOUT_MS = kPasswordPendingTimeoutMs; //kept for the worker note below; the value lives in app-core/PasswordState
 static constexpr DWORD PW_WORKER_SHUTDOWN_TIMEOUT_MS = 200;
 static void stopPasswordProbeWorker();
 static KBDLLHOOKSTRUCT* keyboardData;
@@ -307,16 +300,6 @@ static string exeNameOfWindow(const HWND& hWnd) {
 	}
 	CloseHandle(process);
 	return name;
-}
-
-static bool isSameExe(const string& a, const string& b) {
-#ifdef _WIN32
-	return _stricmp(a.c_str(), b.c_str()) == 0;
-#else
-	return a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin(), [](char c1, char c2) {
-		return std::tolower((unsigned char)c1) == std::tolower((unsigned char)c2);
-	});
-#endif
 }
 
 const vector<string>& getGameApps() {
@@ -642,25 +625,16 @@ static void applyPasswordProbeResultFromWorker(uint64_t resultGen, bool isPass, 
 
 	uint32_t oldWord = _passwordStateWord.load(std::memory_order_acquire);
 	for (;;) {
-		int oldState = getPasswordState(oldWord);
-		if (oldState == PW_PENDING) {
-			int nextState = isPass ? PW_PASSWORD : PW_NORMAL;
-			int nextSource = isPass ? source : PW_SRC_NONE;
-			uint32_t nextWord = makePasswordStateWord(nextState, nextSource);
-			if (_passwordStateWord.compare_exchange_weak(oldWord, nextWord, std::memory_order_acq_rel)) {
-				if (nextState == PW_NORMAL) {
-					_passwordStateDirty.store(true, std::memory_order_release);
-				}
-				break;
-			}
-		} else if (oldState == PW_NORMAL && isPass) {
-			uint32_t nextWord = makePasswordStateWord(PW_PASSWORD, source);
-			if (_passwordStateWord.compare_exchange_weak(oldWord, nextWord, std::memory_order_acq_rel)) {
+		//the decision itself is pure (app-core/PasswordState); this loop only
+		//races it against the atomic word. PW_PASSWORD never reaches a change:
+		//sticky password on same focus key/generation, do not downgrade
+		PasswordTransition transition = passwordAfterProbeResult(getPasswordState(oldWord), isPass, source);
+		if (!transition.changesWord)
+			break;
+		uint32_t nextWord = makePasswordStateWord(transition.nextState, transition.nextSource);
+		if (_passwordStateWord.compare_exchange_weak(oldWord, nextWord, std::memory_order_acq_rel)) {
+			if (transition.markDirty)
 				_passwordStateDirty.store(true, std::memory_order_release);
-				break;
-			}
-		} else {
-			// oldState == PW_PASSWORD: sticky password on same focus key/generation, do not downgrade
 			break;
 		}
 	}
@@ -815,13 +789,16 @@ static bool isPasswordRawActiveOnHookThread(uint64_t nowTick) {
 	int state = getPasswordState(word);
 	if (state == PW_PENDING) {
 		uint64_t deadline = _pendingDeadlineTick.load(std::memory_order_acquire);
-		if (nowTick >= deadline) {
+		PasswordTransition transition = passwordAfterPendingTimeout(state, nowTick, deadline);
+		if (transition.changesWord) {
 			uint32_t expected = word;
-			uint32_t normalWord = makePasswordStateWord(PW_NORMAL, PW_SRC_NONE);
+			uint32_t normalWord = makePasswordStateWord(transition.nextState, transition.nextSource);
 			if (_passwordStateWord.compare_exchange_strong(expected, normalWord, std::memory_order_acq_rel)) {
-				_probeGen.fetch_add(1, std::memory_order_acq_rel);
-				_passwordStateDirty.store(true, std::memory_order_release);
-				state = PW_NORMAL;
+				if (transition.bumpGeneration)
+					_probeGen.fetch_add(1, std::memory_order_acq_rel);
+				if (transition.markDirty)
+					_passwordStateDirty.store(true, std::memory_order_release);
+				state = transition.nextState;
 			} else {
 				state = getPasswordState(_passwordStateWord.load(std::memory_order_acquire));
 			}
@@ -854,7 +831,7 @@ void applyPasswordFeatureConfigChanges() {
 		for (;;) {
 			int state = getPasswordState(oldWord);
 			int src = getPasswordSource(oldWord);
-			if (state == PW_PENDING || (state == PW_PASSWORD && src != PW_SRC_WIN32)) {
+			if (passwordResetWhenUiaDisabled(state, src)) {
 				uint32_t normalWord = makePasswordStateWord(PW_NORMAL, PW_SRC_NONE);
 				if (_passwordStateWord.compare_exchange_weak(oldWord, normalWord, std::memory_order_acq_rel)) {
 					_probeGen.fetch_add(1, std::memory_order_acq_rel);
@@ -879,18 +856,19 @@ static bool schedulePasswordProbeIfNeeded(const PasswordFocusKey& key, bool forc
 		return false;
 
 	int oldState = getPasswordState(_passwordStateWord.load(std::memory_order_acquire));
-	if (!force && oldState == PW_PASSWORD) {
+	uint64_t nowTick = GetTickCount64();
+	PasswordSchedule schedule = passwordOnProbeScheduled(oldState, force, nowTick);
+	if (!schedule.schedule) {
 		// Sticky password on same focus key: do not downgrade
 		return true;
 	}
 
-	uint64_t nowTick = GetTickCount64();
 	_lastProbeTick = nowTick;
 	_probeTargetHwnd.store((uintptr_t)key.hwnd, std::memory_order_release);
 	_probeTargetObjectId.store(key.idObject, std::memory_order_release);
 	_probeTargetChildId.store(key.idChild, std::memory_order_release);
 	_probePreDelayMs.store(preDelayMs, std::memory_order_release);
-	_pendingDeadlineTick.store(nowTick + PW_PENDING_TIMEOUT_MS, std::memory_order_release);
+	_pendingDeadlineTick.store(schedule.deadline, std::memory_order_release);
 	_probeGen.fetch_add(1, std::memory_order_acq_rel);
 
 	uint32_t pendingWord = makePasswordStateWord(PW_PENDING, PW_SRC_NONE);
