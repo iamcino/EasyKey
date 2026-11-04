@@ -1369,25 +1369,6 @@ static bool isCodeLikeToken(const vector<Uint32>& rawKeys, int inputType) {
 static char _lastRaw[16] = {0};
 static Byte _lastRawLen = 0;
 
-static bool isBanhThitPreceding(const char* raw, Byte len) {
-    if (len < 4) return false;
-    // banh, banhs, basnh, banh1
-    if ((len == 4 && raw[0] == 'b' && raw[1] == 'a' && raw[2] == 'n' && raw[3] == 'h') ||
-        (len == 5 && raw[0] == 'b' && (
-            (raw[1] == 'a' && raw[2] == 'n' && raw[3] == 'h' && (raw[4] == 's' || raw[4] == '1')) ||
-            (raw[1] == 'a' && raw[2] == 's' && raw[3] == 'n' && raw[4] == 'h')))) {
-        return true;
-    }
-    // thit, thijt, thitj, thit5
-    if ((len == 4 && raw[0] == 't' && raw[1] == 'h' && raw[2] == 'i' && raw[3] == 't') ||
-        (len == 5 && raw[0] == 't' && raw[1] == 'h' && raw[2] == 'i' && (
-            (raw[3] == 't' && (raw[4] == 'j' || raw[4] == '5')) ||
-            (raw[3] == 'j' && raw[4] == 't')))) {
-        return true;
-    }
-    return false;
-}
-
 static int mixedBias(const int& context) {
     return MIXED_CONTEXT_WEIGHT * context / 100;
 }
@@ -1406,24 +1387,37 @@ bool checkMixedEnglish(const int& handleCode, const bool& spaceFollows) {
     for (ii = 0; !changed && ii < _index; ii++)
         changed = TypingWord[ii] != _rawKeys[ii];
     string keys;
+    bool allCaps = _rawKeys.size() >= 2;
     for (ii = 0; ii < _rawKeys.size(); ii++) {
         Uint16 c = keyCodeToCharacter(_rawKeys[ii] & CHAR_MASK);
         if (c < 'a' || c > 'z') {
             keys.clear();
+            allCaps = false;
             break;
+        }
+        if (!(_rawKeys[ii] & CAPS_MASK)) {
+            allCaps = false;
         }
         keys += (char)c;
     }
-    int english, vietnamese, score = 0, language = 0; //1: English, -1: Vietnamese, 0: can't tell
+    int english = 0, vietnamese = 0, score = 0, language = 0; //1: English, -1: Vietnamese, 0: can't tell
     bool codeLike = isCodeLikeToken(_rawKeys, vInputType);
+    bool curatedEnglish = !codeLike && !keys.empty() &&
+        (isCuratedSafeEnglish(keys) || isAllCapsEnglishAcronym(keys, allCaps));
+    int phraseMatch = (!codeLike && !keys.empty() && !allCaps) ? checkMixedPhrase(_lastRaw, _lastRawLen, keys) : 0;
     bool listed = !codeLike && !keys.empty() && findMixedWord(keys, english, vietnamese), clear = false;
-    bool isBanhThitTet = (keys == "test" && isBanhThitPreceding(_lastRaw, _lastRawLen));
     if (codeLike) {
         language = 1;
         clear = false;
-    } else if (isBanhThitTet) {
-        language = -1; // keep Vietnamese "tét"
+    } else if (curatedEnglish) {
+        language = 1;
         clear = true;
+    } else if (phraseMatch != 0) {
+        language = phraseMatch;
+        clear = true;
+    } else if (changed && !tempDisableKey && !allCaps && isProtectedShortVietnamese(keys, english, vietnamese, _mixedContext)) {
+        language = -1;
+        clear = false;
     } else if (listed) {
         score = english - vietnamese - MIXED_VIETNAMESE_LEAN;
         language = score + mixedBias(_mixedContext) > 0 ? 1 : -1;
