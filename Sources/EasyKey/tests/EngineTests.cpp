@@ -2827,8 +2827,6 @@ static void testVersionInfo() {
 
 //Binary data of Macro and SmartSwitchKey (refactor plan step 3.4): empty and short
 //inputs must load nothing, and well-formed save data must load back unchanged.
-//Truncated buffers with a nonzero count are not covered yet: the current parsers
-//read past the end of those (reproduced under ASan, reported to the project owner).
 static void testParserRobustness() {
     //macro: empty, one byte and a zero count all load no macros
     {
@@ -2885,6 +2883,69 @@ static void testParserRobustness() {
     }
 }
 
+static void expectRobust(const char* name, bool ok) {
+    total++;
+    if (!ok) {
+        failures++;
+        printf("FAIL [%s]\n", name);
+    }
+}
+
+//Truncation sweep (package 1 supplement, covering the F2/F3 fixes): a valid blob cut
+//at every length must load exactly the entries that are still whole and drop the cut
+//one. Before the fixes the parsers read past the end of these buffers (ASan report).
+static void testParserTruncation() {
+    //macro blob, two entries with nonzero text and content lengths:
+    //"aa" -> "alpha" ends at byte 12, "bbb" -> "beta" at byte 22
+    {
+        const Byte emptyData[2] = { 0, 0 };
+        initMacroMap(emptyData, 2); //start from an empty macro table
+        addMacro("aa", "alpha");
+        addMacro("bbb", "beta");
+        vector<Byte> blob;
+        getMacroSaveData(blob);
+        const int firstEnd = 2 + 1 + 2 + 2 + 5; //count, text size, text, content size, content
+        const int whole = (int)blob.size();
+        expectRobust("macro blob layout is as expected", whole == firstEnd + 1 + 3 + 2 + 4);
+        for (int len = 0; len < whole; len++) {
+            initMacroMap(blob.data(), len);
+            char name[96];
+            snprintf(name, sizeof(name), "macro data cut at %d keeps whole entries only", len);
+            expectRobust(name, hasMacro("aa") == (len >= firstEnd) && !hasMacro("bbb"));
+        }
+        initMacroMap(blob.data(), whole);
+        expectRobust("macro full blob loads both entries", hasMacro("aa") && hasMacro("bbb"));
+    }
+    //smart switch blob, two entries with nonzero id lengths:
+    //"a.exe" -> 1 ends at byte 9, "bb.exe" -> 0 at byte 17
+    {
+        const Byte emptyData[2] = { 0, 0 };
+        initSmartSwitchKey(emptyData, 2); //start from an empty map
+        setAppInputMethodStatus("a.exe", 1);
+        setAppInputMethodStatus("bb.exe", 0);
+        vector<Byte> blob;
+        getSmartSwitchKeySaveData(blob);
+        const int firstEnd = 2 + 1 + 5 + 1; //count, id size, id, value
+        const int whole = (int)blob.size();
+        expectRobust("smart switch blob layout is as expected", whole == firstEnd + 1 + 6 + 1);
+        for (int len = 0; len < whole; len++) {
+            initSmartSwitchKey(blob.data(), len);
+            //prime the lookup cache with a third id: each check below then reads the map,
+            //not the value the previous check cached (the prime entry itself is inert)
+            getAppInputMethodStatus("zz-prime.exe", 0);
+            bool bbLoaded = getAppInputMethodStatus("bb.exe", 1) == 0;
+            bool aLoaded = getAppInputMethodStatus("a.exe", 0) == 1;
+            char name[96];
+            snprintf(name, sizeof(name), "smart switch data cut at %d keeps whole entries only", len);
+            expectRobust(name, aLoaded == (len >= firstEnd) && !bbLoaded);
+        }
+        //a positive size with no data at all loads nothing (the parser has a NULL guard)
+        initSmartSwitchKey(NULL, 5);
+        getAppInputMethodStatus("zz-prime.exe", 0);
+        expectRobust("smart switch NULL data loads nothing", getAppInputMethodStatus("a.exe", 0) == -1);
+    }
+}
+
 //EngineTests --render: for each word read, print it and what Telex makes of it (tools/make_mixed_words.py uses this)
 static int renderWords() {
     vInputType = vTelex;
@@ -2911,6 +2972,7 @@ int main(int argc, char** argv) {
     testPasswordField();
     testVersionInfo();
     testParserRobustness();
+    testParserTruncation();
     printf("%d/%d engine tests passed\n", total - failures, total);
     return failures == 0 ? 0 : 1;
 }
