@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="app-core">
+      <UniqueIdentifier>{7b3f9c2d-5e41-4a68-b8d0-1f2e6a94c503}</UniqueIdentifier>
+    </Filter>
     <Filter Include="engine">
       <UniqueIdentifier>{cfe37309-a1de-44eb-b4df-ae77f0895ff4}</UniqueIdentifier>
     </Filter>
@@ -29,6 +32,9 @@
     </ClInclude>
     <ClInclude Include="Resource.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\app-core\VersionInfo.h">
+      <Filter>app-core</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\engine\ConvertTool.h">
       <Filter>engine</Filter>
@@ -118,6 +124,9 @@
     </ClCompile>
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\app-core\VersionInfo.cpp">
+      <Filter>app-core</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\engine\ConvertTool.cpp">
       <Filter>engine</Filter>
