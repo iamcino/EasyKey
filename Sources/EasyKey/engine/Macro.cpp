@@ -21,7 +21,6 @@ using namespace std;
 //main data
 map<vector<Uint32>, MacroData> macroMap;
 
-extern int vCodeTable;
 //local variable
 static int c = 0;
 static bool _macroFlag = false;
@@ -51,7 +50,7 @@ static void convert(const string& str, vector<Uint32>& outData) {
             for (int j = 0; j < it->second.size(); j++) {
                 if ((Uint16)t == it->second[j]) {
                     kSign = 0;
-                    outData.push_back(_codeTable[vCodeTable][it->first][k] | CHAR_CODE_MASK);
+                    outData.push_back(_codeTable[vKeyActiveConfig().codeTable][it->first][k] | CHAR_CODE_MASK);
                     break;
                 }//end if
                 k++;
@@ -156,14 +155,14 @@ static bool modifyCaseUnicode(Uint32& code, const bool& isUpperCase=true) {
     }
     
     //for unicode character
-    for (map<Uint32, vector<Uint16>>::iterator it = _codeTable[vCodeTable].begin(); it != _codeTable[vCodeTable].end(); ++it) {
+    for (map<Uint32, vector<Uint16>>::iterator it = _codeTable[vKeyActiveConfig().codeTable].begin(); it != _codeTable[vKeyActiveConfig().codeTable].end(); ++it) {
         for (_kMacro = 0; _kMacro < it->second.size(); _kMacro++) {
             if ((Uint16)code == it->second[_kMacro]) {
                 if (_kMacro % 2 == 0 && !isUpperCase)
                     _kMacro++;
                 else if (_kMacro % 2 != 0 && isUpperCase)
                     _kMacro--;
-                code = _codeTable[vCodeTable][it->first][_kMacro] | CHAR_CODE_MASK;
+                code = _codeTable[vKeyActiveConfig().codeTable][it->first][_kMacro] | CHAR_CODE_MASK;
                 return code != _charBuff;;
             }//end if
         }
@@ -181,7 +180,7 @@ bool findMacro(vector<Uint32>& key, vector<Uint32>& macroContentCode) {
         macroContentCode = data.macroContentCode;
         return true;
     }
-    if (vAutoCapsMacro) {
+    if (vKeyActiveConfig().autoCapsMacro) {
         _macroFlag = false;
         if (key.size() > 1 && modifyCaseUnicode(key[1], false)) {
             _macroFlag = true;
