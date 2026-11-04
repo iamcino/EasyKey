@@ -44,9 +44,27 @@ jobs:
     - name: Run engine tests
       run: ctest --test-dir build/tests -C Release --output-on-failure
 
+  #the same suite under ASan/UBSan (refactor plan step 3.4): an out-of-bounds
+  #read in the binary data parsers does not crash a normal build, so only a
+  #sanitizer run turns the malformed-data tests into real evidence
+  engine-tests-sanitize:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Configure engine tests with sanitizers
+      run: cmake -S Sources/EasyKey/tests -B build/tests-sanitize -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-sanitize-recover=all" -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+
+    - name: Build engine tests
+      run: cmake --build build/tests-sanitize --config Release
+
+    - name: Run engine tests under sanitizers
+      run: ctest --test-dir build/tests-sanitize -C Release --output-on-failure
+
   build:
     runs-on: windows-latest
-    needs: engine-tests
+    needs: [engine-tests, engine-tests-sanitize]
 
     steps:
     - uses: actions/checkout@v7

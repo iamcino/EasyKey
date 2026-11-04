@@ -5,9 +5,11 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(ENGINE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../engine)
+set(APP_CORE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../app-core)
 
 add_executable(EngineTests
     EngineTests.cpp
+    ${APP_CORE_DIR}/VersionInfo.cpp
     ${ENGINE_DIR}/ConvertTool.cpp
     ${ENGINE_DIR}/Engine.cpp
     ${ENGINE_DIR}/Macro.cpp

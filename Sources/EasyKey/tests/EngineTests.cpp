@@ -21,6 +21,7 @@
 #include <vector>
 #include "../engine/Engine.h"
 #include "../engine/ConvertTool.h"
+#include "../app-core/VersionInfo.h"
 
 //engine settings, normally defined by each platform app (see Engine.h)
 int vLanguage = 1;
@@ -2763,6 +2764,188 @@ static void testPasswordField() {
     }
 }
 
+//Version logic from app-core (refactor plan step 3.1): names, packing and the version.json parse
+static void expectVersion(const char* name, bool ok) {
+    total++;
+    if (!ok) {
+        failures++;
+        printf("FAIL [%s]\n", name);
+    }
+}
+
+static void testVersionInfo() {
+    //valid names
+    expectVersion("version name 1.0.21 is valid", isVersionName("1.0.21"));
+    expectVersion("version name 0.0.0 is valid", isVersionName("0.0.0"));
+    expectVersion("version name 255.255.255 is valid", isVersionName("255.255.255"));
+    expectVersion("version name 256.0.0 is valid, major is not byte packed", isVersionName("256.0.0"));
+    //the two approved tightenings: exactly three components, and minor/patch must fit in a byte
+    expectVersion("version name 1.0 is rejected, only two components", !isVersionName("1.0"));
+    expectVersion("version name 1.0.21.4 is rejected, four components", !isVersionName("1.0.21.4"));
+    expectVersion("version name 1.0.256 is rejected, patch above 255 used to wrap to 0", !isVersionName("1.0.256"));
+    expectVersion("version name 1.256.0 is rejected, minor above 255 used to wrap to 0", !isVersionName("1.256.0"));
+    //other invalid shapes
+    expectVersion("version name empty is rejected", !isVersionName(""));
+    expectVersion("version name v1.0.21 is rejected", !isVersionName("v1.0.21"));
+    expectVersion("version name 1..2 is rejected", !isVersionName("1..2"));
+    expectVersion("version name 1.0.x is rejected", !isVersionName("1.0.x"));
+    expectVersion("version name with trailing space is rejected", !isVersionName("1.0.21 "));
+    //packing compares as numbers, not as strings
+    expectVersion("1.0.9 packs below 1.0.21", versionNumber("1.0.9") < versionNumber("1.0.21"));
+    expectVersion("1.0.21 packs below 1.1.0", versionNumber("1.0.21") < versionNumber("1.1.0"));
+    expectVersion("1.9.9 packs below 2.0.0", versionNumber("1.9.9") < versionNumber("2.0.0"));
+    expectVersion("1.0.21 packs as 0x010015", versionNumber("1.0.21") == 0x010015);
+    expectVersion("invalid names pack as 0", versionNumber("1.0.256") == 0 && versionNumber("1.0") == 0);
+    //the other packing in the app (EasyKeyHelper::getVersionNumber: major | minor << 8 | patch << 16)
+    //must agree with versionNumber after the byte swap Updater::check applies
+    {
+        auto helperNumber = [](uint32_t major, uint32_t minor, uint32_t patch) {
+            return major | (minor << 8) | (patch << 16);
+        };
+        auto swapped = [](uint32_t h) { return ((h & 0xFF) << 16) | (h & 0xFF00) | ((h >> 16) & 0xFF); };
+        expectVersion("helper packing of 1.0.21 agrees with versionNumber", swapped(helperNumber(1, 0, 21)) == versionNumber("1.0.21"));
+        expectVersion("helper packing of 2.3.255 agrees with versionNumber", swapped(helperNumber(2, 3, 255)) == versionNumber("2.3.255"));
+    }
+    //the version.json parse, anchored at latestWinVersion like Updater::check
+    {
+        string version;
+        expectVersion("parse reads the real version.json shape",
+            parseLatestVersionName("{\n\t\"latestWinVersion\": {\n\t\t\"versionName\": \"1.0.21\",\n\t\t\"versionCode\": 22\n\t}\n}", version) && version == "1.0.21");
+        expectVersion("parse ignores a versionName of an earlier block",
+            parseLatestVersionName("{\"other\": {\"versionName\": \"9.9.9\"}, \"latestWinVersion\": {\"versionName\": \"1.0.21\"}}", version) && version == "1.0.21");
+        expectVersion("parse fails without latestWinVersion",
+            !parseLatestVersionName("{\"other\": {\"versionName\": \"9.9.9\"}}", version));
+        expectVersion("parse fails when latestWinVersion has no versionName",
+            !parseLatestVersionName("{\"latestWinVersion\": {\"versionCode\": 22}}", version));
+        expectVersion("parse fails on an invalid versionName",
+            !parseLatestVersionName("{\"latestWinVersion\": {\"versionName\": \"1.0\"}}", version));
+        expectVersion("parse fails on truncated json",
+            !parseLatestVersionName("{\"latestWinVersion\": {\"versionName\": \"1.0.2", version));
+        expectVersion("parse fails on empty text", !parseLatestVersionName("", version));
+    }
+}
+
+//Binary data of Macro and SmartSwitchKey (refactor plan step 3.4): empty and short
+//inputs must load nothing, and well-formed save data must load back unchanged.
+static void testParserRobustness() {
+    //macro: empty, one byte and a zero count all load no macros
+    {
+        total++;
+        const Byte tiny[2] = { 0, 0 };
+        initMacroMap(tiny, 0);
+        initMacroMap(tiny, 1);
+        initMacroMap(tiny, 2);
+        vector<vector<Uint32>> keys;
+        vector<string> texts, contents;
+        getAllMacro(keys, texts, contents);
+        if (!texts.empty()) {
+            failures++;
+            printf("FAIL [macro empty data must load no macros]\n");
+        }
+    }
+    //macro: save data loads back with the same entries
+    {
+        total++;
+        addMacro("zzr1", "round trip one");
+        addMacro("zzr2", "round trip two");
+        vector<Byte> saved;
+        getMacroSaveData(saved);
+        initMacroMap(saved.data(), (int)saved.size());
+        if (!hasMacro("zzr1") || !hasMacro("zzr2")) {
+            failures++;
+            printf("FAIL [macro save data must load back]\n");
+        }
+    }
+    //smart switch key: null, short and zero-count data know no app
+    {
+        total++;
+        const Byte tiny[2] = { 0, 0 };
+        initSmartSwitchKey(NULL, 0);
+        initSmartSwitchKey(tiny, 1);
+        initSmartSwitchKey(tiny, 2);
+        if (getAppInputMethodStatus("zz-none.exe", 1) != -1) {
+            failures++;
+            printf("FAIL [smart switch empty data must know no app]\n");
+        }
+    }
+    //smart switch key: save data loads back with the same entries
+    {
+        total++;
+        setAppInputMethodStatus("zz-a.exe", 1);
+        setAppInputMethodStatus("zz-b.exe", 0);
+        vector<Byte> saved;
+        getSmartSwitchKeySaveData(saved);
+        initSmartSwitchKey(saved.data(), (int)saved.size());
+        if (getAppInputMethodStatus("zz-a.exe", 0) != 1 || getAppInputMethodStatus("zz-b.exe", 1) != 0) {
+            failures++;
+            printf("FAIL [smart switch save data must load back]\n");
+        }
+    }
+}
+
+static void expectRobust(const char* name, bool ok) {
+    total++;
+    if (!ok) {
+        failures++;
+        printf("FAIL [%s]\n", name);
+    }
+}
+
+//Truncation sweep (package 1 supplement, covering the F2/F3 fixes): a valid blob cut
+//at every length must load exactly the entries that are still whole and drop the cut
+//one. Before the fixes the parsers read past the end of these buffers (ASan report).
+static void testParserTruncation() {
+    //macro blob, two entries with nonzero text and content lengths:
+    //"aa" -> "alpha" ends at byte 12, "bbb" -> "beta" at byte 22
+    {
+        const Byte emptyData[2] = { 0, 0 };
+        initMacroMap(emptyData, 2); //start from an empty macro table
+        addMacro("aa", "alpha");
+        addMacro("bbb", "beta");
+        vector<Byte> blob;
+        getMacroSaveData(blob);
+        const int firstEnd = 2 + 1 + 2 + 2 + 5; //count, text size, text, content size, content
+        const int whole = (int)blob.size();
+        expectRobust("macro blob layout is as expected", whole == firstEnd + 1 + 3 + 2 + 4);
+        for (int len = 0; len < whole; len++) {
+            initMacroMap(blob.data(), len);
+            char name[96];
+            snprintf(name, sizeof(name), "macro data cut at %d keeps whole entries only", len);
+            expectRobust(name, hasMacro("aa") == (len >= firstEnd) && !hasMacro("bbb"));
+        }
+        initMacroMap(blob.data(), whole);
+        expectRobust("macro full blob loads both entries", hasMacro("aa") && hasMacro("bbb"));
+    }
+    //smart switch blob, two entries with nonzero id lengths:
+    //"a.exe" -> 1 ends at byte 9, "bb.exe" -> 0 at byte 17
+    {
+        const Byte emptyData[2] = { 0, 0 };
+        initSmartSwitchKey(emptyData, 2); //start from an empty map
+        setAppInputMethodStatus("a.exe", 1);
+        setAppInputMethodStatus("bb.exe", 0);
+        vector<Byte> blob;
+        getSmartSwitchKeySaveData(blob);
+        const int firstEnd = 2 + 1 + 5 + 1; //count, id size, id, value
+        const int whole = (int)blob.size();
+        expectRobust("smart switch blob layout is as expected", whole == firstEnd + 1 + 6 + 1);
+        for (int len = 0; len < whole; len++) {
+            initSmartSwitchKey(blob.data(), len);
+            //prime the lookup cache with a third id: each check below then reads the map,
+            //not the value the previous check cached (the prime entry itself is inert)
+            getAppInputMethodStatus("zz-prime.exe", 0);
+            bool bbLoaded = getAppInputMethodStatus("bb.exe", 1) == 0;
+            bool aLoaded = getAppInputMethodStatus("a.exe", 0) == 1;
+            char name[96];
+            snprintf(name, sizeof(name), "smart switch data cut at %d keeps whole entries only", len);
+            expectRobust(name, aLoaded == (len >= firstEnd) && !bbLoaded);
+        }
+        //a positive size with no data at all loads nothing (the parser has a NULL guard)
+        initSmartSwitchKey(NULL, 5);
+        getAppInputMethodStatus("zz-prime.exe", 0);
+        expectRobust("smart switch NULL data loads nothing", getAppInputMethodStatus("a.exe", 0) == -1);
+    }
+}
+
 //EngineTests --render: for each word read, print it and what Telex makes of it (tools/make_mixed_words.py uses this)
 static int renderWords() {
     vInputType = vTelex;
@@ -2787,6 +2970,9 @@ int main(int argc, char** argv) {
     testMacroFileIO();
     testGameMode();
     testPasswordField();
+    testVersionInfo();
+    testParserRobustness();
+    testParserTruncation();
     printf("%d/%d engine tests passed\n", total - failures, total);
     return failures == 0 ? 0 : 1;
 }

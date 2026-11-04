@@ -31,7 +31,13 @@ void initSmartSwitchKey(const Byte* pData, const int& size) {
     Uint8 bundleIdSize;
     Uint8 value;
     for (int i = 0; i < count; i++) {
+        //corrupt or truncated data: keep the entries that are still whole,
+        //drop the cut one and stop (found by the step 3.4 sanitizer sweep)
+        if ((int)cursor + 1 > size)
+            break;
         bundleIdSize = pData[cursor++];
+        if ((int)cursor + bundleIdSize + 1 > size)
+            break;
         string bundleId((char*)pData + cursor, bundleIdSize);
         cursor += bundleIdSize;
         value = pData[cursor++];

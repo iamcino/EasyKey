@@ -13,6 +13,7 @@ the MIT license, see LICENSES/MIT.txt.
 #include <winhttp.h>
 #include <bcrypt.h>
 #include "Updater.h"
+#include "../../../app-core/VersionInfo.h"
 #include "AppDelegate.h"
 #include "EasyKeyManager.h"
 #include "MessageWindow.h"
@@ -88,38 +89,14 @@ static string sha256Hex(const string& data) {
 	return hex;
 }
 
-//"1.2.3" as 0x010203, so versions compare as numbers
-static DWORD versionNumber(const string& version) {
-	int major = 0, minor = 0, patch = 0;
-	sscanf_s(version.c_str(), "%d.%d.%d", &major, &minor, &patch);
-	return ((DWORD)major << 16) | ((DWORD)(minor & 0xFF) << 8) | (DWORD)(patch & 0xFF);
-}
-
-static bool isVersionName(const string& version) {
-	if (version.empty() || version.size() > 16)
-		return false;
-	for (char c : version) {
-		if (!(c == '.' || (c >= '0' && c <= '9')))
-			return false;
-	}
-	return true;
-}
-
+//version names, their packed numbers and the version.json parse live in
+//app-core/VersionInfo.cpp, where the test suite can reach them
 bool Updater::check(string& newVersion, bool& failed) {
 	string data;
 	failed = true;
 	if (!httpGet(VERSION_URL, data))
 		return false;
-	//"latestWinVersion": { "versionName": "1.0.1", ... }
-	size_t pos = data.find("\"latestWinVersion\"");
-	pos = pos == string::npos ? pos : data.find("\"versionName\"", pos);
-	pos = pos == string::npos ? pos : data.find(':', pos);
-	pos = pos == string::npos ? pos : data.find('"', pos);
-	size_t end = pos == string::npos ? pos : data.find('"', pos + 1);
-	if (end == string::npos)
-		return false;
-	newVersion = data.substr(pos + 1, end - pos - 1);
-	if (!isVersionName(newVersion))
+	if (!parseLatestVersionName(data, newVersion))
 		return false;
 	failed = false;
 

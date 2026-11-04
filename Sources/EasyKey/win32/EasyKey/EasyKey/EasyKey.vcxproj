@@ -92,6 +92,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\..\app-core\VersionInfo.h" />
     <ClInclude Include="..\..\..\engine\ConvertTool.h" />
     <ClInclude Include="..\..\..\engine\DataType.h" />
     <ClInclude Include="..\..\..\engine\Engine.h" />
@@ -124,6 +125,7 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\..\app-core\VersionInfo.cpp" />
     <ClCompile Include="..\..\..\engine\ConvertTool.cpp" />
     <ClCompile Include="..\..\..\engine\Engine.cpp" />
     <ClCompile Include="..\..\..\engine\Macro.cpp" />
