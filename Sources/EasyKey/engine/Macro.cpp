@@ -91,12 +91,20 @@ void initMacroMap(const Byte* pData, const int& size) {
     Uint8 macroTextSize;
     Uint16 macroContentSize;
     for (int i = 0; i < macroCount; i++) {
+        //corrupt or truncated data: keep the macros that are still whole,
+        //drop the cut one and stop (found by the step 3.4 sanitizer sweep)
+        if ((int)cursor + 1 > size)
+            break;
         macroTextSize = pData[cursor++];
+        if ((int)cursor + macroTextSize + 2 > size)
+            break;
         string macroText((char*)pData + cursor, macroTextSize);
         cursor += macroTextSize;
-        
+
         memcpy(&macroContentSize, pData + cursor, 2);
         cursor+=2;
+        if ((int)cursor + macroContentSize > size)
+            break;
         string macroContent((char*)pData + cursor, macroContentSize);
         cursor += macroContentSize;
         

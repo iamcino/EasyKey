@@ -2,6 +2,11 @@
 
 **Tiếng Việt** · [English](CHANGELOG.en.md)
 
+## Chưa phát hành
+
+### Fixed
+- Sửa lỗi đọc vượt bộ nhớ khi dữ liệu gõ tắt hoặc danh sách nhớ theo ứng dụng bị hỏng.
+
 ## 1.0.21 - 2026-11-04
 
 ### Fixed
