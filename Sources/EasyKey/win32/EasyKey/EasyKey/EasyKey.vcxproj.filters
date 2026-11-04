@@ -36,6 +36,9 @@
     <ClInclude Include="..\..\..\app-core\VersionInfo.h">
       <Filter>app-core</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\app-core\GameModeState.h">
+      <Filter>app-core</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\..\engine\ConvertTool.h">
       <Filter>engine</Filter>
     </ClInclude>
@@ -126,6 +129,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\app-core\VersionInfo.cpp">
+      <Filter>app-core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\app-core\GameModeState.cpp">
       <Filter>app-core</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\engine\ConvertTool.cpp">
