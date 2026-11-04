@@ -7,6 +7,7 @@
 ### Fixed
 - Sửa lỗi đọc vượt bộ nhớ khi dữ liệu gõ tắt hoặc danh sách nhớ theo ứng dụng bị hỏng.
 - Sửa lỗi treo bộ gõ khi bật gõ nhanh phụ âm cuối và gõ một từ dài chạm giới hạn bộ đệm.
+- Sửa lỗi đọc vượt bộ nhớ khi dữ liệu từ điển Anh–Việt thiếu dòng cuối và lỗi mất mục khi lưu gõ tắt hoặc danh sách nhớ theo ứng dụng có tên quá dài.
 
 ## 1.0.21 - 2026-11-04
 

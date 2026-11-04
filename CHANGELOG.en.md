@@ -7,6 +7,7 @@
 ### Fixed
 - Fixed out-of-bounds reads when macro data or the per-app remembered list is corrupted.
 - Fixed an input method crash when quick end consonant is on and a word reaches the buffer limit.
+- Fixed an out-of-bounds read when the mixed-mode word list lacks a final newline, and fixed entries with over-long names being lost when saving macros or the per-app remembered list.
 
 ## 1.0.21 - 2026-11-04
 
