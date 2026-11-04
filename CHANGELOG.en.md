@@ -2,6 +2,19 @@
 
 [Tiếng Việt](CHANGELOG.md) · **English**
 
+## 1.0.21 - 2026-11-04
+
+### Fixed
+- **Game Mode**: keep confirmed game window bindings alive for the lifetime of the window, preventing game mode from being lost after mouse-only gameplay or Alt+Tab away/return. Control keys such as `W`, `Q`, `E`, `R`, and `Alt+W` pass directly to the game.
+- **Game Mode**: prevent accidental hotkey/language switching when releasing `Alt` / SysKey modifiers, and reset modifier state when entering or leaving game mode. `Alt+Enter` and `Ctrl+Enter` no longer toggle game chat accidentally.
+- **Typing engine**: fix `q` + `w` producing invalid `qư`, preserving technical/proper names such as `qwen` while keeping valid Vietnamese words such as `quơ`, `quở`, `quờ`, `quốc`, `quân`, `quên`, and `quê` intact.
+
+### Added
+- **Mixed mode**: protect short colloquial Vietnamese words in neutral contexts, for example `bus` → `bú`, `us` → `ú`, `too` → `tô`, and `er` → `ẻ`.
+- **Mixed mode**: recognize two-word phrases to preserve the correct English or Vietnamese context, such as `xe bus`, `tuyến bus`, `with us`, `contact us`, `me too`, `mập ú`, `béo ú`, `một tô`, and `đi ẻ`.
+- **Mixed mode**: respect ALL-CAPS acronyms such as `US`, `AI`, `ER`, `UK`, `AS`, `IS`, `IF`, and `OR`, while lowercase forms still follow Vietnamese-friendly behavior, for example `us` → `ú`, `ai` → `ai`, and `er` → `ẻ`.
+- **Mixed mode**: add curated common AI/developer proper nouns such as `qwen`, `deepseek`, `claude`, `gemini`, `chatgpt`, `openai`, `llama`, `mistral`, `ollama`, `vllm`, `cursor`, `perplexity`, `anthropic`, and `midjourney`.
+
 ## 1.0.20 - 2026-11-03
 
 ### Added

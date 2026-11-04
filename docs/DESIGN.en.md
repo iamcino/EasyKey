@@ -2,7 +2,7 @@
 
 [Tiếng Việt](DESIGN.md) · **English**
 
-> Version 1.0.17 · Windows 11 x64 · C++ / Win32, Direct2D, DirectWrite
+> Version 1.0.21 · Windows 11 x64 · C++ / Win32, Direct2D, DirectWrite
 
 This document explains how EasyKey works and how its source code is organized. It is for anyone who wants to read, change or contribute to the code. How to use EasyKey is in the [README](../README.en.md), how to build it in [BUILD](BUILD.en.md), contribution rules in [CONTRIBUTING](../CONTRIBUTING.md).
 
@@ -112,6 +112,7 @@ Engine tests are in `Sources/EasyKey/tests/EngineTests.cpp` (Telex, VNI, convers
 
 Mixed mode is designed to be safe rather than clever. EasyKey only reverts to raw English keys when there is strong evidence, and it does not correct previously committed words by default.
 
+- Mixed mode uses a deterministic cascade: code-like tokens, curated English terms and ALL-CAPS acronyms (`US`, `AI`, `ER`, `UK`, `AS`, `IS`, `IF`, `OR`, ...), two-word phrase rules (`xe bus`, `with us`, `me too`, `mập ú`, `một tô`, `đi ẻ`, `bánh tét`, `thịt tét`, ...), protected short Vietnamese tokens (`bus` → `bú`, `us` → `ú`, `too` → `tô`, `er` → `ẻ`), frequency scoring, and a Vietnamese fail-safe default.
 - Valid Vietnamese words with diacritics are not replaced merely because a rare English token, acronym, or proper noun happens to match the typed keys.
 - The mixed-mode dictionary is generated offline from language frequency data and filtered to reduce noise from non-common English tokens.
 - Language decisions are made per word at word boundaries and never rewind earlier words.
@@ -128,7 +129,8 @@ Known limitations:
 
 Game Mode prioritizes protection of control keys. While playing, keys such as `W`, `A`, `S`, `D`, `Q`, `E`, and `R` must reach the game directly without Vietnamese input interference.
 
-- **Window-Bound Game Mode (Alt+Tab Protection)**: Binds to the game window via `HWND + PID` with a 5-second TTL. When users Alt+Tab out and back, `EVENT_SYSTEM_FOREGROUND` can occasionally be delayed or dropped by DWM/DirectComposition/borderless windowed mode. Fast-path in the low-level hook rebinds game state on the very first keystroke without heavy process queries (`GetWindowThreadProcessId`, `OpenProcess`, `QueryFullProcessImageName`) per key.
+- **Window-Bound Game Mode (Window-Lifetime & Alt+Tab Protection)**: Game Mode binds to a confirmed foreground game window using cached `HWND + PID`. Once confirmed, the binding remains valid for the lifetime of that window and is cleared only when the window is destroyed, the PID no longer matches, the user removes the game, or another game window is bound (temporary TTL applies only to unconfirmed candidate windows armed from the Picker). Fast-path in the low-level hook re-activates game state on the first keystroke after Alt+Tab without heavy process queries per key.
+- **Keyboard Pass-Through & Modifier/Hotkey Isolation**: While Game Mode is active, keyboard events pass through to the game. Modifier state is still updated internally, but application hotkeys, language switching, and typing-engine processing are skipped; modifier state is reset cleanly when entering or leaving Game Mode.
 - **Game Crash & Taskkill Guard (IsWindow Check)**: Validates window existence (`IsWindow`) on fast-path to immediately clean up binding if the game abruptly terminates or crashes.
 - **Complete Isolation from SmartSwitchKey**: Game Mode does not overwrite per-app input method memory. While playing, the previous app's language setting remains untouched, and switching back to apps like Chrome or Word preserves their respective input methods.
 - **Raw Input by Default in Game Chat (Model W)**: Prevents butchering fast gaming shorthand such as `afk`, `gg`, `wp`, `how`, `as`, `or`. Users can still explicitly opt in per app if Vietnamese typing is desired.
