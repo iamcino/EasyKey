@@ -108,6 +108,39 @@ static int _languageTemp = 0; //use for smart switch key
 static vector<Byte> savedSmartSwitchKeyData; ////use for smart switch key
 
 static bool _hasJustUsedHotKey = false;
+//the engine takes its settings as a vKeyConfig (engine/Engine.h); this layer
+//keeps owning the settings as globals and copies them into one persistent
+//config immediately before every engine call, so the engine always sees the
+//latest values at the moment of the event (plan point 2)
+static vKeyConfig _engineConfig;
+static const vKeyConfig& currentEngineConfig() {
+	_engineConfig.language = vLanguage;
+	_engineConfig.mixedEnglish = vMixedEnglish;
+	_engineConfig.mixedFixLast = vMixedFixLast;
+	_engineConfig.inputType = vInputType;
+	_engineConfig.freeMark = vFreeMark;
+	_engineConfig.codeTable = vCodeTable;
+	_engineConfig.switchKeyStatus = vSwitchKeyStatus;
+	_engineConfig.checkSpelling = vCheckSpelling;
+	_engineConfig.useModernOrthography = vUseModernOrthography;
+	_engineConfig.quickTelex = vQuickTelex;
+	_engineConfig.restoreIfWrongSpelling = vRestoreIfWrongSpelling;
+	_engineConfig.fixRecommendBrowser = vFixRecommendBrowser;
+	_engineConfig.useMacro = vUseMacro;
+	_engineConfig.useMacroInEnglishMode = vUseMacroInEnglishMode;
+	_engineConfig.autoCapsMacro = vAutoCapsMacro;
+	_engineConfig.useSmartSwitchKey = vUseSmartSwitchKey;
+	_engineConfig.upperCaseFirstChar = vUpperCaseFirstChar;
+	_engineConfig.allowConsonantZFWJ = vAllowConsonantZFWJ;
+	_engineConfig.quickStartConsonant = vQuickStartConsonant;
+	_engineConfig.quickEndConsonant = vQuickEndConsonant;
+	_engineConfig.rememberCode = vRememberCode;
+	_engineConfig.otherLanguage = vOtherLanguage;
+	_engineConfig.restoreOnEscape = vRestoreOnEscape;
+	_engineConfig.passwordFieldBypass = vPasswordFieldBypass;
+	return _engineConfig;
+}
+
 //game mode, see isGameApp; the binding/chat state machine itself lives in
 //app-core/GameModeState (this layer keeps the HWND mapping and the side effects)
 static vector<string> _gameApps;
@@ -1755,6 +1788,7 @@ LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 		vKeyHandleEvent(vKeyEvent::Keyboard,
 						vKeyEventState::KeyDown,
 						_keycode,
+						currentEngineConfig(),
 						(_flag & MASK_SHIFT && _flag & MASK_CAPITAL) ? 0 : (_flag & MASK_SHIFT ? 1 : (_flag & MASK_CAPITAL ? 2 : 0)),
 						OTHER_CONTROL_KEY);
 		if (pData->code == vDoNothing) { //do nothing
@@ -1878,7 +1912,7 @@ LRESULT CALLBACK mouseHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 		case WM_XBUTTONUP:
 		case WM_NCXBUTTONUP:
 			//send event signal to Engine
-			vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+			vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, currentEngineConfig());
 			if (IS_DOUBLE_CODE(vCodeTable)) { //VNI
 				_syncKey.clear();
 			}

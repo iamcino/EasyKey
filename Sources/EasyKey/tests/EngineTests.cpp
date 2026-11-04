@@ -27,30 +27,41 @@
 #include "../app-core/ExeName.h"
 #include "../app-core/VersionInfo.h"
 
-//engine settings, normally defined by each platform app (see Engine.h)
-int vLanguage = 1;
-int vMixedEnglish = 0;
-int vMixedFixLast = 0;
-int vInputType = 0;
-int vFreeMark = 0;
-int vCodeTable = 0;
-int vCheckSpelling = 1;
-int vUseModernOrthography = 1;
-int vQuickTelex = 0;
-int vSwitchKeyStatus = 0;
-int vRestoreIfWrongSpelling = 1;
-int vFixRecommendBrowser = 0;
-int vUseMacro = 0;
-int vUseMacroInEnglishMode = 0;
-int vAutoCapsMacro = 0;
-int vUseSmartSwitchKey = 0;
-int vUpperCaseFirstChar = 0;
-int vAllowConsonantZFWJ = 0;
-int vQuickStartConsonant = 0;
-int vQuickEndConsonant = 0;
-int vRememberCode = 0;
-int vOtherLanguage = 0;
-int vRestoreOnEscape = 1;
+//engine settings: the engine now takes a vKeyConfig on every vKeyHandleEvent
+//call (see Engine.h). The suite keeps one shared config, initialized with the
+//values these tests have always run with (not the app defaults), and cases
+//adjust fields on it between runs.
+static vKeyConfig& testCfg() {
+    static vKeyConfig c = [] {
+        vKeyConfig cfg;
+        cfg.language = 1;
+        cfg.mixedEnglish = 0;
+        cfg.mixedFixLast = 0;
+        cfg.inputType = 0;
+        cfg.freeMark = 0;
+        cfg.codeTable = 0;
+        cfg.checkSpelling = 1;
+        cfg.useModernOrthography = 1;
+        cfg.quickTelex = 0;
+        cfg.switchKeyStatus = 0;
+        cfg.restoreIfWrongSpelling = 1;
+        cfg.fixRecommendBrowser = 0;
+        cfg.useMacro = 0;
+        cfg.useMacroInEnglishMode = 0;
+        cfg.autoCapsMacro = 0;
+        cfg.useSmartSwitchKey = 0;
+        cfg.upperCaseFirstChar = 0;
+        cfg.allowConsonantZFWJ = 0;
+        cfg.quickStartConsonant = 0;
+        cfg.quickEndConsonant = 0;
+        cfg.rememberCode = 0;
+        cfg.otherLanguage = 0;
+        cfg.restoreOnEscape = 1;
+        cfg.passwordFieldBypass = 1;
+        return cfg;
+    }();
+    return c;
+}
 
 static vKeyHookState* pData;
 static int failures = 0;
@@ -109,14 +120,17 @@ static void sendKeyCode(wstring& text, Uint32 data) {
         text += keyCodeToChar(data);
 }
 
-static wstring typeKeys(const string& keys) {
+static wstring typeKeysWith(const string& keys, const vKeyConfig& config);
+static wstring typeKeys(const string& keys) { return typeKeysWith(keys, testCfg()); }
+
+static wstring typeKeysWith(const string& keys, const vKeyConfig& config) {
     startNewSession();
     wstring text;
     for (char c : keys) {
         Uint16 keyCode = charToKeyCode(c);
         bool isPunctuation = c == '.' || c == '?' || c == '!' || c == '@';
         bool isCaps = (c >= 'A' && c <= 'Z') || c == '?' || c == '!' || c == '@' || c == '_' || c == ':';
-        vKeyHandleEvent(vKeyEvent::Keyboard, vKeyEventState::KeyDown, keyCode, isCaps ? 1 : 0, false);
+        vKeyHandleEvent(vKeyEvent::Keyboard, vKeyEventState::KeyDown, keyCode, config, isCaps ? 1 : 0, false);
         if (pData->code == vDoNothing) {
             //the key is passed through to the application
             if (keyCode == KEY_DELETE) {
@@ -173,7 +187,7 @@ static void expectTyping(const char* inputName, const string& keys, const wstrin
 }
 
 static void testTelex() {
-    vInputType = vTelex;
+    testCfg().inputType = vTelex;
     //marks
     expectTyping("Telex", "as", L"á");
     expectTyping("Telex", "af", L"à");
@@ -228,7 +242,7 @@ static void testTelex() {
     expectTyping("Telex", "ass ", L"as ");
     expectTyping("Telex", "tesst ", L"test ");
     //capitalize the first letter after . ? !
-    vUpperCaseFirstChar = 1;
+    testCfg().upperCaseFirstChar = 1;
     expectTyping("Telex", "xin. chaof", L"xin. Chào");
     expectTyping("Telex", "xin? chaof", L"xin? Chào");
     expectTyping("Telex", "xin! chaof", L"xin! Chào");
@@ -236,11 +250,11 @@ static void testTelex() {
     vStartSentence();
     expectTyping("Telex", "xin chaof", L"Xin chào");
     vStartSentence();
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0); //the click that switched windows
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg()); //the click that switched windows
     expectTyping("Telex", "xin chaof", L"Xin chào");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0); //a click in the same window
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg()); //a click in the same window
     expectTyping("Telex", "xin chaof", L"xin chào");
-    vUpperCaseFirstChar = 0;
+    testCfg().upperCaseFirstChar = 0;
     //abbreviations with d/dd
     expectTyping("Telex abbr ddc", "ddc ", L"đc ");
     expectTyping("Telex abbr ddk", "ddk ", L"đk ");
@@ -261,293 +275,293 @@ static void testTelex() {
     expectTyping("Telex queen", "queen ", L"qu\u00ean ");
     expectTyping("Telex quee", "quee ", L"qu\u00ea ");
     // Simple Telex: qwen and qw must never produce qư
-    vInputType = vSimpleTelex1;
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    testCfg().inputType = vSimpleTelex1;
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("SimpleTelex1 qwen", "qwen ", L"qwen ");
     expectTyping("SimpleTelex1 qw", "qw ", L"qw ");
     expectTyping("SimpleTelex1 quw", "quw ", L"quw ");
     expectTyping("SimpleTelex1 quow", "quow ", L"qu\u01a1 ");
-    vInputType = vSimpleTelex2;
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    testCfg().inputType = vSimpleTelex2;
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("SimpleTelex2 qwen", "qwen ", L"qwen ");
     expectTyping("SimpleTelex2 qw", "qw ", L"qw ");
     expectTyping("SimpleTelex2 quw", "quw ", L"quw ");
     expectTyping("SimpleTelex2 quow", "quow ", L"qu\u01a1 ");
-    vInputType = vTelex;
+    testCfg().inputType = vTelex;
     //quick telex: initial pp/tt/gg/kk/qq/cc/nn convert, but non-initial only cc and nn
-    vQuickTelex = 1;
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    testCfg().quickTelex = 1;
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Quick Telex", "ppa", L"pha");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Quick Telex", "tta", L"tha");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Quick Telex", "cco", L"cho");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Quick Telex", "thicc", L"thich");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Quick Telex", "nna", L"nga");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Quick Telex", "dunn", L"dung");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Quick Telex non-initial pp", "app ", L"app ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Quick Telex non-initial tt", "attack ", L"attack ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Quick Telex non-initial gg", "egg ", L"egg ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Quick Telex abbr ddc", "ddc ", L"đc ");
     expectTyping("Quick Telex abbr ddm", "ddm ", L"đm ");
     expectTyping("Quick Telex abbr DDT", "DDT ", L"ĐT ");
     expectTyping("Quick Telex abbr DDHQG", "DDHQG ", L"ĐHQG ");
     expectTyping("Quick Telex triple p", "ppp ", L"pp ");
     expectTyping("Quick Telex triple c", "ccc ", L"cc ");
-    vQuickTelex = 0;
+    testCfg().quickTelex = 0;
 }
 
 static void testMixed() {
-    vInputType = vTelex;
+    testCfg().inputType = vTelex;
     //without the mixed mode an English word that is also a Vietnamese one gets the marks
     expectTyping("Mixed off", "this is ", L"thí í ");
-    vMixedEnglish = 1;
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0); //no words before
+    testCfg().mixedEnglish = 1;
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg()); //no words before
     expectTyping("Mixed", "this is a test ", L"this is a test ");
     expectTyping("Mixed", "This is my car.", L"This is my car.");
     expectTyping("Mixed", "different ", L"different ");
     expectTyping("Mixed", "off ", L"off ");
-    //with vMixedFixLast off (default in 1.0.13), a word does not retroactively rewrite previous words
-    vMixedFixLast = 0;
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    //with testCfg().mixedFixLast off (default in 1.0.13), a word does not retroactively rewrite previous words
+    testCfg().mixedFixLast = 0;
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed default", "There are ", L"Th\u1ec3 are ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed default", "Did you see ", L"\u0110i you see ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed default", "The car was ", L"The c\u1ea3 was ");
-    //with vMixedFixLast on, an English word settles the one before it
-    vMixedFixLast = 1;
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    //with testCfg().mixedFixLast on, an English word settles the one before it
+    testCfg().mixedFixLast = 1;
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed", "There are ", L"There are ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed", "Did you see ", L"Did you see ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed", "The car was ", L"The car was ");
-    vMixedFixLast = 0;
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    testCfg().mixedFixLast = 0;
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed", "There  are ", L"Thể  are "); //only across one space
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed", "tooi muoons test cais nayf ", L"tôi muốn test cái này ");
     expectTyping("Mixed", "tooi review car hai banr ", L"tôi review cả hai bản ");
     expectTyping("Mixed", "tooi sex ddi ", L"tôi sẽ đi ");
     expectTyping("Mixed", "taats car ", L"tất cả ");
     expectTyping("Mixed", "vieetj nam ", L"việt nam ");
     //a word only Vietnamese reads stays, also on its own
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed", "cos ", L"có ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed", "sex ", L"sẽ ");
     //code-like tokens, camelCase, snake_case, identifiers, emails
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed code-like", "user_id ", L"user_id ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed code-like", "parseJSON ", L"parseJSON ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed code-like", "EasyKeyEngine ", L"EasyKeyEngine ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed code-like", "vi_tri laf thoong soos ", L"vi_tri là thông số ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed code-like", "user@gmail.com ", L"user@gmail.com ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed code-like", "max_size ", L"max_size ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed code-like", "sort_desc ", L"sort_desc ");
     //title-case words with Shift held over first keys must NOT be treated as camelCase
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed EV title-case", "DDi ", L"\u0110i ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed EV title-case", "DDaf Nawngx ", L"\u0110\u00e0 N\u1eb5ng ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed EV title-case", "DDuwowfng ", L"\u0110\u01b0\u1eddng ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed EV title-case", "VIeejt ", L"VI\u1ec7t ");
     //collocation rules for tét vs test
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed phrase", "banhs test ", L"b\u00e1nh t\u00e9t ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed phrase", "thijt test ", L"th\u1ecbt t\u00e9t ");
     //negative tests ensuring English loanword 'test' stays 'test'
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed phrase", "dungf cho test ", L"d\u00f9ng cho test ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed phrase", "cais nayf bij test fail ", L"c\u00e1i n\u00e0y b\u1ecb test fail ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed phrase", "chayj xe test ", L"ch\u1ea1y xe test ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed phrase", "tooi chayj test ", L"t\u00f4i ch\u1ea1y test ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed phrase", "test thuwr ", L"test th\u1eed ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed phrase", "unit test ", L"unit test ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed phrase", "test case ", L"test case ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed phrase", "test ddaafu tieen ", L"test \u0111\u1ea7u ti\u00ean ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed phrase", "laafn test ddaafu ", L"l\u1ea7n test \u0111\u1ea7u ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed phrase", "test daafu ", L"test d\u1ea7u ");
     //curated whitelist words (tested with spell restore off to prove recognition from mixed dictionary)
-    vRestoreIfWrongSpelling = 0;
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    testCfg().restoreIfWrongSpelling = 0;
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed whitelist", "excited ", L"excited ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed whitelist", "explain ", L"explain ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed whitelist", "install ", L"install ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed whitelist", "software ", L"software ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed whitelist", "warning ", L"warning ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed whitelist", "merge ", L"merge ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed whitelist", "fix ", L"fix ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed whitelist", "fixed ", L"fixed ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed whitelist", "fixes ", L"fixes ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed whitelist", "fixing ", L"fixing ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed phrase", "tooi fix bug ", L"t\u00f4i fix bug ");
-    vRestoreIfWrongSpelling = 1;
-    vAllowConsonantZFWJ = 1;
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    testCfg().restoreIfWrongSpelling = 1;
+    testCfg().allowConsonantZFWJ = 1;
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed ZFWJ fix", "fix ", L"fix ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed ZFWJ fix", "tooi fix bug ", L"t\u00f4i fix bug ");
-    vAllowConsonantZFWJ = 0;
+    testCfg().allowConsonantZFWJ = 0;
     //backspace across word boundary must not eat earlier word
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Backspace across space", "dungf back <<<<<space ", L"d\u00f9ng space ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Backspace across space", "dungf back<<<<<space ", L"dungfspace ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Backspace across dot EV", "abc. <<d ", L"abcd ");
     // Vietnamese compound syllable "dả" ("dư dả", "già dả") must not be overwritten by "dar"
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed dư dả", "duw dar ", L"d\u01b0 d\u1ea3 ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed già dả", "giaf dar ", L"gi\u00e0 d\u1ea3 ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed dade", "dade ", L"dade ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed dara", "dara ", L"dara ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed darrell", "darrell ", L"darrell ");
     // English words that change under Telex must remain English in Vietnamese context
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed guard how", "tooi bieets how to do ", L"t\u00f4i bi\u1ebft how to do ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed guard now", "ngay now ", L"ngay now ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed guard see", "tooi see ", L"t\u00f4i see ");
     // Short Vietnamese protection ("bú", "ú", "tô") vs English phrase collocations ("xe bus", "with us", "me too")
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed bú standalone", "bus ", L"b\u00fa ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed em bé bú sữa", "em bes bus suwax ", L"em b\u00e9 b\u00fa s\u1eefa ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed xe bus", "xe bus ", L"xe bus ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed tuyến bus", "tuyeesn bus ", L"tuy\u1ebfn bus ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed mập ú", "maapj us ", L"m\u1eadp \u00fa ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed béo ú", "beos us ", L"b\u00e9o \u00fa ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed with us", "with us ", L"with us ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed contact us", "contact us ", L"contact us ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed us standalone -> ú", "us ", L"\u00fa ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed how standalone", "how ", L"how ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed right now", "right now ", L"right now ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed see you", "see you ", L"see you ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed me too", "me too ", L"me too ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed một tô", "mootj too ", L"m\u1ed9t t\u00f4 ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed tét đít", "tets ddits ", L"t\u00e9t \u0111\u00edt ");
     // Protected short Vietnamese "er" -> "ẻ" (colloquial euphemism)
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed er standalone -> ẻ", "er ", L"\u1ebb ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed đi ẻ", "ddi er ", L"\u0111i \u1ebb ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed er comma -> ẻ,", "er, ", L"\u1ebb, ");
     // ALL-CAPS English acronyms ("US", "AI", "ER", "UK", "AS", "IS", "IF", "OR") vs lowercase Vietnamese ("us"->"ú", "ai"->"ai", "er"->"ẻ")
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed ALL-CAPS US", "US ", L"US ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed ALL-CAPS AI", "AI ", L"AI ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed lowercase ai", "ai ", L"ai ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed ALL-CAPS ER", "ER ", L"ER ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed ALL-CAPS UK", "UK ", L"UK ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed ALL-CAPS AS", "AS ", L"AS ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed ALL-CAPS IS", "IS ", L"IS ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed ALL-CAPS IF", "IF ", L"IF ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed ALL-CAPS OR", "OR ", L"OR ");
-    // AI & tech proper nouns in Mixed mode (both with vRestoreIfWrongSpelling=1 and =0)
+    // AI & tech proper nouns in Mixed mode (both with testCfg().restoreIfWrongSpelling=1 and =0)
     for (int restoreSpell : { 1, 0 }) {
-        vRestoreIfWrongSpelling = restoreSpell;
-        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+        testCfg().restoreIfWrongSpelling = restoreSpell;
+        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
         expectTyping("Mixed AI qwen", "qwen ", L"qwen ");
-        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
         expectTyping("Mixed AI deepseek", "deepseek ", L"deepseek ");
-        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
         expectTyping("Mixed AI claude", "claude ", L"claude ");
-        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
         expectTyping("Mixed AI gemini", "gemini ", L"gemini ");
-        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
         expectTyping("Mixed AI chatgpt", "chatgpt ", L"chatgpt ");
-        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
         expectTyping("Mixed AI openai", "openai ", L"openai ");
-        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
         expectTyping("Mixed AI llama", "llama ", L"llama ");
-        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
         expectTyping("Mixed AI mistral", "mistral ", L"mistral ");
-        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
         expectTyping("Mixed AI ollama", "ollama ", L"ollama ");
-        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
         expectTyping("Mixed AI vllm", "vllm ", L"vllm ");
-        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
         expectTyping("Mixed AI cursor", "cursor ", L"cursor ");
-        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
         expectTyping("Mixed AI perplexity", "perplexity ", L"perplexity ");
-        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
         expectTyping("Mixed AI anthropic", "anthropic ", L"anthropic ");
-        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
         expectTyping("Mixed AI midjourney", "midjourney ", L"midjourney ");
-        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
         expectTyping("Mixed AI sentence", "tooi dungf qwen vaf deepseek ", L"t\u00f4i d\u00f9ng qwen v\u00e0 deepseek ");
     }
-    vRestoreIfWrongSpelling = 1;
-    vMixedEnglish = 0;
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    testCfg().restoreIfWrongSpelling = 1;
+    testCfg().mixedEnglish = 0;
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
 }
 
 static void testVNI() {
-    vInputType = vVNI;
+    testCfg().inputType = vVNI;
     expectTyping("VNI", "a1", L"á");
     expectTyping("VNI", "a2", L"à");
     expectTyping("VNI", "a3", L"ả");
@@ -572,11 +586,11 @@ static void testVNI() {
     expectTyping("VNI quo7", "quo7 ", L"qu\u01a1 ");
     expectTyping("VNI quo73", "quo73 ", L"qu\u1edf ");
     expectTyping("VNI quo72", "quo72 ", L"qu\u1edd ");
-    vMixedEnglish = 1;
+    testCfg().mixedEnglish = 1;
     expectTyping("VNI EV me5", "me5 ", L"m\u1eb9 ");
     expectTyping("VNI EV la2", "la2 ", L"l\u00e0 ");
     expectTyping("VNI EV user_id", "user_id ", L"user_id ");
-    vMixedEnglish = 0;
+    testCfg().mixedEnglish = 0;
 }
 
 static void expectConvert(const char* name, const string& input, const string& expected) {
@@ -891,7 +905,7 @@ static void testGameMode() {
     {
         total++;
         string testGameExe = "test_game_app.exe";
-        int defaultGameMethod = 0 | (vCodeTable << 1);
+        int defaultGameMethod = 0 | (testCfg().codeTable << 1);
         int status = getAppInputMethodStatus(testGameExe, defaultGameMethod);
         if (status != -1) {
             failures++;
@@ -1210,19 +1224,19 @@ static void testGameMode() {
     {
         total++;
         string normalApp = "test_browser.exe";
-        // Normal app remembers Vietnamese (vLanguage = 1)
+        // Normal app remembers Vietnamese (testCfg().language = 1)
         setAppInputMethodStatus(normalApp, 1 | (0 << 1));
         int normalStatus = getAppInputMethodStatus(normalApp, 1 | (0 << 1));
 
         // When in game, SmartSwitchKey must NOT record "game = 0 (English)"
-        // Nor should it overwrite the user's active vLanguage for normal apps
+        // Nor should it overwrite the user's active testCfg().language for normal apps
         bool inGameActive = true;
         int activeLanguage = 1; // Vietnamese in normal app
 
         // Entering game: with isolation, SmartSwitchKey is NOT invoked for game
-        // vLanguage remains 1
+        // testCfg().language remains 1
         if (inGameActive) {
-            // normal vLanguage is preserved
+            // normal testCfg().language is preserved
         }
 
         // Tabbing back to normalApp: normalApp language is retrieved intact
@@ -1263,7 +1277,7 @@ static void testGameMode() {
         uint32_t gamePid = 5001;
         sim.onWinEventForeground(gameWnd, gamePid, true, 1000);
 
-        int originalLang = vLanguage; // e.g. Vietnamese (1)
+        int originalLang = testCfg().language; // e.g. Vietnamese (1)
 
         // User presses Alt+Z (GeForce Experience or game skill) while in combat
         bool keyPassedRaw = sim.onKeyboardHookKey(gameWnd, gamePid, true, 'Z', 1200);
@@ -1279,11 +1293,11 @@ static void testGameMode() {
         bool nextW = sim.onKeyboardHookEvent(gameWnd, gamePid, true, 'W', true, false, 0, 1500);
 
         // Language must NOT have been toggled by in-game combat key or modifier release
-        bool langPreserved = (vLanguage == originalLang) && (sim.languageSwitches == 0) && (sim.lastFlag == 0);
+        bool langPreserved = (testCfg().language == originalLang) && (sim.languageSwitches == 0) && (sim.lastFlag == 0);
 
         if (!keyPassedRaw || !altDown || !wDown || !wUp || !altUp || !nextW || !langPreserved || !sim.inGame) {
             failures++;
-            printf("FAIL [hotkeys and Alt+W self-cast in combat must pass raw without mutating vLanguage]\n");
+            printf("FAIL [hotkeys and Alt+W self-cast in combat must pass raw without mutating testCfg().language]\n");
         }
     }
 
@@ -1962,8 +1976,8 @@ static void testPasswordField() {
     // Test 7: Normal -> Password resets typing session (buffer isolation)
     {
         total++;
-        vInputType = vTelex;
-        vLanguage = 1;
+        testCfg().inputType = vTelex;
+        testCfg().language = 1;
         startNewSession();
         // Type "vie" in normal field
         typeKeys("vie");
@@ -2955,10 +2969,10 @@ static void testQuickEndConsonant() {
     //the audit sweep found a crash at the typing buffer cap (finding F4).
     //Spelling is switched off so the long filler words below are not treated as
     //foreign words before the quick end check runs.
-    vInputType = vTelex;
-    vCheckSpelling = 0;
-    vRestoreIfWrongSpelling = 0;
-    vQuickEndConsonant = 1;
+    testCfg().inputType = vTelex;
+    testCfg().checkSpelling = 0;
+    testCfg().restoreIfWrongSpelling = 0;
+    testCfg().quickEndConsonant = 1;
     expectTyping("QuickEnd", "ag ", L"ang ");
     expectTyping("QuickEnd", "ah ", L"anh ");
     expectTyping("QuickEnd", "ak ", L"ach ");
@@ -2970,9 +2984,9 @@ static void testQuickEndConsonant() {
     expectTyping("QuickEnd", string(29, 'n') + "ak ", wstring(29, L'n') + L"ak ");
     //a consonant before the final key never triggers the expansion, cap or not
     expectTyping("QuickEnd", string(29, 'n') + "tg ", wstring(29, L'n') + L"tg ");
-    vQuickEndConsonant = 0;
-    vCheckSpelling = 1;
-    vRestoreIfWrongSpelling = 1;
+    testCfg().quickEndConsonant = 0;
+    testCfg().checkSpelling = 1;
+    testCfg().restoreIfWrongSpelling = 1;
 }
 
 static void testCodeTableInvariants() {
@@ -3428,9 +3442,31 @@ static void testPasswordState() {
         && !isSameExe("game.exe", "game.ex") && !isSameExe("C:\\games\\game.exe", "game.exe"));
 }
 
+static void testConfigIndependence() {
+    //plan point 2 completion case: two different configs used back to back
+    //give independent results - the setting lives only in the object handed
+    //to vKeyHandleEvent, nothing leaks through shared state
+    vKeyConfig quick = testCfg();
+    quick.checkSpelling = 0;
+    quick.restoreIfWrongSpelling = 0;
+    quick.quickEndConsonant = 1;
+    vKeyConfig plain = quick;
+    plain.quickEndConsonant = 0;
+    expectRobust("config: quick-end config expands the pair", typeKeysWith("ag ", quick) == L"ang ");
+    expectRobust("config: plain config leaves the word as typed", typeKeysWith("ag ", plain) == L"ag ");
+    expectRobust("config: the first config still applies afterwards", typeKeysWith("ag ", quick) == L"ang ");
+    //the struct defaults are the application's defaults (AppDelegate), which
+    //differ from this suite's shared config on purpose (macro/smart switch on)
+    vKeyConfig d;
+    expectRobust("config: struct defaults are the application defaults", d.language == 1
+        && d.useMacro == 1 && d.useMacroInEnglishMode == 1 && d.useSmartSwitchKey == 1
+        && d.rememberCode == 1 && d.otherLanguage == 1 && d.checkSpelling == 1
+        && d.restoreOnEscape == 1 && d.passwordFieldBypass == 1 && d.switchKeyStatus == 0x5A00025A);
+}
+
 //EngineTests --render: for each word read, print it and what Telex makes of it (tools/make_mixed_words.py uses this)
 static int renderWords() {
-    vInputType = vTelex;
+    testCfg().inputType = vTelex;
     string word;
     while (getline(cin, word)) {
         wstring text = typeKeys(word + " ");
@@ -3462,6 +3498,7 @@ int main(int argc, char** argv) {
     testGameModeState();
     testGameModeStateExtended();
     testPasswordState();
+    testConfigIndependence();
     printf("%d/%d engine tests passed\n", total - failures, total);
     return failures == 0 ? 0 : 1;
 }
