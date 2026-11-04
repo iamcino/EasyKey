@@ -10,7 +10,6 @@
 //
 
 #include "Vietnamese.h"
-#include "iostream"
 using namespace std;
 
 //unicode
