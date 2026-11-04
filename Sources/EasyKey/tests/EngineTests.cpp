@@ -2946,6 +2946,54 @@ static void testParserTruncation() {
     }
 }
 
+static void testQuickEndConsonant() {
+    //quick end consonant (g -> ng, h -> nh, k -> ch) had no test coverage at all;
+    //the audit sweep found a crash at the typing buffer cap (finding F4).
+    //Spelling is switched off so the long filler words below are not treated as
+    //foreign words before the quick end check runs.
+    vInputType = vTelex;
+    vCheckSpelling = 0;
+    vRestoreIfWrongSpelling = 0;
+    vQuickEndConsonant = 1;
+    expectTyping("QuickEnd", "ag ", L"ang ");
+    expectTyping("QuickEnd", "ah ", L"anh ");
+    expectTyping("QuickEnd", "ak ", L"ach ");
+    //one below the cap the expansion still applies
+    expectTyping("QuickEnd", string(28, 'n') + "ag ", wstring(28, L'n') + L"ang ");
+    //at the cap (31 chars = MAX_BUFF-1) the word is left as typed; before the F4
+    //fix this crashed the engine with a read of an empty map vector
+    expectTyping("QuickEnd", string(29, 'n') + "ag ", wstring(29, L'n') + L"ag ");
+    expectTyping("QuickEnd", string(29, 'n') + "ak ", wstring(29, L'n') + L"ak ");
+    //a consonant before the final key never triggers the expansion, cap or not
+    expectTyping("QuickEnd", string(29, 'n') + "tg ", wstring(29, L'n') + L"tg ");
+    vQuickEndConsonant = 0;
+    vCheckSpelling = 1;
+    vRestoreIfWrongSpelling = 1;
+}
+
+static void testCodeTableInvariants() {
+    //unchecked indexing in Macro::convert, Macro::modifyCaseUnicode and
+    //ConvertTool relies on these properties of the code table data (finding F5):
+    //every row has even length (the case flip moves the index by one within the
+    //row), and every key of the Unicode table exists in the other tables with a
+    //row at least as long (convert() reuses the index found in table 0)
+    for (int t = 0; t < 5; t++) {
+        for (const auto& row : _codeTable[t]) {
+            char name[96];
+            snprintf(name, sizeof(name), "code table %d key 0x%X row length is even", t, row.first);
+            expectRobust(name, row.second.size() % 2 == 0);
+        }
+    }
+    for (const auto& row : _codeTable[0]) {
+        for (int t = 1; t < 5; t++) {
+            auto it = _codeTable[t].find(row.first);
+            char name[96];
+            snprintf(name, sizeof(name), "code table %d key 0x%X row is at least as long as table 0", t, row.first);
+            expectRobust(name, it != _codeTable[t].end() && it->second.size() >= row.second.size());
+        }
+    }
+}
+
 //EngineTests --render: for each word read, print it and what Telex makes of it (tools/make_mixed_words.py uses this)
 static int renderWords() {
     vInputType = vTelex;
@@ -2973,6 +3021,8 @@ int main(int argc, char** argv) {
     testVersionInfo();
     testParserRobustness();
     testParserTruncation();
+    testQuickEndConsonant();
+    testCodeTableInvariants();
     printf("%d/%d engine tests passed\n", total - failures, total);
     return failures == 0 ? 0 : 1;
 }
