@@ -23,6 +23,8 @@
 #include "../engine/ConvertTool.h"
 #include "../engine/MixedWords.h"
 #include "../app-core/GameModeState.h"
+#include "../app-core/PasswordState.h"
+#include "../app-core/ExeName.h"
 #include "../app-core/VersionInfo.h"
 
 //engine settings, normally defined by each platform app (see Engine.h)
@@ -3366,6 +3368,66 @@ static void testGameModeStateExtended() {
     }
 }
 
+//Password-field state decisions (plan 3.3): state values mirror the engine's
+//enum PasswordState (0 normal, 1 password, 2 pending); sources 0 none,
+//1 Win32, 2 UIA, 3 MSAA.
+static void testPasswordState() {
+    //the word codec round-trips every state/source pair and masks to bytes
+    bool roundtrip = true;
+    for (int state = 0; state <= 2; state++)
+        for (int source = 0; source <= 3; source++) {
+            uint32_t w = makePasswordStateWord(state, source);
+            roundtrip = roundtrip && getPasswordState(w) == state && getPasswordSource(w) == source && (w >> 16) == 0;
+        }
+    expectRobust("password: state word round-trips and stays in two bytes", roundtrip
+        && makePasswordStateWord(0x100 + 1, 3) == makePasswordStateWord(1, 3));
+    {   //a probe result settles a pending state; only the not-password outcome is dirty
+        PasswordTransition pass = passwordAfterProbeResult(2, true, 2);
+        PasswordTransition fail = passwordAfterProbeResult(2, false, 2);
+        expectRobust("password: pending settles on the probe result", pass.changesWord && pass.nextState == 1
+            && pass.nextSource == 2 && !pass.markDirty
+            && fail.changesWord && fail.nextState == 0 && fail.nextSource == 0 && fail.markDirty);
+    }
+    {   //from normal, a password result upgrades (dirty); a plain result is ignored
+        PasswordTransition pass = passwordAfterProbeResult(0, true, 3);
+        PasswordTransition fail = passwordAfterProbeResult(0, false, 3);
+        expectRobust("password: normal upgrades on password only", pass.changesWord && pass.nextState == 1
+            && pass.nextSource == 3 && pass.markDirty && !fail.changesWord);
+    }
+    {   //a confirmed password state is sticky: no probe result downgrades it
+        expectRobust("password: password state never downgrades on probe results",
+            !passwordAfterProbeResult(1, true, 2).changesWord && !passwordAfterProbeResult(1, false, 2).changesWord);
+    }
+    {   //the pending timeout fires at the deadline, not before, and only from pending
+        PasswordTransition early = passwordAfterPendingTimeout(2, 1059, 1060);
+        PasswordTransition onTime = passwordAfterPendingTimeout(2, 1060, 1060);
+        expectRobust("password: pending timeout at the deadline", !early.changesWord
+            && onTime.changesWord && onTime.nextState == 0 && onTime.markDirty && onTime.bumpGeneration
+            && !passwordAfterPendingTimeout(0, 9999, 1060).changesWord
+            && !passwordAfterPendingTimeout(1, 9999, 1060).changesWord);
+    }
+    {   //scheduling: sticky password is kept unless forced; anything else goes
+        //pending with a deadline one timeout ahead of now
+        PasswordSchedule sticky = passwordOnProbeScheduled(1, false, 5000);
+        PasswordSchedule forced = passwordOnProbeScheduled(1, true, 5000);
+        PasswordSchedule normal = passwordOnProbeScheduled(0, false, 5000);
+        PasswordSchedule repending = passwordOnProbeScheduled(2, false, 5000);
+        expectRobust("password: probe scheduling and the sticky case", !sticky.schedule
+            && forced.schedule && forced.deadline == 5000 + kPasswordPendingTimeoutMs
+            && normal.schedule && normal.deadline == forced.deadline && repending.schedule);
+    }
+    {   //disabling UIA resets pending and UIA/MSAA password states, keeps Win32 ones
+        expectRobust("password: UIA-off reset rule", passwordResetWhenUiaDisabled(2, 0)
+            && passwordResetWhenUiaDisabled(1, 2) && passwordResetWhenUiaDisabled(1, 3)
+            && !passwordResetWhenUiaDisabled(1, 1) && !passwordResetWhenUiaDisabled(0, 2));
+    }
+    //exe name equality is case-insensitive and exact; callers pass base names,
+    //so a full path never equals a bare name (locked current behavior)
+    expectRobust("exe names: case-insensitive exact match", isSameExe("Game.EXE", "game.exe")
+        && isSameExe("", "") && !isSameExe("game.exe", "game2.exe")
+        && !isSameExe("game.exe", "game.ex") && !isSameExe("C:\\games\\game.exe", "game.exe"));
+}
+
 //EngineTests --render: for each word read, print it and what Telex makes of it (tools/make_mixed_words.py uses this)
 static int renderWords() {
     vInputType = vTelex;
@@ -3399,6 +3461,7 @@ int main(int argc, char** argv) {
     testSaveDataLimits();
     testGameModeState();
     testGameModeStateExtended();
+    testPasswordState();
     printf("%d/%d engine tests passed\n", total - failures, total);
     return failures == 0 ? 0 : 1;
 }
