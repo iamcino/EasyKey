@@ -328,16 +328,21 @@ static const char* const kAllCapsAcronyms[] = {
     "xml",
     "zip",
 };
-static void initMixedWords() {
-    _mixedWords.reserve(MIXED_WORD_COUNT);
-    const char* p = MIXED_WORDS;
+void parseMixedWords(const char* data, unordered_map<string, unsigned short>& out) {
+    const char* p = data;
     while (*p) {
         const char* end = p;
-        while (*end != '\n') end++;
+        while (*end && *end != '\n') end++;
+        if (!*end) break; //last line has no newline: drop it, never scan past the end (finding F6)
         if (end - p > 2)
-            _mixedWords[string(p, end - p - 2)] = (unsigned short)(((end[-2] - '0') << 8) | (end[-1] - '0'));
+            out[string(p, end - p - 2)] = (unsigned short)(((end[-2] - '0') << 8) | (end[-1] - '0'));
         p = end + 1;
     }
+}
+
+static void initMixedWords() {
+    _mixedWords.reserve(MIXED_WORD_COUNT);
+    parseMixedWords(MIXED_WORDS, _mixedWords);
 }
 
 bool findMixedWord(const string& keys, int& english, int& vietnamese) {

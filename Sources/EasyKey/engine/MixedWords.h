@@ -13,6 +13,7 @@
 
 #include <cstdint>
 #include <string>
+#include <unordered_map>
 
 /**
  * keys: the letters as typed, in lower case ("this", "sex")
@@ -20,6 +21,14 @@
  * return false when the word is not in the list
  */
 bool findMixedWord(const std::string& keys, int& english, int& vietnamese);
+
+/**
+ * Parses generated word-list data into out: one entry per line, the keys followed
+ * by the two frequency code characters. A final line without a trailing newline
+ * is dropped, never read past. Exposed so the parser can be unit tested;
+ * findMixedWord runs it on the built-in data.
+ */
+void parseMixedWords(const char* data, std::unordered_map<std::string, unsigned short>& out);
 
 /**
  * Curated AI/tech proper nouns and developer terms that should always stay English in Mixed mode.
