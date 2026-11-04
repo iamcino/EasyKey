@@ -1556,9 +1556,16 @@ bool checkQuickConsonant() {
             TypingWord[0] = _quickStartConsonant[CHR(0)][0] | (TypingWord[0] & CAPS_MASK ? CAPS_MASK : 0);
             l = 1;;
         }
-        if (vQuickEndConsonant &&
+        if (vQuickEndConsonant && _index < MAX_BUFF-1 &&
             (_index-2 >= 0 && !IS_CONSONANT(CHR(_index-2))) &&
             _quickEndConsonant.find(CHR(_index-1)) != _quickEndConsonant.end()) {
+            //the expansion needs one free slot, so it does not apply at the buffer
+            //cap (the _index < MAX_BUFF-1 condition above). The pair is read through
+            //this iterator, never through operator[] with an index recomputed after
+            //the increment below: when that increment used to be skipped at the cap,
+            //the recomputed key was the second-to-last char - a vowel, never in the
+            //map - and operator[] read element [1] of an empty vector (finding F4)
+            const vector<Uint16>& quickEndPair = _quickEndConsonant.find(CHR(_index-1))->second;
             hCode = vRestore;
             if (l == 1) {
                 hNCC++;
@@ -1566,10 +1573,9 @@ bool checkQuickConsonant() {
                 hBPC = 1;
                 hNCC = 2;
             }
-            if (_index < MAX_BUFF-1)
-                _index++;
-            TypingWord[_index-1] = _quickEndConsonant[CHR(_index-2)][1] | (TypingWord[_index-2] & CAPS_MASK ? CAPS_MASK : 0);
-            TypingWord[_index-2] = _quickEndConsonant[CHR(_index-2)][0] | (TypingWord[_index-2] & CAPS_MASK ? CAPS_MASK : 0);
+            _index++;
+            TypingWord[_index-1] = quickEndPair[1] | (TypingWord[_index-2] & CAPS_MASK ? CAPS_MASK : 0);
+            TypingWord[_index-2] = quickEndPair[0] | (TypingWord[_index-2] & CAPS_MASK ? CAPS_MASK : 0);
             
             l = 1;
         }
