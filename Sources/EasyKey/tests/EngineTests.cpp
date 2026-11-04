@@ -22,6 +22,7 @@
 #include "../engine/Engine.h"
 #include "../engine/ConvertTool.h"
 #include "../engine/MixedWords.h"
+#include "../app-core/GameModeState.h"
 #include "../app-core/VersionInfo.h"
 
 //engine settings, normally defined by each platform app (see Engine.h)
@@ -3056,6 +3057,213 @@ static void testSaveDataLimits() {
     }
 }
 
+//Game Mode state machine characterization (plan 3.2, stage 0): these cases lock
+//the behavior the Win32 layer had before the extraction, taken from the code,
+//docs/DESIGN.md and the 1.0.18-1.0.21 changelogs. Window ids and pids are
+//abstract; ticks are GetTickCount64-style milliseconds passed in.
+static GameModeState gameArmed() { //bound from the picker, never foregrounded yet
+    GameModeState s;
+    s.bind(100, 42, false, 1000, false);
+    return s;
+}
+static GameModeState gameInGame() { //bound and foregrounded
+    GameModeState s;
+    s.bind(100, 42, false, 1000, true);
+    return s;
+}
+static void testGameModeState() {
+    const uint64_t TTL = GameModeState::kArmedTtlMs;
+    {   //binding the foreground window confirms and enters at once
+        GameModeState s;
+        GameModeEffects fx = s.bind(100, 42, false, 1000, true);
+        expectRobust("game: bind foreground confirms and enters", s.confirmed && s.inGame
+            && fx.sessionReset && !fx.chatClosed && !fx.chatOpened);
+    }
+    {   //an armed binding waits, unconfirmed, with its bind tick recorded
+        GameModeState s = gameArmed();
+        expectRobust("game: armed binding waits unconfirmed", !s.confirmed && !s.inGame
+            && s.windowId == 100 && s.processId == 42 && s.lastForegroundTick == 1000);
+    }
+    {   //the first key event with the armed window in the foreground confirms it
+        GameModeState s = gameArmed();
+        GameModeState::BindingCheck c = s.onKeyboardBindingCheck(2000, true, 100, true);
+        expectRobust("game: keyboard check confirms armed binding", s.confirmed && s.inGame
+            && c.useForeground && c.effects.sessionReset && s.lastForegroundTick == 2000);
+    }
+    {   //an armed binding expires at exactly the TTL
+        GameModeState s = gameArmed();
+        GameModeState::BindingCheck c = s.onKeyboardBindingCheck(1000 + TTL, true, 200, false);
+        expectRobust("game: armed binding expires at the TTL", s.windowId == 0 && !c.useForeground);
+    }
+    {   //...and is still alive one millisecond before it
+        GameModeState s = gameArmed();
+        s.onKeyboardBindingCheck(1000 + TTL - 1, true, 200, false);
+        expectRobust("game: armed binding alive at TTL - 1", s.windowId == 100);
+    }
+    {   //a confirmed binding survives a long absence (the 1.0.21 fix): leaving
+        //only leaves the game, and coming back re-enters without a new bind
+        GameModeState s = gameInGame();
+        GameModeState::BindingCheck away = s.onKeyboardBindingCheck(1000 + 10 * TTL, true, 200, false);
+        bool keptOut = s.windowId == 100 && !s.inGame && away.effects.sessionReset;
+        GameModeState::BindingCheck back = s.onKeyboardBindingCheck(1000 + 10 * TTL + 5, true, 100, true);
+        expectRobust("game: confirmed binding persists across Alt+Tab", keptOut && s.inGame && back.effects.sessionReset);
+    }
+    {   //a tick that goes backwards expires an armed binding...
+        GameModeState s = gameArmed();
+        s.onKeyboardBindingCheck(500, true, 200, false);
+        expectRobust("game: backwards tick expires armed binding", s.windowId == 0);
+    }
+    {   //...but never a confirmed one
+        GameModeState s = gameInGame();
+        s.onKeyboardBindingCheck(2000, true, 200, false); //tab away
+        s.onKeyboardBindingCheck(500, true, 100, true);   //back, tick went backwards
+        expectRobust("game: backwards tick keeps confirmed binding", s.windowId == 100 && s.inGame);
+    }
+    {   //a destroyed bound window clears the binding (game crashed)
+        GameModeState s = gameArmed();
+        s.onKeyboardBindingCheck(2000, false, 0, false);
+        expectRobust("game: destroyed window clears binding", s.windowId == 0 && s.processId == 0);
+    }
+    {   //the foreground window is the bound one but its pid no longer matches
+        GameModeState s = gameArmed();
+        GameModeState::BindingCheck c = s.onKeyboardBindingCheck(2000, true, 100, false);
+        expectRobust("game: pid mismatch clears binding and drops the foreground", s.windowId == 0 && !c.useForeground);
+    }
+    {   //already confirmed and in game: a key event only refreshes the tick
+        GameModeState s = gameInGame();
+        GameModeState::BindingCheck c = s.onKeyboardBindingCheck(3000, true, 100, false);
+        expectRobust("game: steady state refreshes the tick only", s.lastForegroundTick == 3000 && !c.effects.any());
+    }
+    {   //tabbing away with the chat open closes the chat as part of leaving
+        GameModeState s = gameInGame();
+        s.onGameKeyDown({ 0x0D, false }); //Enter opens the chat
+        GameModeState::BindingCheck c = s.onKeyboardBindingCheck(2000, true, 200, false);
+        expectRobust("game: leaving with chat open closes it", !s.inGame && !s.chatOpen
+            && c.effects.chatClosed && c.effects.sessionReset && s.windowId == 100);
+    }
+    {   //a click can confirm an armed binding whose window is in the foreground
+        GameModeState s = gameArmed();
+        GameModeEffects fx = s.onMouseBindingCheck(2000, true, 100, true);
+        expectRobust("game: click confirms armed binding", s.confirmed && s.inGame && fx.sessionReset);
+    }
+    {   //a click on another window of the same process rebinds to that window
+        GameModeState s = gameArmed();
+        s.onMouseBindingCheck(2000, true, 200, true);
+        expectRobust("game: click rebinds to a sibling window", s.windowId == 200 && s.confirmed && s.inGame);
+    }
+    {   //an expired armed binding is cleared by the mouse check too
+        GameModeState s = gameArmed();
+        s.onMouseBindingCheck(1000 + TTL, true, 200, false);
+        expectRobust("game: mouse check expires armed binding", s.windowId == 0);
+    }
+    {   //a click whose window fails the process checks clears the binding
+        GameModeState s = gameArmed();
+        s.onMouseBindingCheck(2000, true, 100, false);
+        expectRobust("game: click with failing checks clears binding", s.windowId == 0);
+    }
+    {   //Enter opens the chat with its own effect, flags at token start
+        GameModeState s = gameInGame();
+        GameModeEffects fx = s.onGameKeyDown({ 0x0D, false });
+        expectRobust("game: Enter opens the chat", s.chatOpen && fx.chatOpened
+            && !fx.chatClosed && s.chatTokenStart && !s.chatRawCommand);
+    }
+    {   //Enter again sends and closes; Esc closes without sending semantics
+        GameModeState s = gameInGame();
+        s.onGameKeyDown({ 0x0D, false });
+        GameModeEffects fx = s.onGameKeyDown({ 0x0D, false });
+        bool closedByEnter = !s.chatOpen && fx.chatClosed;
+        s.onGameKeyDown({ 0x0D, false });
+        GameModeEffects fx2 = s.onGameKeyDown({ 0x1B, false });
+        expectRobust("game: Enter and Esc close the chat", closedByEnter && !s.chatOpen && fx2.chatClosed);
+    }
+    {   //Esc with no chat open is a no-op beyond clearing the (already clear) flags
+        GameModeState s = gameInGame();
+        GameModeEffects fx = s.onGameKeyDown({ 0x1B, false });
+        expectRobust("game: Esc outside chat does nothing", !fx.any() && !s.chatOpen);
+    }
+    {   //Alt+Enter / Ctrl+Enter never toggle the chat; with the chat open the
+        //key falls into the token logic instead and just ends the token start
+        GameModeState s = gameInGame();
+        GameModeEffects fx = s.onGameKeyDown({ 0x0D, true });
+        bool stayedClosed = !s.chatOpen && !fx.any();
+        s.onGameKeyDown({ 0x0D, false }); //open for real
+        s.onGameKeyDown({ 0x0D, true });  //Alt+Enter inside the chat
+        expectRobust("game: Alt+Enter does not toggle the chat", stayedClosed && s.chatOpen && !s.chatTokenStart);
+    }
+    {   //plain game keys change nothing while the chat is closed
+        GameModeState s = gameInGame();
+        GameModeEffects fx = s.onGameKeyDown({ 0x57, false }); //W
+        expectRobust("game: control keys pass through untouched", !fx.any() && s.inGame && !s.chatOpen);
+    }
+    {   //a / at token start makes the whole command raw until Space
+        GameModeState s = gameInGame();
+        s.onGameKeyDown({ 0x0D, false });
+        s.onGameKeyDown({ 0xBF, false }); // /
+        bool raw = s.chatRawCommand && !s.chatTokenStart;
+        s.onGameKeyDown({ 0x46, false }); // f
+        s.onGameKeyDown({ 0x46, false }); // f
+        bool stillRaw = s.chatRawCommand;
+        s.onGameKeyDown({ 0x20, false }); // Space ends the command
+        expectRobust("game: / command stays raw until Space", raw && stillRaw && !s.chatRawCommand && s.chatTokenStart);
+    }
+    {   //a / in the middle of a token is just a character
+        GameModeState s = gameInGame();
+        s.onGameKeyDown({ 0x0D, false });
+        s.onGameKeyDown({ 0x41, false }); // a: token start is over
+        s.onGameKeyDown({ 0xBF, false }); // /
+        expectRobust("game: / mid-token does not start a raw command", !s.chatRawCommand);
+    }
+    {   //token start: Space restores it, letters end it, Shift/Caps keep it
+        GameModeState s = gameInGame();
+        s.onGameKeyDown({ 0x0D, false });
+        s.onGameKeyDown({ 0x10, false }); // Shift
+        bool afterShift = s.chatTokenStart;
+        s.onGameKeyDown({ 0x14, false }); // Caps Lock
+        bool afterCaps = s.chatTokenStart;
+        s.onGameKeyDown({ 0x41, false }); // a
+        bool afterLetter = s.chatTokenStart;
+        s.onGameKeyDown({ 0x20, false }); // Space
+        expectRobust("game: token start rules", afterShift && afterCaps && !afterLetter && s.chatTokenStart);
+    }
+    {   //a / with Ctrl or Alt held does not start a raw command
+        GameModeState s = gameInGame();
+        s.onGameKeyDown({ 0x0D, false });
+        s.onGameKeyDown({ 0xBF, true });
+        expectRobust("game: modified / is not a command", !s.chatRawCommand);
+    }
+    {   //clicking closes the chat (the Win32 layer gates the button kinds)
+        GameModeState s = gameInGame();
+        s.onGameKeyDown({ 0x0D, false });
+        GameModeEffects fx = s.closeChat();
+        expectRobust("game: click-close uses the chat close transition", !s.chatOpen && fx.chatClosed && !fx.sessionReset);
+    }
+    {   //foreground change away from the game: leaves, binding survives
+        GameModeState s = gameInGame();
+        s.onGameKeyDown({ 0x0D, false });
+        GameModeEffects fx = s.onForegroundChangedAway(2000, true);
+        expectRobust("game: foreground away leaves but keeps the binding", !s.inGame && !s.chatOpen
+            && fx.chatClosed && fx.sessionReset && s.windowId == 100);
+    }
+    {   //foreground change away with an expired armed binding clears it too
+        GameModeState s = gameArmed();
+        s.onForegroundChangedAway(1000 + TTL, true);
+        expectRobust("game: foreground away clears an expired armed binding", s.windowId == 0);
+    }
+    {   //clearing while in game with the chat open runs the full leave first
+        GameModeState s = gameInGame();
+        s.onGameKeyDown({ 0x0D, false });
+        GameModeEffects fx = s.clearBinding();
+        expectRobust("game: clear binding resets everything", s.windowId == 0 && s.processId == 0
+            && !s.confirmed && s.lastForegroundTick == 0 && !s.inGame && !s.chatOpen
+            && fx.chatClosed && fx.sessionReset);
+    }
+    {   //binding a second window replaces the first binding outright
+        GameModeState s = gameArmed();
+        s.bind(200, 43, false, 5000, true);
+        expectRobust("game: rebind replaces the old binding", s.windowId == 200 && s.processId == 43 && s.confirmed && s.inGame);
+    }
+}
+
 //EngineTests --render: for each word read, print it and what Telex makes of it (tools/make_mixed_words.py uses this)
 static int renderWords() {
     vInputType = vTelex;
@@ -3087,6 +3295,7 @@ int main(int argc, char** argv) {
     testCodeTableInvariants();
     testMixedWordsParser();
     testSaveDataLimits();
+    testGameModeState();
     printf("%d/%d engine tests passed\n", total - failures, total);
     return failures == 0 ? 0 : 1;
 }
