@@ -7,13 +7,8 @@
 
 #include "PasswordState.h"
 
-//state values (engine's enum PasswordState) and the Win32 source value,
-//named locally so this file needs neither header
-static constexpr int kStateNormal = 0;
-static constexpr int kStatePassword = 1;
-static constexpr int kStatePending = 2;
-static constexpr int kSourceNone = 0;
-static constexpr int kSourceWin32 = 1;
+//the kState*/kSource* values live in PasswordState.h; EasyKey.cpp
+//static_asserts them against the real enums
 
 uint32_t makePasswordStateWord(int state, int source) {
     return (static_cast<uint32_t>(state) & 0xFF) | ((static_cast<uint32_t>(source) & 0xFF) << 8);

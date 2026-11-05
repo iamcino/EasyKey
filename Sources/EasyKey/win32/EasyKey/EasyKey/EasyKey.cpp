@@ -74,6 +74,13 @@ enum PasswordStateSource {
 	PW_SRC_MSAA = 3
 };
 
+//app-core/PasswordState works with hand-named copies of these values and of
+//enum PasswordState (Engine.h); pin the two sides together
+static_assert(kStateNormal == PW_NORMAL && kStatePassword == PW_PASSWORD && kStatePending == PW_PENDING,
+	"app-core/PasswordState state values must match enum PasswordState in Engine.h");
+static_assert(kSourceNone == PW_SRC_NONE && kSourceWin32 == PW_SRC_WIN32,
+	"app-core/PasswordState source values must match enum PasswordStateSource");
+
 
 //the state word codec and the next-state decisions live in app-core/PasswordState
 static std::atomic<uint32_t> _passwordStateWord{ makePasswordStateWord(PW_NORMAL, PW_SRC_NONE) };

@@ -24,6 +24,15 @@
 //how long a probe may stay pending before the hook thread falls back to normal
 constexpr uint64_t kPasswordPendingTimeoutMs = 60;
 
+//state values (the engine's enum PasswordState) and source values (the Win32
+//layer's enum PasswordStateSource), named here so this unit needs neither
+//header; EasyKey.cpp static_asserts that these stay equal to the enums
+constexpr int kStateNormal = 0;
+constexpr int kStatePassword = 1;
+constexpr int kStatePending = 2;
+constexpr int kSourceNone = 0;
+constexpr int kSourceWin32 = 1;
+
 //state word layout: low byte = state, next byte = source, rest zero
 uint32_t makePasswordStateWord(int state, int source);
 int getPasswordState(uint32_t word);
