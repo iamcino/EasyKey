@@ -3464,6 +3464,41 @@ static void testConfigIndependence() {
         && d.restoreOnEscape == 1 && d.passwordFieldBypass == 1 && d.switchKeyStatus == 0x5A00025A);
 }
 
+static void testConfigStoredCopy() {
+    //the engine keeps its own copy of the config (vKeySetConfig), so entry
+    //points outside a key event see the app's settings. Loading the macro
+    //table is the case that bites: it converts the contents with the active
+    //code table, so a TCVN3 user whose table loads at startup, before the
+    //first key press, must get TCVN3 codes for "ô" (0xAB), not the Unicode
+    //default (0xF4) a fresh engine would otherwise use
+    vKeyConfig uni = testCfg();
+    uni.codeTable = 0;
+    uni.useMacro = 1;
+    vKeySetConfig(uni);
+    addMacro("ko", "không");
+    vector<Byte> blob;
+    getMacroSaveData(blob);
+    vKeyConfig tcvn = testCfg();
+    tcvn.codeTable = 1; //TCVN3
+    tcvn.useMacro = 1;
+    vKeySetConfig(vKeyConfig()); //a fresh start: the engine holds the defaults
+    vKeySetConfig(tcvn);          //what the app does right before initMacroMap
+    initMacroMap(blob.data(), (int)blob.size());
+    vector<Uint32> key = { (Uint32)KEY_K, (Uint32)KEY_O };
+    vector<Uint32> codes;
+    expectRobust("stored config: macro found after a TCVN3 load", findMacro(key, codes) && codes.size() == 5);
+    expectRobust("stored config: content converted to TCVN3, not Unicode",
+                 codes.size() == 5 && codes[2] == (Uint32)(CHAR_CODE_MASK | 0xAB));
+    //the same data loaded under the default config converts to Unicode instead
+    vKeySetConfig(vKeyConfig());
+    initMacroMap(blob.data(), (int)blob.size());
+    vector<Uint32> key2 = { (Uint32)KEY_K, (Uint32)KEY_O };
+    expectRobust("stored config: the same load under defaults gives Unicode",
+                 findMacro(key2, codes) && codes.size() == 5 && codes[2] == (Uint32)(CHAR_CODE_MASK | 0xF4));
+    deleteMacro("ko");
+    vKeySetConfig(testCfg());
+}
+
 //EngineTests --render: for each word read, print it and what Telex makes of it (tools/make_mixed_words.py uses this)
 static int renderWords() {
     testCfg().inputType = vTelex;
@@ -3499,6 +3534,7 @@ int main(int argc, char** argv) {
     testGameModeStateExtended();
     testPasswordState();
     testConfigIndependence();
+    testConfigStoredCopy();
     printf("%d/%d engine tests passed\n", total - failures, total);
     return failures == 0 ? 0 : 1;
 }
