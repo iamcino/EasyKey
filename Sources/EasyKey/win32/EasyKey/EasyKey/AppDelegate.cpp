@@ -28,10 +28,10 @@ See LICENSE and NOTICE.
 #pragma comment(lib, "comctl32.lib")
 
 //shown once after updating to this version; change it with each release
-#define WHATS_NEW_VI L"• Tự động gõ phím thô khi nhập vào ô mật khẩu.\n" \
-	L"• Chế độ Game an toàn hơn khi chat (/ff, /w, Esc, click chuột) và ký số Authenticode."
-#define WHATS_NEW_EN L"• Automatically pass through raw keys in password fields.\n" \
-	L"• Safer Game Mode chat handling (/ff, /w, Esc, mouse click) and Authenticode signing."
+#define WHATS_NEW_VI L"• Sửa lỗi EasyKey có thể bị tắt đột ngột khi bật gõ nhanh phụ âm cuối và gõ một từ rất dài.\n" \
+	L"• Gõ tắt và danh sách nhớ theo ứng dụng không còn lỗi khi dữ liệu bị hỏng hoặc có tên quá dài."
+#define WHATS_NEW_EN L"• Fixed EasyKey possibly shutting down when quick end consonant is on and a very long word is typed.\n" \
+	L"• Macros and the per-app remembered list no longer break on corrupted data or over-long names."
 
 //6 hours
 #define UPDATE_CHECK_INTERVAL (6 * 60 * 60 * 1000)
