@@ -2,7 +2,7 @@
 
 [Tiếng Việt](CHANGELOG.md) · **English**
 
-## Unreleased
+## 1.0.22 - 2026-11-05
 
 ### Fixed
 - Fixed out-of-bounds reads when macro data or the per-app remembered list is corrupted.
