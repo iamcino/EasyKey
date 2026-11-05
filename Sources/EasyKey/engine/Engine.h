@@ -42,11 +42,14 @@
 #define SET_OPTION_KEY(data, val) data|=val<<9;
 #define SET_COMMAND_KEY(data, val) data|=val<<10;
 
-//The application's settings for the engine, handed in on every vKeyHandleEvent
-//call (plan point 2). The defaults below are the application's own defaults.
-//Secondary entry points (startNewSession, vEnglishMode, ...) have no config
-//parameter: they read the config of the most recent vKeyHandleEvent call
-//through vKeyActiveConfig() - that pointer is the single mechanism.
+//The application's settings for the engine (plan point 2). The defaults below
+//are the application's own defaults. The engine keeps its own copy of the
+//config: vKeyHandleEvent stores the config it is handed, and entry points
+//that run outside a key event (startNewSession, vEnglishMode, the macro
+//loaders, ...) read that copy through vKeyActiveConfig(). Before calling
+//such an entry point directly, the application refreshes the copy itself
+//with vKeySetConfig() - at startup, for example, the macro table must be
+//converted with the user's code table, not the default one.
 struct vKeyConfig {
 /*
  * 0: English
@@ -210,8 +213,11 @@ int restoreOnEscape = 1;
 int passwordFieldBypass = 1;
 };
 
-//the configuration of the most recent vKeyHandleEvent call
-//(a default-constructed vKeyConfig before the first call)
+//store a copy of the application's current configuration in the engine
+void vKeySetConfig(const vKeyConfig& config);
+
+//the engine's stored configuration (a default-constructed vKeyConfig
+//until the first vKeySetConfig or vKeyHandleEvent call)
 const vKeyConfig& vKeyActiveConfig();
 
 enum PasswordState {

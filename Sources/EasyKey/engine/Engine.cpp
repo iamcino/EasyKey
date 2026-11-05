@@ -16,13 +16,17 @@
 #include "Macro.h"
 #include "MixedWords.h"
 
-//the configuration handed to the most recent vKeyHandleEvent call; secondary
-//entry points read it through vKeyActiveConfig() (see Engine.h)
-static const vKeyConfig _defaultConfig;
-static const vKeyConfig* _activeConfig = &_defaultConfig;
+//the engine's own copy of the application configuration; vKeyHandleEvent
+//refreshes it on every call and the application refreshes it through
+//vKeySetConfig() before entry points that run outside a key event (Engine.h)
+static vKeyConfig _config;
+
+void vKeySetConfig(const vKeyConfig& config) {
+	_config = config;
+}
 
 const vKeyConfig& vKeyActiveConfig() {
-	return *_activeConfig;
+	return _config;
 }
 
 static vector<Uint8> _charKeyCode = {
@@ -1630,7 +1634,7 @@ void vKeyHandleEvent(const vKeyEvent& event,
                      const vKeyConfig& config,
                      const Uint8& capsStatus,
                      const bool& otherControlKey) {
-	_activeConfig = &config;
+	vKeySetConfig(config);
     _isCaps = (capsStatus == 1 || //shift
                capsStatus == 2); //caps lock
     if (data == KEY_ESC && state == KeyDown && vKeyActiveConfig().restoreOnEscape && !otherControlKey && restoreRawKeys())
