@@ -17,7 +17,8 @@ permissions:
 
 jobs:
   scan:
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    #a pull request build never publishes a release, so it has nothing to scan
+    if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event != 'pull_request')
     runs-on: ubuntu-latest
     env:
       VT_API_KEY: ${{ secrets.VT_API_KEY }}
@@ -28,19 +29,46 @@ jobs:
         id: rel
         env:
           GH_TOKEN: ${{ github.token }}
+          #event values reach the shell as environment variables, never pasted
+          #into the script: a branch name like a$(cmd) would otherwise run cmd
+          EVENT_NAME: ${{ github.event_name }}
+          RELEASE_TAG_NAME: ${{ github.event.release.tag_name }}
+          RUN_HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          RUN_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          INPUT_TAG: ${{ inputs.tag }}
         run: |
-          TAG="${{ github.event.release.tag_name }}"
-          if [ -z "$TAG" ]; then
-            TAG="${{ github.event.workflow_run.head_branch }}"
+          TAG="$RELEASE_TAG_NAME"
+          if [ -z "$TAG" ] && [ "$EVENT_NAME" = "workflow_run" ]; then
+            #a workflow_run event carries the triggering run's BRANCH name,
+            #which is not a release tag (using it made every run fail trying
+            #to download a release named e.g. "master"). The branch name is
+            #the tag only when MSBuild itself ran from a version tag push;
+            #otherwise find the tag pointing at the triggering run's commit
+            #(a manual MSBuild run on master creates its release tag during
+            #that run, so by completion the tag exists). No tag at that
+            #commit means this run published nothing: leave TAG empty and
+            #the steps below skip, ending the run quietly instead of failed.
+            case "$RUN_HEAD_BRANCH" in
+              [0-9]*.[0-9]*.[0-9]*)
+                #a version tag push: MSBuild's "branch" is the tag itself
+                TAG="$RUN_HEAD_BRANCH"
+                ;;
+              *)
+                TAG=$(gh api --paginate "repos/$GITHUB_REPOSITORY/tags" --jq ".[] | select(.commit.sha == \"$RUN_HEAD_SHA\") | .name" 2>/dev/null | head -n 1)
+                ;;
+            esac
           fi
           if [ -z "$TAG" ]; then
-            TAG="${{ inputs.tag }}"
+            TAG="$INPUT_TAG"
           fi
-          if [ -z "$TAG" ]; then
+          if [ -z "$TAG" ] && [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             TAG=$(gh release view --json tagName --jq .tagName 2>/dev/null || echo "")
           fi
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "RELEASE_TAG=$TAG" >> "$GITHUB_ENV"
+          if [ -z "$TAG" ]; then
+            echo "No release tag for this event; the download and scan steps are skipped."
+          fi
 
       - name: Download signed assets + checksums
         if: steps.rel.outputs.tag != ''
