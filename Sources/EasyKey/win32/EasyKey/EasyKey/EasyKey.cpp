@@ -74,6 +74,7 @@ enum PasswordStateSource {
 	PW_SRC_MSAA = 3
 };
 
+
 //the state word codec and the next-state decisions live in app-core/PasswordState
 static std::atomic<uint32_t> _passwordStateWord{ makePasswordStateWord(PW_NORMAL, PW_SRC_NONE) };
 
@@ -139,6 +140,13 @@ static const vKeyConfig& currentEngineConfig() {
 	_engineConfig.restoreOnEscape = vRestoreOnEscape;
 	_engineConfig.passwordFieldBypass = vPasswordFieldBypass;
 	return _engineConfig;
+}
+
+//declared in stdafx.h: store the current settings in the engine before an
+//entry point that runs outside a key event (macro load/edit, vEnglishMode),
+//so it converts and decides with the user's settings, not a stale copy
+void syncEngineConfig() {
+	vKeySetConfig(currentEngineConfig());
 }
 
 //game mode, see isGameApp; the binding/chat state machine itself lives in
@@ -270,7 +278,9 @@ void EasyKeyInit() {
 	if (GetKeyState(VK_NUMLOCK) < 0) _flag |= MASK_NUMLOCK;
 	if (GetKeyState(VK_SCROLL) < 0) _flag |= MASK_SCROLL;
 
-	//init and load macro data
+	//init and load macro data; loading converts the contents with the code
+	//table, so the engine must hold the user's settings before the first key
+	syncEngineConfig();
 	DWORD macroDataSize;
 	BYTE* macroData = EasyKeyHelper::getRegBinary(_T("macroData"), macroDataSize);
 	initMacroMap((Byte*)macroData, (int)macroDataSize);
@@ -1769,6 +1779,7 @@ LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 	//if is in english mode
 	if (vLanguage == 0) {
 		if (vUseMacro && vUseMacroInEnglishMode && (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN)) {
+			syncEngineConfig(); //vEnglishMode runs outside vKeyHandleEvent
 			vEnglishMode(((wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN) ? vKeyEventState::KeyDown : vKeyEventState::MouseDown),
 				_keycode,
 				(_flag & MASK_SHIFT) || (_flag & MASK_CAPITAL),
