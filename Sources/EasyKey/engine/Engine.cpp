@@ -16,6 +16,19 @@
 #include "Macro.h"
 #include "MixedWords.h"
 
+//the engine's own copy of the application configuration; vKeyHandleEvent
+//refreshes it on every call and the application refreshes it through
+//vKeySetConfig() before entry points that run outside a key event (Engine.h)
+static vKeyConfig _config;
+
+void vKeySetConfig(const vKeyConfig& config) {
+	_config = config;
+}
+
+const vKeyConfig& vKeyActiveConfig() {
+	return _config;
+}
+
 static vector<Uint8> _charKeyCode = {
     KEY_BACKQUOTE, KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, KEY_8, KEY_9, KEY_0, KEY_MINUS, KEY_EQUALS,
     KEY_LEFT_BRACKET, KEY_RIGHT_BRACKET, KEY_BACK_SLASH,
@@ -42,20 +55,20 @@ static Uint16 ProcessingChar[][11] = {
     {KEY_S, KEY_F, KEY_R, KEY_X, KEY_J, KEY_A, KEY_O, KEY_E, KEY_W, KEY_D, KEY_Z} //Simple Telex 2
 };
 
-#define IS_KEY_Z(key) (ProcessingChar[vInputType][10] == key)
-#define IS_KEY_D(key) (ProcessingChar[vInputType][9] == key)
-#define IS_KEY_W(key) ((vInputType != vVNI) ? ProcessingChar[vInputType][8] == key : \
-                                    (vInputType == vVNI ? (ProcessingChar[vInputType][8] == key || ProcessingChar[vInputType][7] == key) : false))
-#define IS_KEY_DOUBLE(key) ((vInputType != vVNI) ? (ProcessingChar[vInputType][5] == key || ProcessingChar[vInputType][6] == key || ProcessingChar[vInputType][7] == key) :\
-                                        (vInputType == vVNI ? ProcessingChar[vInputType][6] == key : false))
-#define IS_KEY_S(key) (ProcessingChar[vInputType][0] == key)
-#define IS_KEY_F(key) (ProcessingChar[vInputType][1] == key)
-#define IS_KEY_R(key) (ProcessingChar[vInputType][2] == key)
-#define IS_KEY_X(key) (ProcessingChar[vInputType][3] == key)
-#define IS_KEY_J(key) (ProcessingChar[vInputType][4] == key)
+#define IS_KEY_Z(key) (ProcessingChar[vKeyActiveConfig().inputType][10] == key)
+#define IS_KEY_D(key) (ProcessingChar[vKeyActiveConfig().inputType][9] == key)
+#define IS_KEY_W(key) ((vKeyActiveConfig().inputType != vVNI) ? ProcessingChar[vKeyActiveConfig().inputType][8] == key : \
+                                    (vKeyActiveConfig().inputType == vVNI ? (ProcessingChar[vKeyActiveConfig().inputType][8] == key || ProcessingChar[vKeyActiveConfig().inputType][7] == key) : false))
+#define IS_KEY_DOUBLE(key) ((vKeyActiveConfig().inputType != vVNI) ? (ProcessingChar[vKeyActiveConfig().inputType][5] == key || ProcessingChar[vKeyActiveConfig().inputType][6] == key || ProcessingChar[vKeyActiveConfig().inputType][7] == key) :\
+                                        (vKeyActiveConfig().inputType == vVNI ? ProcessingChar[vKeyActiveConfig().inputType][6] == key : false))
+#define IS_KEY_S(key) (ProcessingChar[vKeyActiveConfig().inputType][0] == key)
+#define IS_KEY_F(key) (ProcessingChar[vKeyActiveConfig().inputType][1] == key)
+#define IS_KEY_R(key) (ProcessingChar[vKeyActiveConfig().inputType][2] == key)
+#define IS_KEY_X(key) (ProcessingChar[vKeyActiveConfig().inputType][3] == key)
+#define IS_KEY_J(key) (ProcessingChar[vKeyActiveConfig().inputType][4] == key)
 
-#define IS_MARK_KEY(keyCode) (((vInputType != vVNI) && (keyCode == KEY_S || keyCode == KEY_F || keyCode == KEY_R || keyCode == KEY_J || keyCode == KEY_X)) || \
-                                        (vInputType == vVNI && (keyCode == KEY_1 || keyCode == KEY_2 || keyCode == KEY_3 || keyCode == KEY_5 || keyCode == KEY_4)))
+#define IS_MARK_KEY(keyCode) (((vKeyActiveConfig().inputType != vVNI) && (keyCode == KEY_S || keyCode == KEY_F || keyCode == KEY_R || keyCode == KEY_J || keyCode == KEY_X)) || \
+                                        (vKeyActiveConfig().inputType == vVNI && (keyCode == KEY_1 || keyCode == KEY_2 || keyCode == KEY_3 || keyCode == KEY_5 || keyCode == KEY_4)))
 #define IS_BRACKET_KEY(key) (key == KEY_LEFT_BRACKET || key == KEY_RIGHT_BRACKET)
 
 #define VSI vowelStartIndex
@@ -256,8 +269,8 @@ void checkSpelling(const bool& forceCheckVowel=false) {
                     _spellingFlag = true;
                 for (j = 0; j < _consonantTable[i].size(); j++) {
                     if (_spellingEndIndex > j &&
-                        (_consonantTable[i][j] & ~(vQuickStartConsonant ? END_CONSONANT_MASK : 0)) != CHR(j) &&
-                        (_consonantTable[i][j] & ~(vAllowConsonantZFWJ ? CONSONANT_ALLOW_MASK : 0)) != CHR(j)) {
+                        (_consonantTable[i][j] & ~(vKeyActiveConfig().quickStartConsonant ? END_CONSONANT_MASK : 0)) != CHR(j) &&
+                        (_consonantTable[i][j] & ~(vKeyActiveConfig().allowConsonantZFWJ ? CONSONANT_ALLOW_MASK : 0)) != CHR(j)) {
                         _spellingFlag = true;
                         break;
                     }
@@ -323,7 +336,7 @@ void checkSpelling(const bool& forceCheckVowel=false) {
    
                 for (j = 0; j < _endConsonantTable[ii].size(); j++) {
                     if (_spellingEndIndex > k+j &&
-                        (_endConsonantTable[ii][j] & ~(vQuickEndConsonant ? END_CONSONANT_MASK : 0)) != CHR(k + j)) {
+                        (_endConsonantTable[ii][j] & ~(vKeyActiveConfig().quickEndConsonant ? END_CONSONANT_MASK : 0)) != CHR(k + j)) {
                         _spellingFlag = true;
                         break;
                     }
@@ -426,7 +439,7 @@ void insertKey(const Uint16& keyCode, const bool& isCaps, const bool& isCheckSpe
         setKeyData(_index++, keyCode, isCaps);
     }
     
-    if (vCheckSpelling && isCheckSpelling)
+    if (vKeyActiveConfig().checkSpelling && isCheckSpelling)
         checkSpelling();
     
     //allow d after consonant
@@ -530,7 +543,7 @@ void restoreLastTypingState() {
                 }
                 _stateIndex = (Byte)state.keyStates.size();
                 _rawKeys = state.rawKeys;
-                if (vCheckSpelling)
+                if (vKeyActiveConfig().checkSpelling)
                     checkSpelling();
             }
         }
@@ -557,7 +570,7 @@ void checkCorrectVowel(vector<vector<Uint16>>& charset, int& i, int& k, const Ui
     }
     k = _index - 1;
     for (j = (int)charset[i].size() - 1; j >= 0; j--) {
-        if ((charset[i][j] & ~(vQuickEndConsonant ? END_CONSONANT_MASK : 0)) != CHR(k)) {
+        if ((charset[i][j] & ~(vKeyActiveConfig().quickEndConsonant ? END_CONSONANT_MASK : 0)) != CHR(k)) {
             isCorect = false;
             return;
         }
@@ -621,18 +634,18 @@ Uint32 getCharacterCode(const Uint32& data) {
         } else if (data & TONEW_MASK) {
             key |= TONEW_MASK;
         }
-        if (_codeTable[vCodeTable].find(key) == _codeTable[vCodeTable].end())
+        if (_codeTable[vKeyActiveConfig().codeTable].find(key) == _codeTable[vKeyActiveConfig().codeTable].end())
             return data; //not found
         
-        return _codeTable[vCodeTable][key][markElem] | CHAR_CODE_MASK;
+        return _codeTable[vKeyActiveConfig().codeTable][key][markElem] | CHAR_CODE_MASK;
     } else { //doesn't has mark
-        if (_codeTable[vCodeTable].find(key) == _codeTable[vCodeTable].end())
+        if (_codeTable[vKeyActiveConfig().codeTable].find(key) == _codeTable[vKeyActiveConfig().codeTable].end())
             return data; //not found
         
         if (data & TONE_MASK) {
-            return _codeTable[vCodeTable][key][capsElem] | CHAR_CODE_MASK;
+            return _codeTable[vKeyActiveConfig().codeTable][key][capsElem] | CHAR_CODE_MASK;
         } else if (data & TONEW_MASK) {
-            return _codeTable[vCodeTable][key][capsElem + 2] | CHAR_CODE_MASK;
+            return _codeTable[vKeyActiveConfig().codeTable][key][capsElem + 2] | CHAR_CODE_MASK;
         } else {
             return data; //not found
         }
@@ -849,7 +862,7 @@ void insertMark(const Uint32& markMask, const bool& canModifyFlag) {
         VWSM = VEI;
         hBPC = (_index - VEI);
     } else { //vowel = 2 or 3
-        if (vUseModernOrthography == 0)
+        if (vKeyActiveConfig().useModernOrthography == 0)
             handleOldMark();
         else
             handleModernMark();
@@ -1131,7 +1144,7 @@ void upperCaseFirstCharacter() {
         TypingWord[0] |= CAPS_MASK;
         hData[0] = GET(TypingWord[0]);
         _upperCaseStatus = 0;
-        if (vUseMacro)
+        if (vKeyActiveConfig().useMacro)
             hMacroKey[0] |= CAPS_MASK;
     }
 }
@@ -1226,7 +1239,7 @@ void handleMainKey(const Uint16& data, const bool& isCaps) {
     }
     
     //check Vowel
-    if (vInputType == vVNI) {
+    if (vKeyActiveConfig().inputType == vVNI) {
         for (i = _index-1; i >= 0; i--) {
             if (CHR(i) == KEY_O || CHR(i) == KEY_A || CHR(i) == KEY_E) {
                 VEI = i;
@@ -1235,7 +1248,7 @@ void handleMainKey(const Uint16& data, const bool& isCaps) {
         }
     }
     
-    keyForAEO = ((vInputType != vVNI) ? data : ((data == KEY_7 || data == KEY_8 ? KEY_W : (data == KEY_6 ? TypingWord[VEI] : data))));
+    keyForAEO = ((vKeyActiveConfig().inputType != vVNI) ? data : ((data == KEY_7 || data == KEY_8 ? KEY_W : (data == KEY_6 ? TypingWord[VEI] : data))));
     vector<vector<Uint16>>& charset = _vowel[keyForAEO];
     isCorect = false;
     isChanged = false;
@@ -1251,7 +1264,7 @@ void handleMainKey(const Uint16& data, const bool& isCaps) {
             if (IS_KEY_DOUBLE(data)) {
                 insertAOE(keyForAEO, isCaps);
             } else if (IS_KEY_W(data)) {
-                if (vInputType == vVNI) {
+                if (vKeyActiveConfig().inputType == vVNI) {
                     for (j = _index-1; j >= 0; j--) {
                         if (CHR(j) == KEY_O || CHR(j) == KEY_U ||CHR(j) == KEY_A || CHR(j) == KEY_E) {
                             VEI = j;
@@ -1268,7 +1281,7 @@ void handleMainKey(const Uint16& data, const bool& isCaps) {
     }
     
     if (!isChanged) {
-        if (data == KEY_W && vInputType != vSimpleTelex1) {
+        if (data == KEY_W && vKeyActiveConfig().inputType != vSimpleTelex1) {
             checkForStandaloneChar(data, isCaps, KEY_U);
         } else {
             insertKey(data, isCaps);
@@ -1288,7 +1301,7 @@ void handleQuickTelex(const Uint16& data, const bool& isCaps) {
 //Telex: www keeps all three letters (w, ww gives back w, www gives ww), so a word with www is not Vietnamese.
 //A doubled mark key (ass -> as, tesst -> test) stays undone: that is how Telex users type English words
 static bool hasTripleW() {
-    if (vInputType == vVNI)
+    if (vKeyActiveConfig().inputType == vVNI)
         return false;
     for (ii = 2; ii < _stateIndex; ii++) {
         if ((KeyStates[ii] & CHAR_MASK) == KEY_W && (KeyStates[ii - 1] & CHAR_MASK) == KEY_W && (KeyStates[ii - 2] & CHAR_MASK) == KEY_W)
@@ -1381,7 +1394,7 @@ bool checkMixedEnglish(const int& handleCode, const bool& spaceFollows) {
     _hasMixedLast = false;
     if (_index == 0 || _rawKeys.size() == 0 || _rawKeys.size() > MAX_BUFF || _longWordHelper.size() > 0)
         return false;
-    if (!tempDisableKey && vCheckSpelling)
+    if (!tempDisableKey && vKeyActiveConfig().checkSpelling)
         checkSpelling(true);
     bool changed = _index != _rawKeys.size();
     for (ii = 0; !changed && ii < _index; ii++)
@@ -1401,7 +1414,7 @@ bool checkMixedEnglish(const int& handleCode, const bool& spaceFollows) {
         keys += (char)c;
     }
     int english = 0, vietnamese = 0, score = 0, language = 0; //1: English, -1: Vietnamese, 0: can't tell
-    bool codeLike = isCodeLikeToken(_rawKeys, vInputType);
+    bool codeLike = isCodeLikeToken(_rawKeys, vKeyActiveConfig().inputType);
     bool curatedEnglish = !codeLike && !keys.empty() &&
         (isCuratedSafeEnglish(keys) || isAllCapsEnglishAcronym(keys, allCaps));
     int phraseMatch = (!codeLike && !keys.empty() && !allCaps) ? checkMixedPhrase(_lastRaw, _lastRawLen, keys) : 0;
@@ -1433,7 +1446,7 @@ bool checkMixedEnglish(const int& handleCode, const bool& spaceFollows) {
     //(not with VNI Windows and compound Unicode, there a letter on screen may take two backspaces)
     bool fixLast = false;
     vector<Uint32> lastText; //the last word as it should be now
-    if (vMixedFixLast && hadLast && clear && !IS_DOUBLE_CODE(vCodeTable)) {
+    if (vKeyActiveConfig().mixedFixLast && hadLast && clear && !IS_DOUBLE_CODE(vKeyActiveConfig().codeTable)) {
         bool english = _mixedLast.score + mixedBias((_mixedLast.contextBefore + language * 100) / 2) > 0;
         lastText = english ? _mixedLast.keys : _mixedLast.vietnamese;
         size_t shown = english ? _mixedLast.vietnamese.size() : _mixedLast.keys.size();
@@ -1532,7 +1545,7 @@ bool restoreRawKeys() {
 }
 
 void vStartSentence() {
-    if (vUpperCaseFirstChar) {
+    if (vKeyActiveConfig().upperCaseFirstChar) {
         _upperCaseStatus = 2;
         _sentenceFromWindow = true;
     }
@@ -1542,7 +1555,7 @@ bool checkQuickConsonant() {
     if (_index <= 1) return false;
     l = 0;
     if (_index > 0) {
-        if (vQuickStartConsonant && _quickStartConsonant.find(CHR(0)) != _quickStartConsonant.end()) {
+        if (vKeyActiveConfig().quickStartConsonant && _quickStartConsonant.find(CHR(0)) != _quickStartConsonant.end()) {
             hCode = vRestore;
             hBPC = _index;
             hNCC = _index + 1;
@@ -1556,7 +1569,7 @@ bool checkQuickConsonant() {
             TypingWord[0] = _quickStartConsonant[CHR(0)][0] | (TypingWord[0] & CAPS_MASK ? CAPS_MASK : 0);
             l = 1;;
         }
-        if (vQuickEndConsonant && _index < MAX_BUFF-1 &&
+        if (vKeyActiveConfig().quickEndConsonant && _index < MAX_BUFF-1 &&
             (_index-2 >= 0 && !IS_CONSONANT(CHR(_index-2))) &&
             _quickEndConsonant.find(CHR(_index-1)) != _quickEndConsonant.end()) {
             //the expansion needs one free slot, so it does not apply at the buffer
@@ -1618,15 +1631,17 @@ void vEnglishMode(const vKeyEventState& state, const Uint16& data, const bool& i
 void vKeyHandleEvent(const vKeyEvent& event,
                      const vKeyEventState& state,
                      const Uint16& data,
+                     const vKeyConfig& config,
                      const Uint8& capsStatus,
                      const bool& otherControlKey) {
+	vKeySetConfig(config);
     _isCaps = (capsStatus == 1 || //shift
                capsStatus == 2); //caps lock
-    if (data == KEY_ESC && state == KeyDown && vRestoreOnEscape && !otherControlKey && restoreRawKeys())
+    if (data == KEY_ESC && state == KeyDown && vKeyActiveConfig().restoreOnEscape && !otherControlKey && restoreRawKeys())
         return;
     bool wordBreak = isWordBreak(event, state, data);
     bool numBreak = IS_NUMBER_KEY(data) && capsStatus == 1;
-    if (vMixedEnglish && _index > 0) {
+    if (vKeyActiveConfig().mixedEnglish && _index > 0) {
         if ((data == KEY_MINUS && capsStatus == 1) || (data == KEY_2 && capsStatus == 1)) {
             wordBreak = false;
             numBreak = false;
@@ -1640,18 +1655,18 @@ void vKeyHandleEvent(const vKeyEvent& event,
         hExt = 1; //word break
         
         //check macro feature
-        if (vUseMacro && isMacroBreakCode(data) && !_hasHandledMacro && findMacro(hMacroKey, hMacroData)) {
+        if (vKeyActiveConfig().useMacro && isMacroBreakCode(data) && !_hasHandledMacro && findMacro(hMacroKey, hMacroData)) {
             hCode = vReplaceMaro;
             hBPC = (Byte)hMacroKey.size();
             _hasHandledMacro = true;
-        } else if ((vQuickStartConsonant || vQuickEndConsonant) && !tempDisableKey && isMacroBreakCode(data)) {
+        } else if ((vKeyActiveConfig().quickStartConsonant || vKeyActiveConfig().quickEndConsonant) && !tempDisableKey && isMacroBreakCode(data)) {
             checkQuickConsonant();
-        } else if (vMixedEnglish && !_hasHandledMacro && event != vKeyEvent::Mouse &&
+        } else if (vKeyActiveConfig().mixedEnglish && !_hasHandledMacro && event != vKeyEvent::Mouse &&
                    (wordBreak || numBreak) &&
                    checkMixedEnglish(vRestoreAndStartNewSession, false)) {
             //an English word got its keys back, maybe the word before it changed too
-        } else if (vRestoreIfWrongSpelling && (isWordBreak(event, state, data) || (IS_NUMBER_KEY(data) && capsStatus == 1))) { //restore key if wrong spelling with break-key, also @ ! # ...
-            if (!tempDisableKey && vCheckSpelling) {
+        } else if (vKeyActiveConfig().restoreIfWrongSpelling && (isWordBreak(event, state, data) || (IS_NUMBER_KEY(data) && capsStatus == 1))) { //restore key if wrong spelling with break-key, also @ ! # ...
+            if (!tempDisableKey && vKeyActiveConfig().checkSpelling) {
                 checkSpelling(true); //force check spelling
             }
             if (tempDisableKey && !checkRestoreIfWrongSpelling(vRestoreAndStartNewSession)) {
@@ -1687,7 +1702,7 @@ void vKeyHandleEvent(const vKeyEvent& event,
         }
         
         //insert key for macro function
-        if (vUseMacro) {
+        if (vKeyActiveConfig().useMacro) {
             if (_isCharKeyCode) {
                 hMacroKey.push_back(data | (_isCaps ? CAPS_MASK : 0));
             } else {
@@ -1695,7 +1710,7 @@ void vKeyHandleEvent(const vKeyEvent& event,
             }
         }
         
-        if (vUpperCaseFirstChar && !(event == vKeyEvent::Mouse && _sentenceFromWindow)) {
+        if (vKeyActiveConfig().upperCaseFirstChar && !(event == vKeyEvent::Mouse && _sentenceFromWindow)) {
             _sentenceFromWindow = false;
             if (data == KEY_DOT || (capsStatus == 1 && (data == KEY_SLASH || data == KEY_1))) //. ? !
                 _upperCaseStatus = 1;
@@ -1705,7 +1720,7 @@ void vKeyHandleEvent(const vKeyEvent& event,
                 _upperCaseStatus = 0;
         }
     } else if (data == KEY_SPACE) {
-        if (!tempDisableKey && vCheckSpelling) {
+        if (!tempDisableKey && vKeyActiveConfig().checkSpelling) {
             checkSpelling(true); //force check spelling
         }
         if (_spaceCount > 0) {
@@ -1713,16 +1728,16 @@ void vKeyHandleEvent(const vKeyEvent& event,
             _lastRawLen = 0;
             _lastRaw[0] = '\0';
         }
-        if (vUseMacro && !_hasHandledMacro && findMacro(hMacroKey, hMacroData)) { //macro
+        if (vKeyActiveConfig().useMacro && !_hasHandledMacro && findMacro(hMacroKey, hMacroData)) { //macro
             hCode = vReplaceMaro;
             hBPC = (Byte)hMacroKey.size();
             _spaceCount++;
             _hasHandledMacro = true;
-        } else if ((vQuickStartConsonant || vQuickEndConsonant) && !tempDisableKey && checkQuickConsonant()) {
+        } else if ((vKeyActiveConfig().quickStartConsonant || vKeyActiveConfig().quickEndConsonant) && !tempDisableKey && checkQuickConsonant()) {
             _spaceCount++;
-        } else if (vMixedEnglish && !_hasHandledMacro && _spaceCount == 0 && checkMixedEnglish(vRestore, true)) { //an English word gets its keys back
+        } else if (vKeyActiveConfig().mixedEnglish && !_hasHandledMacro && _spaceCount == 0 && checkMixedEnglish(vRestore, true)) { //an English word gets its keys back
             _spaceCount++;
-        } else if (vRestoreIfWrongSpelling && tempDisableKey && !_hasHandledMacro) { //restore key if wrong spelling
+        } else if (vKeyActiveConfig().restoreIfWrongSpelling && tempDisableKey && !_hasHandledMacro) { //restore key if wrong spelling
             if (!checkRestoreIfWrongSpelling(vRestore)) {
                 hCode = vDoNothing;
             }
@@ -1731,10 +1746,10 @@ void vKeyHandleEvent(const vKeyEvent& event,
             hCode = vDoNothing;
             _spaceCount++;
         }
-        if (vUseMacro) {
+        if (vKeyActiveConfig().useMacro) {
             hMacroKey.clear();
         }
-        if (vUpperCaseFirstChar && _upperCaseStatus == 1) {
+        if (vKeyActiveConfig().upperCaseFirstChar && _upperCaseStatus == 1) {
             _upperCaseStatus = 2;
         }
         //save word
@@ -1779,10 +1794,10 @@ void vKeyHandleEvent(const vKeyEvent& event,
                     _longWordHelper.pop_back();
                     _index++;
                 }
-                if (vCheckSpelling)
+                if (vKeyActiveConfig().checkSpelling)
                     checkSpelling();
             }
-            if (vUseMacro && hMacroKey.size() > 0) {
+            if (vKeyActiveConfig().useMacro && hMacroKey.size() > 0) {
                 hMacroKey.pop_back();
             }
             
@@ -1814,7 +1829,7 @@ void vKeyHandleEvent(const vKeyEvent& event,
         _rawKeys.push_back(data | (_isCaps ? CAPS_MASK : 0));
         
         if (!IS_SPECIALKEY(data) || tempDisableKey) { //do nothing
-            if (vQuickTelex && _index >= 2 && _rawKeys.size() >= 3 &&
+            if (vKeyActiveConfig().quickTelex && _index >= 2 && _rawKeys.size() >= 3 &&
                 (_rawKeys[_rawKeys.size() - 2] & CHAR_MASK) == data &&
                 (_rawKeys[_rawKeys.size() - 3] & CHAR_MASK) == data &&
                 _quickTelex.find(data) != _quickTelex.end() &&
@@ -1829,7 +1844,7 @@ void vKeyHandleEvent(const vKeyEvent& event,
                 TypingWord[_index - 2] = hData[1];
                 TypingWord[_index - 1] = hData[0];
                 return;
-            } else if (vQuickTelex && IS_QUICK_TELEX_KEY(data)) {
+            } else if (vKeyActiveConfig().quickTelex && IS_QUICK_TELEX_KEY(data)) {
                 handleQuickTelex(data, _isCaps);
                 return;
             } else {
@@ -1846,7 +1861,7 @@ void vKeyHandleEvent(const vKeyEvent& event,
             handleMainKey(data, _isCaps);
         }
 
-        if (!vFreeMark && !IS_KEY_D(data)) {
+        if (!vKeyActiveConfig().freeMark && !IS_KEY_D(data)) {
             if (hCode == vDoNothing) {
                 checkGrammar(-1);
             } else {
@@ -1860,7 +1875,7 @@ void vKeyHandleEvent(const vKeyEvent& event,
         }
         
         //insert or replace key for macro feature
-        if (vUseMacro) {
+        if (vKeyActiveConfig().useMacro) {
             if (hCode == vDoNothing) {
                 hMacroKey.push_back(data | (_isCaps ? CAPS_MASK : 0));
             } else if (hCode == vWillProcess || hCode == vRestore) {
@@ -1875,7 +1890,7 @@ void vKeyHandleEvent(const vKeyEvent& event,
             }
         }
         
-        if (vUpperCaseFirstChar) {
+        if (vKeyActiveConfig().upperCaseFirstChar) {
             if (_index == 1 && _upperCaseStatus == 2) {
                 upperCaseFirstCharacter();
             }
@@ -1884,7 +1899,7 @@ void vKeyHandleEvent(const vKeyEvent& event,
         }
         
         //case [ ]
-        if (IS_BRACKET_KEY(data) && (( IS_BRACKET_KEY((Uint16)hData[0])) || vInputType == vSimpleTelex1 || vInputType == vSimpleTelex2)) {
+        if (IS_BRACKET_KEY(data) && (( IS_BRACKET_KEY((Uint16)hData[0])) || vKeyActiveConfig().inputType == vSimpleTelex1 || vKeyActiveConfig().inputType == vSimpleTelex2)) {
             if (_index - (hCode == vWillProcess ? hBPC : 0) > 0) {
                 _index--;
                 saveWord();

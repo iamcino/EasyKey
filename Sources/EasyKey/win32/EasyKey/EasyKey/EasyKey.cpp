@@ -17,6 +17,9 @@ See LICENSE and NOTICE.
 #include "stdafx.h"
 #include "AppDelegate.h"
 #include "GameCandidateFinder.h"
+#include "../../../app-core/GameModeState.h"
+#include "../../../app-core/PasswordState.h"
+#include "../../../app-core/ExeName.h"
 #include <algorithm>
 #include <atomic>
 #include <cstdint>
@@ -71,16 +74,15 @@ enum PasswordStateSource {
 	PW_SRC_MSAA = 3
 };
 
-inline uint32_t makePasswordStateWord(int state, int source) {
-	return (static_cast<uint32_t>(state) & 0xFF) | ((static_cast<uint32_t>(source) & 0xFF) << 8);
-}
-inline int getPasswordState(uint32_t word) {
-	return static_cast<int>(word & 0xFF);
-}
-inline int getPasswordSource(uint32_t word) {
-	return static_cast<int>((word >> 8) & 0xFF);
-}
+//app-core/PasswordState works with hand-named copies of these values and of
+//enum PasswordState (Engine.h); pin the two sides together
+static_assert(kStateNormal == PW_NORMAL && kStatePassword == PW_PASSWORD && kStatePending == PW_PENDING,
+	"app-core/PasswordState state values must match enum PasswordState in Engine.h");
+static_assert(kSourceNone == PW_SRC_NONE && kSourceWin32 == PW_SRC_WIN32,
+	"app-core/PasswordState source values must match enum PasswordStateSource");
 
+
+//the state word codec and the next-state decisions live in app-core/PasswordState
 static std::atomic<uint32_t> _passwordStateWord{ makePasswordStateWord(PW_NORMAL, PW_SRC_NONE) };
 
 static std::atomic<uint64_t> _probeGen{ 0 };
@@ -89,7 +91,7 @@ static std::atomic<bool> _passwordStateDirty{ false };
 static HANDLE _probeThread = NULL;
 static HANDLE _probeWakeEvent = NULL;
 static HANDLE _probeStopEvent = NULL;
-static constexpr uint64_t PW_PENDING_TIMEOUT_MS = 60;
+static constexpr uint64_t PW_PENDING_TIMEOUT_MS = kPasswordPendingTimeoutMs; //kept for the worker note below; the value lives in app-core/PasswordState
 static constexpr DWORD PW_WORKER_SHUTDOWN_TIMEOUT_MS = 200;
 static void stopPasswordProbeWorker();
 static KBDLLHOOKSTRUCT* keyboardData;
@@ -114,17 +116,52 @@ static int _languageTemp = 0; //use for smart switch key
 static vector<Byte> savedSmartSwitchKeyData; ////use for smart switch key
 
 static bool _hasJustUsedHotKey = false;
-//game mode, see isGameApp
-static constexpr uint64_t GAME_ARMED_TTL_MS = 10 * 60 * 1000; // 10 minutes for armed candidate bindings only
-static HWND _gameHwnd = NULL;
-static DWORD _gamePid = 0;
-static bool _gameConfirmed = false;
-static uint64_t _lastGameForegroundTick = 0;
+//the engine takes its settings as a vKeyConfig (engine/Engine.h); this layer
+//keeps owning the settings as globals and copies them into one persistent
+//config immediately before every engine call, so the engine always sees the
+//latest values at the moment of the event (plan point 2)
+static vKeyConfig _engineConfig;
+static const vKeyConfig& currentEngineConfig() {
+	_engineConfig.language = vLanguage;
+	_engineConfig.mixedEnglish = vMixedEnglish;
+	_engineConfig.mixedFixLast = vMixedFixLast;
+	_engineConfig.inputType = vInputType;
+	_engineConfig.freeMark = vFreeMark;
+	_engineConfig.codeTable = vCodeTable;
+	_engineConfig.switchKeyStatus = vSwitchKeyStatus;
+	_engineConfig.checkSpelling = vCheckSpelling;
+	_engineConfig.useModernOrthography = vUseModernOrthography;
+	_engineConfig.quickTelex = vQuickTelex;
+	_engineConfig.restoreIfWrongSpelling = vRestoreIfWrongSpelling;
+	_engineConfig.fixRecommendBrowser = vFixRecommendBrowser;
+	_engineConfig.useMacro = vUseMacro;
+	_engineConfig.useMacroInEnglishMode = vUseMacroInEnglishMode;
+	_engineConfig.autoCapsMacro = vAutoCapsMacro;
+	_engineConfig.useSmartSwitchKey = vUseSmartSwitchKey;
+	_engineConfig.upperCaseFirstChar = vUpperCaseFirstChar;
+	_engineConfig.allowConsonantZFWJ = vAllowConsonantZFWJ;
+	_engineConfig.quickStartConsonant = vQuickStartConsonant;
+	_engineConfig.quickEndConsonant = vQuickEndConsonant;
+	_engineConfig.rememberCode = vRememberCode;
+	_engineConfig.otherLanguage = vOtherLanguage;
+	_engineConfig.restoreOnEscape = vRestoreOnEscape;
+	_engineConfig.passwordFieldBypass = vPasswordFieldBypass;
+	return _engineConfig;
+}
+
+//declared in stdafx.h: store the current settings in the engine before an
+//entry point that runs outside a key event (macro load/edit, vEnglishMode),
+//so it converts and decides with the user's settings, not a stale copy
+void syncEngineConfig() {
+	vKeySetConfig(currentEngineConfig());
+}
+
+//game mode, see isGameApp; the binding/chat state machine itself lives in
+//app-core/GameModeState (this layer keeps the HWND mapping and the side effects)
 static vector<string> _gameApps;
-static bool _inGame = false;   //the foreground app is in game mode
-static bool _gameChat = false; //Enter opened the chat in it
-static bool _chatRawCommand = false; //token starting with / in game chat is passed raw
-static bool _chatTokenStart = true;
+static GameModeState _game;
+static uint64_t gameWindowId(HWND hwnd) { return (uint64_t)(uintptr_t)hwnd; }
+static HWND gameBoundHwnd() { return (HWND)(uintptr_t)_game.windowId; }
 //Esc that put back the typed keys: its key up is swallowed too, web chats (Facebook...) act on it
 static bool _escapeRestored = false;
 
@@ -248,7 +285,9 @@ void EasyKeyInit() {
 	if (GetKeyState(VK_NUMLOCK) < 0) _flag |= MASK_NUMLOCK;
 	if (GetKeyState(VK_SCROLL) < 0) _flag |= MASK_SCROLL;
 
-	//init and load macro data
+	//init and load macro data; loading converts the contents with the code
+	//table, so the engine must hold the user's settings before the first key
+	syncEngineConfig();
 	DWORD macroDataSize;
 	BYTE* macroData = EasyKeyHelper::getRegBinary(_T("macroData"), macroDataSize);
 	initMacroMap((Byte*)macroData, (int)macroDataSize);
@@ -311,16 +350,6 @@ static string exeNameOfWindow(const HWND& hWnd) {
 	}
 	CloseHandle(process);
 	return name;
-}
-
-static bool isSameExe(const string& a, const string& b) {
-#ifdef _WIN32
-	return _stricmp(a.c_str(), b.c_str()) == 0;
-#else
-	return a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin(), [](char c1, char c2) {
-		return std::tolower((unsigned char)c1) == std::tolower((unsigned char)c2);
-	});
-#endif
 }
 
 const vector<string>& getGameApps() {
@@ -400,13 +429,13 @@ void setGameApp(const string& exe, const bool& on, HWND candidateHwnd) {
 			bindGameWindow(found, false);
 			return;
 		}
-		if (_gameHwnd != NULL && IsWindow(_gameHwnd) && isGameApp(exeNameOfWindow(_gameHwnd))) {
+		if (_game.windowId != 0 && IsWindow(gameBoundHwnd()) && isGameApp(exeNameOfWindow(gameBoundHwnd()))) {
 			return;
 		}
 		clearGameBinding();
 		return;
 	}
-	if (_gameHwnd != NULL && (!IsWindow(_gameHwnd) || !isGameApp(exeNameOfWindow(_gameHwnd)))) {
+	if (_game.windowId != 0 && (!IsWindow(gameBoundHwnd()) || !isGameApp(exeNameOfWindow(gameBoundHwnd())))) {
 		clearGameBinding();
 	}
 }
@@ -646,25 +675,16 @@ static void applyPasswordProbeResultFromWorker(uint64_t resultGen, bool isPass, 
 
 	uint32_t oldWord = _passwordStateWord.load(std::memory_order_acquire);
 	for (;;) {
-		int oldState = getPasswordState(oldWord);
-		if (oldState == PW_PENDING) {
-			int nextState = isPass ? PW_PASSWORD : PW_NORMAL;
-			int nextSource = isPass ? source : PW_SRC_NONE;
-			uint32_t nextWord = makePasswordStateWord(nextState, nextSource);
-			if (_passwordStateWord.compare_exchange_weak(oldWord, nextWord, std::memory_order_acq_rel)) {
-				if (nextState == PW_NORMAL) {
-					_passwordStateDirty.store(true, std::memory_order_release);
-				}
-				break;
-			}
-		} else if (oldState == PW_NORMAL && isPass) {
-			uint32_t nextWord = makePasswordStateWord(PW_PASSWORD, source);
-			if (_passwordStateWord.compare_exchange_weak(oldWord, nextWord, std::memory_order_acq_rel)) {
+		//the decision itself is pure (app-core/PasswordState); this loop only
+		//races it against the atomic word. PW_PASSWORD never reaches a change:
+		//sticky password on same focus key/generation, do not downgrade
+		PasswordTransition transition = passwordAfterProbeResult(getPasswordState(oldWord), isPass, source);
+		if (!transition.changesWord)
+			break;
+		uint32_t nextWord = makePasswordStateWord(transition.nextState, transition.nextSource);
+		if (_passwordStateWord.compare_exchange_weak(oldWord, nextWord, std::memory_order_acq_rel)) {
+			if (transition.markDirty)
 				_passwordStateDirty.store(true, std::memory_order_release);
-				break;
-			}
-		} else {
-			// oldState == PW_PASSWORD: sticky password on same focus key/generation, do not downgrade
 			break;
 		}
 	}
@@ -819,13 +839,16 @@ static bool isPasswordRawActiveOnHookThread(uint64_t nowTick) {
 	int state = getPasswordState(word);
 	if (state == PW_PENDING) {
 		uint64_t deadline = _pendingDeadlineTick.load(std::memory_order_acquire);
-		if (nowTick >= deadline) {
+		PasswordTransition transition = passwordAfterPendingTimeout(state, nowTick, deadline);
+		if (transition.changesWord) {
 			uint32_t expected = word;
-			uint32_t normalWord = makePasswordStateWord(PW_NORMAL, PW_SRC_NONE);
+			uint32_t normalWord = makePasswordStateWord(transition.nextState, transition.nextSource);
 			if (_passwordStateWord.compare_exchange_strong(expected, normalWord, std::memory_order_acq_rel)) {
-				_probeGen.fetch_add(1, std::memory_order_acq_rel);
-				_passwordStateDirty.store(true, std::memory_order_release);
-				state = PW_NORMAL;
+				if (transition.bumpGeneration)
+					_probeGen.fetch_add(1, std::memory_order_acq_rel);
+				if (transition.markDirty)
+					_passwordStateDirty.store(true, std::memory_order_release);
+				state = transition.nextState;
 			} else {
 				state = getPasswordState(_passwordStateWord.load(std::memory_order_acquire));
 			}
@@ -858,7 +881,7 @@ void applyPasswordFeatureConfigChanges() {
 		for (;;) {
 			int state = getPasswordState(oldWord);
 			int src = getPasswordSource(oldWord);
-			if (state == PW_PENDING || (state == PW_PASSWORD && src != PW_SRC_WIN32)) {
+			if (passwordResetWhenUiaDisabled(state, src)) {
 				uint32_t normalWord = makePasswordStateWord(PW_NORMAL, PW_SRC_NONE);
 				if (_passwordStateWord.compare_exchange_weak(oldWord, normalWord, std::memory_order_acq_rel)) {
 					_probeGen.fetch_add(1, std::memory_order_acq_rel);
@@ -883,18 +906,19 @@ static bool schedulePasswordProbeIfNeeded(const PasswordFocusKey& key, bool forc
 		return false;
 
 	int oldState = getPasswordState(_passwordStateWord.load(std::memory_order_acquire));
-	if (!force && oldState == PW_PASSWORD) {
+	uint64_t nowTick = GetTickCount64();
+	PasswordSchedule schedule = passwordOnProbeScheduled(oldState, force, nowTick);
+	if (!schedule.schedule) {
 		// Sticky password on same focus key: do not downgrade
 		return true;
 	}
 
-	uint64_t nowTick = GetTickCount64();
 	_lastProbeTick = nowTick;
 	_probeTargetHwnd.store((uintptr_t)key.hwnd, std::memory_order_release);
 	_probeTargetObjectId.store(key.idObject, std::memory_order_release);
 	_probeTargetChildId.store(key.idChild, std::memory_order_release);
 	_probePreDelayMs.store(preDelayMs, std::memory_order_release);
-	_pendingDeadlineTick.store(nowTick + PW_PENDING_TIMEOUT_MS, std::memory_order_release);
+	_pendingDeadlineTick.store(schedule.deadline, std::memory_order_release);
 	_probeGen.fetch_add(1, std::memory_order_acq_rel);
 
 	uint32_t pendingWord = makePasswordStateWord(PW_PENDING, PW_SRC_NONE);
@@ -1040,22 +1064,10 @@ void setPasswordFieldUIA(bool enabled) {
 	}
 }
 
+static void applyGameEffects(const GameModeEffects& fx);
+
 void exitGameChat() {
-	bool wasGameChat = _gameChat;
-
-	_gameChat = false;
-	_chatRawCommand = false;
-	_chatTokenStart = true;
-
-	if (!wasGameChat)
-		return;
-
-	startNewSession();
-	vStartSentence();
-
-	if (IS_DOUBLE_CODE(vCodeTable)) {
-		_syncKey.clear();
-	}
+	applyGameEffects(_game.closeChat());
 }
 
 static void resetModifierState() {
@@ -1078,36 +1090,40 @@ static void updateModifierMaskOnly(WPARAM wParam) {
 	}
 }
 
-static void enterGameState() {
-	_inGame = true;
-	exitGameChat();
-	resetModifierState();
-	startNewSession();
-	vStartSentence();
-	if (IS_DOUBLE_CODE(vCodeTable)) {
-		_syncKey.clear();
+//runs the side effects a game state transition asks for, in the order the
+//original code ran them: the chat-close session reset, then the enter/leave
+//reset (modifier state included), then the chat-open session start
+static void applyGameEffects(const GameModeEffects& fx) {
+	if (fx.chatClosed) {
+		startNewSession();
+		vStartSentence();
+		if (IS_DOUBLE_CODE(vCodeTable)) {
+			_syncKey.clear();
+		}
 	}
+	if (fx.sessionReset) {
+		resetModifierState();
+		startNewSession();
+		vStartSentence();
+		if (IS_DOUBLE_CODE(vCodeTable)) {
+			_syncKey.clear();
+		}
+	}
+	if (fx.chatOpened) {
+		startNewSession();
+	}
+}
+
+static void enterGameState() {
+	applyGameEffects(_game.enterGame());
 }
 
 static void leaveGameState() {
-	if (!_inGame)
-		return;
-	exitGameChat();
-	_inGame = false;
-	resetModifierState();
-	startNewSession();
-	vStartSentence();
-	if (IS_DOUBLE_CODE(vCodeTable)) {
-		_syncKey.clear();
-	}
+	applyGameEffects(_game.leaveGame());
 }
 
 static void clearGameBinding() {
-	leaveGameState();
-	_gameHwnd = NULL;
-	_gamePid = 0;
-	_gameConfirmed = false;
-	_lastGameForegroundTick = 0;
+	applyGameEffects(_game.clearBinding());
 }
 
 static void bindGameWindow(HWND hwnd, bool confirmed) {
@@ -1117,20 +1133,7 @@ static void bindGameWindow(HWND hwnd, bool confirmed) {
 	GetWindowThreadProcessId(hwnd, &pid);
 	if (!pid || pid == GetCurrentProcessId())
 		return;
-	_gameHwnd = hwnd;
-	_gamePid = pid;
-	_gameConfirmed = confirmed;
-	_lastGameForegroundTick = GetTickCount64();
-	HWND fg = GetForegroundWindow();
-	if (fg == hwnd) {
-		_gameConfirmed = true;
-		enterGameState();
-	} else {
-		if (_inGame)
-			leaveGameState();
-		else
-			_inGame = false;
-	}
+	applyGameEffects(_game.bind(gameWindowId(hwnd), pid, confirmed, GetTickCount64(), GetForegroundWindow() == hwnd));
 }
 
 void saveSmartSwitchKeyData() {
@@ -1389,7 +1392,7 @@ void switchLanguage() {
 		MessageBeep(MB_OK);
 	AppDelegate::getInstance()->onInputMethodChangedFromHotKey();
 	AppDelegate::getInstance()->showSwitchFlyout();
-	if (vUseSmartSwitchKey && !_inGame) {
+	if (vUseSmartSwitchKey && !_game.inGame) {
 		setAppInputMethodStatus(EasyKeyHelper::getFrontMostAppExecuteName(), vLanguage | (vCodeTable << 1));
 		saveSmartSwitchKeyData();
 	}
@@ -1644,43 +1647,32 @@ LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 	}
 
 	//fast-path game window binding check (confirmed bindings persist for the lifetime of the game window;
-	//only unconfirmed armed bindings expire after GAME_ARMED_TTL_MS)
+	//only unconfirmed armed bindings expire after the armed TTL)
 	HWND fg = NULL;
-	if (_gameHwnd != NULL) {
-		if (!IsWindow(_gameHwnd)) {
-			clearGameBinding();
-		} else if (!_gameConfirmed && (nowTick < _lastGameForegroundTick || (nowTick - _lastGameForegroundTick) >= GAME_ARMED_TTL_MS)) {
-			clearGameBinding();
-		} else {
-			fg = GetForegroundWindow();
-			if (fg == _gameHwnd) {
-				if (!_gameConfirmed || !_inGame) {
-					DWORD pid = 0;
-					GetWindowThreadProcessId(fg, &pid);
-					if (pid == _gamePid && IsWindow(fg)) {
-						_gameConfirmed = true;
-						if (!_inGame)
-							enterGameState();
-						_lastGameForegroundTick = nowTick;
-					} else {
-						clearGameBinding();
-						fg = NULL;
-					}
-				} else {
-					_lastGameForegroundTick = nowTick;
-				}
-			} else {
-				if (_inGame) {
-					leaveGameState();
-				}
+	if (_game.windowId != 0) {
+		bool boundAlive = IsWindow(gameBoundHwnd());
+		HWND fgHwnd = NULL;
+		uint64_t fgId = 0;
+		bool fgPidMatches = false;
+		if (boundAlive && !_game.armedExpired(nowTick)) {
+			fgHwnd = GetForegroundWindow();
+			fgId = gameWindowId(fgHwnd);
+			if (fgId == _game.windowId && (!_game.confirmed || !_game.inGame)) {
+				DWORD pid = 0;
+				GetWindowThreadProcessId(fgHwnd, &pid);
+				fgPidMatches = (pid == _game.processId && IsWindow(fgHwnd));
 			}
 		}
+		GameModeState::BindingCheck check = _game.onKeyboardBindingCheck(nowTick, boundAlive, fgId, fgPidMatches);
+		applyGameEffects(check.effects);
+		if (check.useForeground)
+			fg = fgHwnd;
 	}
 
 	//game mode: keys go straight to the game (skills on Q, W, E, R, Alt+W...) until Enter opens the chat;
 	//Enter (send) or Esc (close) ends the chat. All key-up events and modifier combinations in game mode
 	//bypass hotkey/language-switch evaluation completely.
-	if (_inGame) {
+	if (_game.inGame) {
 		updateModifierMaskOnly(wParam);
 		_lastFlag = 0;
 		_hasJustUsedHotKey = false;
@@ -1689,45 +1681,13 @@ LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 		}
 		if (!_isFlagKey)
 			_keycode = (Uint16)keyboardData->vkCode;
-		if ((_keycode == VK_RETURN || _keycode == VK_ESCAPE) && !(_flag & (MASK_ALT | MASK_CONTROL))) { //not Alt + Enter
-			if (_keycode == VK_RETURN) {
-				if (_gameChat)
-					exitGameChat();
-				else {
-					_gameChat = true;
-					_chatRawCommand = false;
-					_chatTokenStart = true;
-					startNewSession();
-				}
-			} else {
-				exitGameChat();
-			}
-			return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
-		}
-		if (!_gameChat)
-			return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
-
-		//game chat: / prefix passes entire command raw until space or enter
-		if (_chatRawCommand) {
-			if (_keycode == VK_SPACE) {
-				_chatRawCommand = false;
-				_chatTokenStart = true;
-			}
-			return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
-		} else {
-			if (_keycode == VK_OEM_2 && _chatTokenStart && !(_flag & (MASK_CONTROL | MASK_ALT))) {
-				_chatRawCommand = true;
-				_chatTokenStart = false;
-				return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
-			}
-			if (_keycode == VK_SPACE) {
-				_chatTokenStart = true;
-			} else if (_keycode != VK_SHIFT && _keycode != VK_CAPITAL && _keycode != VK_LSHIFT && _keycode != VK_RSHIFT) {
-				_chatTokenStart = false;
-			}
-		}
-
-		// Model W: game chat is raw by default without mutating normal app language
+		//the state machine decides chat open/close and the / raw command; every
+		//in-game key then goes straight to the game (Model W: game chat is raw
+		//by default without mutating normal app language)
+		GameModeState::KeyInput keyInput;
+		keyInput.vkCode = _keycode;
+		keyInput.altOrCtrl = (_flag & (MASK_ALT | MASK_CONTROL)) != 0;
+		applyGameEffects(_game.onGameKeyDown(keyInput));
 		return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
 	}
 
@@ -1826,6 +1786,7 @@ LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 	//if is in english mode
 	if (vLanguage == 0) {
 		if (vUseMacro && vUseMacroInEnglishMode && (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN)) {
+			syncEngineConfig(); //vEnglishMode runs outside vKeyHandleEvent
 			vEnglishMode(((wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN) ? vKeyEventState::KeyDown : vKeyEventState::MouseDown),
 				_keycode,
 				(_flag & MASK_SHIFT) || (_flag & MASK_CAPITAL),
@@ -1845,6 +1806,7 @@ LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 		vKeyHandleEvent(vKeyEvent::Keyboard,
 						vKeyEventState::KeyDown,
 						_keycode,
+						currentEngineConfig(),
 						(_flag & MASK_SHIFT && _flag & MASK_CAPITAL) ? 0 : (_flag & MASK_SHIFT ? 1 : (_flag & MASK_CAPITAL ? 2 : 0)),
 						OTHER_CONTROL_KEY);
 		if (pData->code == vDoNothing) { //do nothing
@@ -1932,40 +1894,25 @@ LRESULT CALLBACK mouseHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 		return CallNextHookEx(hMouseHook, nCode, wParam, lParam);
 
 	if (wParam == WM_LBUTTONDOWN || wParam == WM_RBUTTONDOWN || wParam == WM_MBUTTONDOWN) {
-		if (_gamePid != 0 && !_inGame) {
-			if (_gameHwnd != NULL && !IsWindow(_gameHwnd)) {
-				clearGameBinding();
-			} else if (!_gameConfirmed && _lastGameForegroundTick != 0 &&
-				(nowTick < _lastGameForegroundTick || (nowTick - _lastGameForegroundTick) >= GAME_ARMED_TTL_MS)) {
-				clearGameBinding();
-			} else {
+		if (_game.processId != 0 && !_game.inGame) {
+			bool boundAlive = _game.windowId != 0 && IsWindow(gameBoundHwnd());
+			uint64_t fgId = 0;
+			bool fgIsBoundProcess = false;
+			if (!((_game.windowId != 0 && !boundAlive) || (!_game.confirmed && _game.lastForegroundTick != 0 && _game.armedExpired(nowTick)))) {
 				HWND fg = GetForegroundWindow();
-				if (fg == _gameHwnd && fg != NULL) {
+				fgId = gameWindowId(fg);
+				if (fg != NULL) {
 					DWORD pid = 0;
 					GetWindowThreadProcessId(fg, &pid);
-					if (pid == _gamePid && pid != GetCurrentProcessId() && IsWindow(fg) && IsWindowVisible(fg) && GetAncestor(fg, GA_ROOT) == fg) {
-						_gameConfirmed = true;
-						_lastGameForegroundTick = nowTick;
-						enterGameState();
-					} else {
-						clearGameBinding();
-					}
-				} else if (fg != NULL) {
-					DWORD pid = 0;
-					GetWindowThreadProcessId(fg, &pid);
-					if (pid == _gamePid && pid != GetCurrentProcessId() && IsWindow(fg) && IsWindowVisible(fg) && GetAncestor(fg, GA_ROOT) == fg) {
-						_gameHwnd = fg;
-						_gameConfirmed = true;
-						_lastGameForegroundTick = nowTick;
-						enterGameState();
-					}
+					fgIsBoundProcess = (pid == _game.processId && pid != GetCurrentProcessId() && IsWindow(fg) && IsWindowVisible(fg) && GetAncestor(fg, GA_ROOT) == fg);
 				}
 			}
+			applyGameEffects(_game.onMouseBindingCheck(nowTick, boundAlive, fgId, fgIsBoundProcess));
 		}
 	}
 
 	//game mode: click to exit chat
-	if (_inGame && _gameChat) {
+	if (_game.inGame && _game.chatOpen) {
 		if (wParam == WM_LBUTTONDOWN || wParam == WM_RBUTTONDOWN || wParam == WM_MBUTTONDOWN) {
 			exitGameChat();
 		}
@@ -1983,7 +1930,7 @@ LRESULT CALLBACK mouseHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 		case WM_XBUTTONUP:
 		case WM_NCXBUTTONUP:
 			//send event signal to Engine
-			vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+			vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, currentEngineConfig());
 			if (IS_DOUBLE_CODE(vCodeTable)) { //VNI
 				_syncKey.clear();
 			}
@@ -2004,18 +1951,14 @@ VOID CALLBACK winEventProcCallback(HWINEVENTHOOK hWinEventHook, DWORD dwEvent, H
 		uint64_t nowTick = GetTickCount64();
 		if (!_gameApps.empty() && hwnd && isGameApp(exeNameOfWindow(hwnd))) {
 			bindGameWindow(hwnd, true);
-			_inGame = true;
+			_game.forceInGame();
 		} else {
-			leaveGameState();
-			if (_gameHwnd != NULL && (!IsWindow(_gameHwnd) ||
-				(!_gameConfirmed && (nowTick < _lastGameForegroundTick || (nowTick - _lastGameForegroundTick) >= GAME_ARMED_TTL_MS)))) {
-				clearGameBinding();
-			}
+			applyGameEffects(_game.onForegroundChangedAway(nowTick, _game.windowId != 0 && IsWindow(gameBoundHwnd())));
 		}
 		recordNavigationSignal(nowTick);
 		updatePasswordFieldState(hwnd, OBJID_WINDOW, CHILDID_SELF, true);
 		//smart switch key
-		if (!_inGame && (vUseSmartSwitchKey || vRememberCode)) {
+		if (!_game.inGame && (vUseSmartSwitchKey || vRememberCode)) {
 			string& exe = EasyKeyHelper::getFrontMostAppExecuteName();
 			//Explorer counts as the app the user came from; an app whose name can't be read
 			//keeps what is on now instead of sharing one entry with every other such app

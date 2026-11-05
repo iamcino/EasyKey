@@ -10,6 +10,8 @@ set(APP_CORE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../app-core)
 add_executable(EngineTests
     EngineTests.cpp
     ${APP_CORE_DIR}/VersionInfo.cpp
+    ${APP_CORE_DIR}/GameModeState.cpp
+    ${APP_CORE_DIR}/PasswordState.cpp
     ${ENGINE_DIR}/ConvertTool.cpp
     ${ENGINE_DIR}/Engine.cpp
     ${ENGINE_DIR}/Macro.cpp

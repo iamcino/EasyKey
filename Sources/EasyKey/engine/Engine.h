@@ -42,46 +42,53 @@
 #define SET_OPTION_KEY(data, val) data|=val<<9;
 #define SET_COMMAND_KEY(data, val) data|=val<<10;
 
-//define these variable in your application
-//API
+//The application's settings for the engine (plan point 2). The defaults below
+//are the application's own defaults. The engine keeps its own copy of the
+//config: vKeyHandleEvent stores the config it is handed, and entry points
+//that run outside a key event (startNewSession, vEnglishMode, the macro
+//loaders, ...) read that copy through vKeyActiveConfig(). Before calling
+//such an entry point directly, the application refreshes the copy itself
+//with vKeySetConfig() - at startup, for example, the macro table must be
+//converted with the user's code table, not the default one.
+struct vKeyConfig {
 /*
  * 0: English
  * 1: Vietnamese
  */
-extern int vLanguage;
+int language = 1;
 
 /*
  * Mixed English and Vietnamese, works while vLanguage is 1 (EasyKey)
  * 0: No
  * 1: Yes, a word that reads as English gets its keys back when it ends: "this" stays "this", not "thí"
  */
-extern int vMixedEnglish;
+int mixedEnglish = 0;
 
 /*
  * Fix the previous word if the current word is clearly another language (EasyKey)
  * 0: No (default in 1.0.13: off to avoid erratic backspaces in async/rich-text apps)
  * 1: Yes (experimental retroactive correction)
  */
-extern int vMixedFixLast;
+int mixedFixLast = 0;
 
 /*
  * 0: Telex
  * 1: VNI
  */
-extern int vInputType;
+int inputType = 0;
 
 /**
  * 0: No
  * 1: Yes
  */
-extern int vFreeMark;
+int freeMark = 0;
 
 /*
  * 0: Unicode
  * 1: TCVN3 (ABC)
  * 2: VNI-Windows
  */
-extern int vCodeTable;
+int codeTable = 0;
 
 /*
  * first 8 bit: keycode
@@ -89,26 +96,26 @@ extern int vCodeTable;
  * bit 9: Option on/off
  * bit 10: Command on/off
  */
-extern int vSwitchKeyStatus;
+int switchKeyStatus = 0x5A00025A;
 
 /**
  * 0: No
  * 1: Yes
  */
-extern int vCheckSpelling;
+int checkSpelling = 1;
 
 /*
  * 0: òa, úy
  * 1: oà uý
 */
-extern int vUseModernOrthography;
+int useModernOrthography = 1;
 
 /**
  * 0: No
  * 1: Yes
  * (cc=ch, gg=gi, kk=kh, nn=ng, qq=qu, pp=ph, tt=th, uu=ươ)
  */
-extern int vQuickTelex;
+int quickTelex = 0;
 
 /**
  * Work together with vCheckSpelling
@@ -116,52 +123,52 @@ extern int vQuickTelex;
  * 1: Yes
  *
  */
-extern int vRestoreIfWrongSpelling;
+int restoreIfWrongSpelling = 1;
 
 /*
  * Fix recommend browser's address, excel,...
  * 0: No
  * 1: Yes
  */
-extern int vFixRecommendBrowser;
+int fixRecommendBrowser = 0;
 
 /**
  * Macro on or off
  */
-extern int vUseMacro;
+int useMacro = 1;
 
 /**
  * Still use macro if you are in english mode
  */
-extern int vUseMacroInEnglishMode;
+int useMacroInEnglishMode = 1;
 
 /**
  * Ex: define: btw -> by the way
  * Type: `Btw` -> `By the way`
  * Type: `BTW` -> `BY THE WAY`
  */
-extern int vAutoCapsMacro;
+int autoCapsMacro = 0;
 
 /**
  * auto switch language when switch app
  * 0: No
  * 1: Yes
  */
-extern int vUseSmartSwitchKey;
+int useSmartSwitchKey = 1;
 
 /**
  * Auto write upper case character for first letter.
  * 0: No
  * 1: Yes
  */
-extern int vUpperCaseFirstChar;
+int upperCaseFirstChar = 0;
 
 /**
  * Allow write word with consonant Z, F, W, J
  * 0: No
  * 1: Yes
  */
-extern int vAllowConsonantZFWJ;
+int allowConsonantZFWJ = 0;
 
 /**
  * 0: No; 1: Yes
@@ -169,7 +176,7 @@ extern int vAllowConsonantZFWJ;
  * j ->gi: jang -> giang,...
  * w ->qu: wen -> quen,...
  */
-extern int vQuickStartConsonant;
+int quickStartConsonant = 0;
 
 /**
  * 0: No; 1: Yes
@@ -177,33 +184,41 @@ extern int vQuickStartConsonant;
  * h -> nh: vih -> vinh,...
  * k -> ch: bak -> bach,...
  */
-extern int vQuickEndConsonant;
+int quickEndConsonant = 0;
 
 /**
  * 0: No; 1: Yes
  * Auto remember table code for each application
  */
-extern int vRememberCode;
+int rememberCode = 1;
 
 /**
  * 0: No; 1: Yes
  * Turn off Vietnamese when typing in another language.
  */
-extern int vOtherLanguage;
+int otherLanguage = 1;
 
 /*
  * Esc while typing a word puts back the keys as typed (EasyKey)
  * 0: No
  * 1: Yes
  */
-extern int vRestoreOnEscape;
+int restoreOnEscape = 1;
 
 /*
  * Password field raw bypass (EasyKey)
  * 0: No
  * 1: Yes, pass keys raw when focused on a password field
  */
-extern int vPasswordFieldBypass;
+int passwordFieldBypass = 1;
+};
+
+//store a copy of the application's current configuration in the engine
+void vKeySetConfig(const vKeyConfig& config);
+
+//the engine's stored configuration (a default-constructed vKeyConfig
+//until the first vKeySetConfig or vKeyHandleEvent call)
+const vKeyConfig& vKeyActiveConfig();
 
 enum PasswordState {
     PW_NORMAL = 0,
@@ -232,6 +247,7 @@ Uint32 getCharacterCode(const Uint32& data);
 void vKeyHandleEvent(const vKeyEvent& event,
                      const vKeyEventState& state,
                      const Uint16& data,
+                     const vKeyConfig& config,
                      const Uint8& capsStatus=0,
                      const bool& otherControlKey=false);
 

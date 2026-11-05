@@ -22,32 +22,46 @@
 #include "../engine/Engine.h"
 #include "../engine/ConvertTool.h"
 #include "../engine/MixedWords.h"
+#include "../app-core/GameModeState.h"
+#include "../app-core/PasswordState.h"
+#include "../app-core/ExeName.h"
 #include "../app-core/VersionInfo.h"
 
-//engine settings, normally defined by each platform app (see Engine.h)
-int vLanguage = 1;
-int vMixedEnglish = 0;
-int vMixedFixLast = 0;
-int vInputType = 0;
-int vFreeMark = 0;
-int vCodeTable = 0;
-int vCheckSpelling = 1;
-int vUseModernOrthography = 1;
-int vQuickTelex = 0;
-int vSwitchKeyStatus = 0;
-int vRestoreIfWrongSpelling = 1;
-int vFixRecommendBrowser = 0;
-int vUseMacro = 0;
-int vUseMacroInEnglishMode = 0;
-int vAutoCapsMacro = 0;
-int vUseSmartSwitchKey = 0;
-int vUpperCaseFirstChar = 0;
-int vAllowConsonantZFWJ = 0;
-int vQuickStartConsonant = 0;
-int vQuickEndConsonant = 0;
-int vRememberCode = 0;
-int vOtherLanguage = 0;
-int vRestoreOnEscape = 1;
+//engine settings: the engine now takes a vKeyConfig on every vKeyHandleEvent
+//call (see Engine.h). The suite keeps one shared config, initialized with the
+//values these tests have always run with (not the app defaults), and cases
+//adjust fields on it between runs.
+static vKeyConfig& testCfg() {
+    static vKeyConfig c = [] {
+        vKeyConfig cfg;
+        cfg.language = 1;
+        cfg.mixedEnglish = 0;
+        cfg.mixedFixLast = 0;
+        cfg.inputType = 0;
+        cfg.freeMark = 0;
+        cfg.codeTable = 0;
+        cfg.checkSpelling = 1;
+        cfg.useModernOrthography = 1;
+        cfg.quickTelex = 0;
+        cfg.switchKeyStatus = 0;
+        cfg.restoreIfWrongSpelling = 1;
+        cfg.fixRecommendBrowser = 0;
+        cfg.useMacro = 0;
+        cfg.useMacroInEnglishMode = 0;
+        cfg.autoCapsMacro = 0;
+        cfg.useSmartSwitchKey = 0;
+        cfg.upperCaseFirstChar = 0;
+        cfg.allowConsonantZFWJ = 0;
+        cfg.quickStartConsonant = 0;
+        cfg.quickEndConsonant = 0;
+        cfg.rememberCode = 0;
+        cfg.otherLanguage = 0;
+        cfg.restoreOnEscape = 1;
+        cfg.passwordFieldBypass = 1;
+        return cfg;
+    }();
+    return c;
+}
 
 static vKeyHookState* pData;
 static int failures = 0;
@@ -106,14 +120,17 @@ static void sendKeyCode(wstring& text, Uint32 data) {
         text += keyCodeToChar(data);
 }
 
-static wstring typeKeys(const string& keys) {
+static wstring typeKeysWith(const string& keys, const vKeyConfig& config);
+static wstring typeKeys(const string& keys) { return typeKeysWith(keys, testCfg()); }
+
+static wstring typeKeysWith(const string& keys, const vKeyConfig& config) {
     startNewSession();
     wstring text;
     for (char c : keys) {
         Uint16 keyCode = charToKeyCode(c);
         bool isPunctuation = c == '.' || c == '?' || c == '!' || c == '@';
         bool isCaps = (c >= 'A' && c <= 'Z') || c == '?' || c == '!' || c == '@' || c == '_' || c == ':';
-        vKeyHandleEvent(vKeyEvent::Keyboard, vKeyEventState::KeyDown, keyCode, isCaps ? 1 : 0, false);
+        vKeyHandleEvent(vKeyEvent::Keyboard, vKeyEventState::KeyDown, keyCode, config, isCaps ? 1 : 0, false);
         if (pData->code == vDoNothing) {
             //the key is passed through to the application
             if (keyCode == KEY_DELETE) {
@@ -170,7 +187,7 @@ static void expectTyping(const char* inputName, const string& keys, const wstrin
 }
 
 static void testTelex() {
-    vInputType = vTelex;
+    testCfg().inputType = vTelex;
     //marks
     expectTyping("Telex", "as", L"á");
     expectTyping("Telex", "af", L"à");
@@ -225,7 +242,7 @@ static void testTelex() {
     expectTyping("Telex", "ass ", L"as ");
     expectTyping("Telex", "tesst ", L"test ");
     //capitalize the first letter after . ? !
-    vUpperCaseFirstChar = 1;
+    testCfg().upperCaseFirstChar = 1;
     expectTyping("Telex", "xin. chaof", L"xin. Chào");
     expectTyping("Telex", "xin? chaof", L"xin? Chào");
     expectTyping("Telex", "xin! chaof", L"xin! Chào");
@@ -233,11 +250,11 @@ static void testTelex() {
     vStartSentence();
     expectTyping("Telex", "xin chaof", L"Xin chào");
     vStartSentence();
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0); //the click that switched windows
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg()); //the click that switched windows
     expectTyping("Telex", "xin chaof", L"Xin chào");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0); //a click in the same window
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg()); //a click in the same window
     expectTyping("Telex", "xin chaof", L"xin chào");
-    vUpperCaseFirstChar = 0;
+    testCfg().upperCaseFirstChar = 0;
     //abbreviations with d/dd
     expectTyping("Telex abbr ddc", "ddc ", L"đc ");
     expectTyping("Telex abbr ddk", "ddk ", L"đk ");
@@ -258,293 +275,293 @@ static void testTelex() {
     expectTyping("Telex queen", "queen ", L"qu\u00ean ");
     expectTyping("Telex quee", "quee ", L"qu\u00ea ");
     // Simple Telex: qwen and qw must never produce qư
-    vInputType = vSimpleTelex1;
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    testCfg().inputType = vSimpleTelex1;
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("SimpleTelex1 qwen", "qwen ", L"qwen ");
     expectTyping("SimpleTelex1 qw", "qw ", L"qw ");
     expectTyping("SimpleTelex1 quw", "quw ", L"quw ");
     expectTyping("SimpleTelex1 quow", "quow ", L"qu\u01a1 ");
-    vInputType = vSimpleTelex2;
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    testCfg().inputType = vSimpleTelex2;
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("SimpleTelex2 qwen", "qwen ", L"qwen ");
     expectTyping("SimpleTelex2 qw", "qw ", L"qw ");
     expectTyping("SimpleTelex2 quw", "quw ", L"quw ");
     expectTyping("SimpleTelex2 quow", "quow ", L"qu\u01a1 ");
-    vInputType = vTelex;
+    testCfg().inputType = vTelex;
     //quick telex: initial pp/tt/gg/kk/qq/cc/nn convert, but non-initial only cc and nn
-    vQuickTelex = 1;
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    testCfg().quickTelex = 1;
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Quick Telex", "ppa", L"pha");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Quick Telex", "tta", L"tha");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Quick Telex", "cco", L"cho");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Quick Telex", "thicc", L"thich");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Quick Telex", "nna", L"nga");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Quick Telex", "dunn", L"dung");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Quick Telex non-initial pp", "app ", L"app ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Quick Telex non-initial tt", "attack ", L"attack ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Quick Telex non-initial gg", "egg ", L"egg ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Quick Telex abbr ddc", "ddc ", L"đc ");
     expectTyping("Quick Telex abbr ddm", "ddm ", L"đm ");
     expectTyping("Quick Telex abbr DDT", "DDT ", L"ĐT ");
     expectTyping("Quick Telex abbr DDHQG", "DDHQG ", L"ĐHQG ");
     expectTyping("Quick Telex triple p", "ppp ", L"pp ");
     expectTyping("Quick Telex triple c", "ccc ", L"cc ");
-    vQuickTelex = 0;
+    testCfg().quickTelex = 0;
 }
 
 static void testMixed() {
-    vInputType = vTelex;
+    testCfg().inputType = vTelex;
     //without the mixed mode an English word that is also a Vietnamese one gets the marks
     expectTyping("Mixed off", "this is ", L"thí í ");
-    vMixedEnglish = 1;
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0); //no words before
+    testCfg().mixedEnglish = 1;
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg()); //no words before
     expectTyping("Mixed", "this is a test ", L"this is a test ");
     expectTyping("Mixed", "This is my car.", L"This is my car.");
     expectTyping("Mixed", "different ", L"different ");
     expectTyping("Mixed", "off ", L"off ");
-    //with vMixedFixLast off (default in 1.0.13), a word does not retroactively rewrite previous words
-    vMixedFixLast = 0;
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    //with testCfg().mixedFixLast off (default in 1.0.13), a word does not retroactively rewrite previous words
+    testCfg().mixedFixLast = 0;
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed default", "There are ", L"Th\u1ec3 are ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed default", "Did you see ", L"\u0110i you see ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed default", "The car was ", L"The c\u1ea3 was ");
-    //with vMixedFixLast on, an English word settles the one before it
-    vMixedFixLast = 1;
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    //with testCfg().mixedFixLast on, an English word settles the one before it
+    testCfg().mixedFixLast = 1;
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed", "There are ", L"There are ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed", "Did you see ", L"Did you see ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed", "The car was ", L"The car was ");
-    vMixedFixLast = 0;
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    testCfg().mixedFixLast = 0;
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed", "There  are ", L"Thể  are "); //only across one space
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed", "tooi muoons test cais nayf ", L"tôi muốn test cái này ");
     expectTyping("Mixed", "tooi review car hai banr ", L"tôi review cả hai bản ");
     expectTyping("Mixed", "tooi sex ddi ", L"tôi sẽ đi ");
     expectTyping("Mixed", "taats car ", L"tất cả ");
     expectTyping("Mixed", "vieetj nam ", L"việt nam ");
     //a word only Vietnamese reads stays, also on its own
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed", "cos ", L"có ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed", "sex ", L"sẽ ");
     //code-like tokens, camelCase, snake_case, identifiers, emails
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed code-like", "user_id ", L"user_id ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed code-like", "parseJSON ", L"parseJSON ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed code-like", "EasyKeyEngine ", L"EasyKeyEngine ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed code-like", "vi_tri laf thoong soos ", L"vi_tri là thông số ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed code-like", "user@gmail.com ", L"user@gmail.com ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed code-like", "max_size ", L"max_size ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed code-like", "sort_desc ", L"sort_desc ");
     //title-case words with Shift held over first keys must NOT be treated as camelCase
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed EV title-case", "DDi ", L"\u0110i ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed EV title-case", "DDaf Nawngx ", L"\u0110\u00e0 N\u1eb5ng ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed EV title-case", "DDuwowfng ", L"\u0110\u01b0\u1eddng ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed EV title-case", "VIeejt ", L"VI\u1ec7t ");
     //collocation rules for tét vs test
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed phrase", "banhs test ", L"b\u00e1nh t\u00e9t ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed phrase", "thijt test ", L"th\u1ecbt t\u00e9t ");
     //negative tests ensuring English loanword 'test' stays 'test'
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed phrase", "dungf cho test ", L"d\u00f9ng cho test ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed phrase", "cais nayf bij test fail ", L"c\u00e1i n\u00e0y b\u1ecb test fail ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed phrase", "chayj xe test ", L"ch\u1ea1y xe test ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed phrase", "tooi chayj test ", L"t\u00f4i ch\u1ea1y test ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed phrase", "test thuwr ", L"test th\u1eed ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed phrase", "unit test ", L"unit test ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed phrase", "test case ", L"test case ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed phrase", "test ddaafu tieen ", L"test \u0111\u1ea7u ti\u00ean ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed phrase", "laafn test ddaafu ", L"l\u1ea7n test \u0111\u1ea7u ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed phrase", "test daafu ", L"test d\u1ea7u ");
     //curated whitelist words (tested with spell restore off to prove recognition from mixed dictionary)
-    vRestoreIfWrongSpelling = 0;
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    testCfg().restoreIfWrongSpelling = 0;
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed whitelist", "excited ", L"excited ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed whitelist", "explain ", L"explain ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed whitelist", "install ", L"install ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed whitelist", "software ", L"software ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed whitelist", "warning ", L"warning ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed whitelist", "merge ", L"merge ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed whitelist", "fix ", L"fix ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed whitelist", "fixed ", L"fixed ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed whitelist", "fixes ", L"fixes ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed whitelist", "fixing ", L"fixing ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed phrase", "tooi fix bug ", L"t\u00f4i fix bug ");
-    vRestoreIfWrongSpelling = 1;
-    vAllowConsonantZFWJ = 1;
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    testCfg().restoreIfWrongSpelling = 1;
+    testCfg().allowConsonantZFWJ = 1;
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed ZFWJ fix", "fix ", L"fix ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed ZFWJ fix", "tooi fix bug ", L"t\u00f4i fix bug ");
-    vAllowConsonantZFWJ = 0;
+    testCfg().allowConsonantZFWJ = 0;
     //backspace across word boundary must not eat earlier word
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Backspace across space", "dungf back <<<<<space ", L"d\u00f9ng space ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Backspace across space", "dungf back<<<<<space ", L"dungfspace ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Backspace across dot EV", "abc. <<d ", L"abcd ");
     // Vietnamese compound syllable "dả" ("dư dả", "già dả") must not be overwritten by "dar"
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed dư dả", "duw dar ", L"d\u01b0 d\u1ea3 ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed già dả", "giaf dar ", L"gi\u00e0 d\u1ea3 ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed dade", "dade ", L"dade ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed dara", "dara ", L"dara ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed darrell", "darrell ", L"darrell ");
     // English words that change under Telex must remain English in Vietnamese context
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed guard how", "tooi bieets how to do ", L"t\u00f4i bi\u1ebft how to do ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed guard now", "ngay now ", L"ngay now ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed guard see", "tooi see ", L"t\u00f4i see ");
     // Short Vietnamese protection ("bú", "ú", "tô") vs English phrase collocations ("xe bus", "with us", "me too")
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed bú standalone", "bus ", L"b\u00fa ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed em bé bú sữa", "em bes bus suwax ", L"em b\u00e9 b\u00fa s\u1eefa ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed xe bus", "xe bus ", L"xe bus ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed tuyến bus", "tuyeesn bus ", L"tuy\u1ebfn bus ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed mập ú", "maapj us ", L"m\u1eadp \u00fa ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed béo ú", "beos us ", L"b\u00e9o \u00fa ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed with us", "with us ", L"with us ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed contact us", "contact us ", L"contact us ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed us standalone -> ú", "us ", L"\u00fa ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed how standalone", "how ", L"how ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed right now", "right now ", L"right now ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed see you", "see you ", L"see you ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed me too", "me too ", L"me too ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed một tô", "mootj too ", L"m\u1ed9t t\u00f4 ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed tét đít", "tets ddits ", L"t\u00e9t \u0111\u00edt ");
     // Protected short Vietnamese "er" -> "ẻ" (colloquial euphemism)
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed er standalone -> ẻ", "er ", L"\u1ebb ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed đi ẻ", "ddi er ", L"\u0111i \u1ebb ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed er comma -> ẻ,", "er, ", L"\u1ebb, ");
     // ALL-CAPS English acronyms ("US", "AI", "ER", "UK", "AS", "IS", "IF", "OR") vs lowercase Vietnamese ("us"->"ú", "ai"->"ai", "er"->"ẻ")
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed ALL-CAPS US", "US ", L"US ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed ALL-CAPS AI", "AI ", L"AI ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed lowercase ai", "ai ", L"ai ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed ALL-CAPS ER", "ER ", L"ER ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed ALL-CAPS UK", "UK ", L"UK ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed ALL-CAPS AS", "AS ", L"AS ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed ALL-CAPS IS", "IS ", L"IS ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed ALL-CAPS IF", "IF ", L"IF ");
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed ALL-CAPS OR", "OR ", L"OR ");
-    // AI & tech proper nouns in Mixed mode (both with vRestoreIfWrongSpelling=1 and =0)
+    // AI & tech proper nouns in Mixed mode (both with testCfg().restoreIfWrongSpelling=1 and =0)
     for (int restoreSpell : { 1, 0 }) {
-        vRestoreIfWrongSpelling = restoreSpell;
-        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+        testCfg().restoreIfWrongSpelling = restoreSpell;
+        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
         expectTyping("Mixed AI qwen", "qwen ", L"qwen ");
-        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
         expectTyping("Mixed AI deepseek", "deepseek ", L"deepseek ");
-        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
         expectTyping("Mixed AI claude", "claude ", L"claude ");
-        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
         expectTyping("Mixed AI gemini", "gemini ", L"gemini ");
-        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
         expectTyping("Mixed AI chatgpt", "chatgpt ", L"chatgpt ");
-        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
         expectTyping("Mixed AI openai", "openai ", L"openai ");
-        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
         expectTyping("Mixed AI llama", "llama ", L"llama ");
-        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
         expectTyping("Mixed AI mistral", "mistral ", L"mistral ");
-        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
         expectTyping("Mixed AI ollama", "ollama ", L"ollama ");
-        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
         expectTyping("Mixed AI vllm", "vllm ", L"vllm ");
-        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
         expectTyping("Mixed AI cursor", "cursor ", L"cursor ");
-        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
         expectTyping("Mixed AI perplexity", "perplexity ", L"perplexity ");
-        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
         expectTyping("Mixed AI anthropic", "anthropic ", L"anthropic ");
-        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
         expectTyping("Mixed AI midjourney", "midjourney ", L"midjourney ");
-        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
         expectTyping("Mixed AI sentence", "tooi dungf qwen vaf deepseek ", L"t\u00f4i d\u00f9ng qwen v\u00e0 deepseek ");
     }
-    vRestoreIfWrongSpelling = 1;
-    vMixedEnglish = 0;
-    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
+    testCfg().restoreIfWrongSpelling = 1;
+    testCfg().mixedEnglish = 0;
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
 }
 
 static void testVNI() {
-    vInputType = vVNI;
+    testCfg().inputType = vVNI;
     expectTyping("VNI", "a1", L"á");
     expectTyping("VNI", "a2", L"à");
     expectTyping("VNI", "a3", L"ả");
@@ -569,11 +586,11 @@ static void testVNI() {
     expectTyping("VNI quo7", "quo7 ", L"qu\u01a1 ");
     expectTyping("VNI quo73", "quo73 ", L"qu\u1edf ");
     expectTyping("VNI quo72", "quo72 ", L"qu\u1edd ");
-    vMixedEnglish = 1;
+    testCfg().mixedEnglish = 1;
     expectTyping("VNI EV me5", "me5 ", L"m\u1eb9 ");
     expectTyping("VNI EV la2", "la2 ", L"l\u00e0 ");
     expectTyping("VNI EV user_id", "user_id ", L"user_id ");
-    vMixedEnglish = 0;
+    testCfg().mixedEnglish = 0;
 }
 
 static void expectConvert(const char* name, const string& input, const string& expected) {
@@ -888,7 +905,7 @@ static void testGameMode() {
     {
         total++;
         string testGameExe = "test_game_app.exe";
-        int defaultGameMethod = 0 | (vCodeTable << 1);
+        int defaultGameMethod = 0 | (testCfg().codeTable << 1);
         int status = getAppInputMethodStatus(testGameExe, defaultGameMethod);
         if (status != -1) {
             failures++;
@@ -1207,19 +1224,19 @@ static void testGameMode() {
     {
         total++;
         string normalApp = "test_browser.exe";
-        // Normal app remembers Vietnamese (vLanguage = 1)
+        // Normal app remembers Vietnamese (testCfg().language = 1)
         setAppInputMethodStatus(normalApp, 1 | (0 << 1));
         int normalStatus = getAppInputMethodStatus(normalApp, 1 | (0 << 1));
 
         // When in game, SmartSwitchKey must NOT record "game = 0 (English)"
-        // Nor should it overwrite the user's active vLanguage for normal apps
+        // Nor should it overwrite the user's active testCfg().language for normal apps
         bool inGameActive = true;
         int activeLanguage = 1; // Vietnamese in normal app
 
         // Entering game: with isolation, SmartSwitchKey is NOT invoked for game
-        // vLanguage remains 1
+        // testCfg().language remains 1
         if (inGameActive) {
-            // normal vLanguage is preserved
+            // normal testCfg().language is preserved
         }
 
         // Tabbing back to normalApp: normalApp language is retrieved intact
@@ -1260,7 +1277,7 @@ static void testGameMode() {
         uint32_t gamePid = 5001;
         sim.onWinEventForeground(gameWnd, gamePid, true, 1000);
 
-        int originalLang = vLanguage; // e.g. Vietnamese (1)
+        int originalLang = testCfg().language; // e.g. Vietnamese (1)
 
         // User presses Alt+Z (GeForce Experience or game skill) while in combat
         bool keyPassedRaw = sim.onKeyboardHookKey(gameWnd, gamePid, true, 'Z', 1200);
@@ -1276,11 +1293,11 @@ static void testGameMode() {
         bool nextW = sim.onKeyboardHookEvent(gameWnd, gamePid, true, 'W', true, false, 0, 1500);
 
         // Language must NOT have been toggled by in-game combat key or modifier release
-        bool langPreserved = (vLanguage == originalLang) && (sim.languageSwitches == 0) && (sim.lastFlag == 0);
+        bool langPreserved = (testCfg().language == originalLang) && (sim.languageSwitches == 0) && (sim.lastFlag == 0);
 
         if (!keyPassedRaw || !altDown || !wDown || !wUp || !altUp || !nextW || !langPreserved || !sim.inGame) {
             failures++;
-            printf("FAIL [hotkeys and Alt+W self-cast in combat must pass raw without mutating vLanguage]\n");
+            printf("FAIL [hotkeys and Alt+W self-cast in combat must pass raw without mutating testCfg().language]\n");
         }
     }
 
@@ -1959,8 +1976,8 @@ static void testPasswordField() {
     // Test 7: Normal -> Password resets typing session (buffer isolation)
     {
         total++;
-        vInputType = vTelex;
-        vLanguage = 1;
+        testCfg().inputType = vTelex;
+        testCfg().language = 1;
         startNewSession();
         // Type "vie" in normal field
         typeKeys("vie");
@@ -2952,10 +2969,10 @@ static void testQuickEndConsonant() {
     //the audit sweep found a crash at the typing buffer cap (finding F4).
     //Spelling is switched off so the long filler words below are not treated as
     //foreign words before the quick end check runs.
-    vInputType = vTelex;
-    vCheckSpelling = 0;
-    vRestoreIfWrongSpelling = 0;
-    vQuickEndConsonant = 1;
+    testCfg().inputType = vTelex;
+    testCfg().checkSpelling = 0;
+    testCfg().restoreIfWrongSpelling = 0;
+    testCfg().quickEndConsonant = 1;
     expectTyping("QuickEnd", "ag ", L"ang ");
     expectTyping("QuickEnd", "ah ", L"anh ");
     expectTyping("QuickEnd", "ak ", L"ach ");
@@ -2967,9 +2984,9 @@ static void testQuickEndConsonant() {
     expectTyping("QuickEnd", string(29, 'n') + "ak ", wstring(29, L'n') + L"ak ");
     //a consonant before the final key never triggers the expansion, cap or not
     expectTyping("QuickEnd", string(29, 'n') + "tg ", wstring(29, L'n') + L"tg ");
-    vQuickEndConsonant = 0;
-    vCheckSpelling = 1;
-    vRestoreIfWrongSpelling = 1;
+    testCfg().quickEndConsonant = 0;
+    testCfg().checkSpelling = 1;
+    testCfg().restoreIfWrongSpelling = 1;
 }
 
 static void testCodeTableInvariants() {
@@ -3056,9 +3073,435 @@ static void testSaveDataLimits() {
     }
 }
 
+//Game Mode state machine characterization (plan 3.2, stage 0): these cases lock
+//the behavior the Win32 layer had before the extraction, taken from the code,
+//docs/DESIGN.md and the 1.0.18-1.0.21 changelogs. Window ids and pids are
+//abstract; ticks are GetTickCount64-style milliseconds passed in.
+static GameModeState gameArmed() { //bound from the picker, never foregrounded yet
+    GameModeState s;
+    s.bind(100, 42, false, 1000, false);
+    return s;
+}
+static GameModeState gameInGame() { //bound and foregrounded
+    GameModeState s;
+    s.bind(100, 42, false, 1000, true);
+    return s;
+}
+static void testGameModeState() {
+    const uint64_t TTL = GameModeState::kArmedTtlMs;
+    {   //binding the foreground window confirms and enters at once
+        GameModeState s;
+        GameModeEffects fx = s.bind(100, 42, false, 1000, true);
+        expectRobust("game: bind foreground confirms and enters", s.confirmed && s.inGame
+            && fx.sessionReset && !fx.chatClosed && !fx.chatOpened);
+    }
+    {   //an armed binding waits, unconfirmed, with its bind tick recorded
+        GameModeState s = gameArmed();
+        expectRobust("game: armed binding waits unconfirmed", !s.confirmed && !s.inGame
+            && s.windowId == 100 && s.processId == 42 && s.lastForegroundTick == 1000);
+    }
+    {   //the first key event with the armed window in the foreground confirms it
+        GameModeState s = gameArmed();
+        GameModeState::BindingCheck c = s.onKeyboardBindingCheck(2000, true, 100, true);
+        expectRobust("game: keyboard check confirms armed binding", s.confirmed && s.inGame
+            && c.useForeground && c.effects.sessionReset && s.lastForegroundTick == 2000);
+    }
+    {   //an armed binding expires at exactly the TTL
+        GameModeState s = gameArmed();
+        GameModeState::BindingCheck c = s.onKeyboardBindingCheck(1000 + TTL, true, 200, false);
+        expectRobust("game: armed binding expires at the TTL", s.windowId == 0 && !c.useForeground);
+    }
+    {   //...and is still alive one millisecond before it
+        GameModeState s = gameArmed();
+        s.onKeyboardBindingCheck(1000 + TTL - 1, true, 200, false);
+        expectRobust("game: armed binding alive at TTL - 1", s.windowId == 100);
+    }
+    {   //a confirmed binding survives a long absence (the 1.0.21 fix): leaving
+        //only leaves the game, and coming back re-enters without a new bind
+        GameModeState s = gameInGame();
+        GameModeState::BindingCheck away = s.onKeyboardBindingCheck(1000 + 10 * TTL, true, 200, false);
+        bool keptOut = s.windowId == 100 && !s.inGame && away.effects.sessionReset;
+        GameModeState::BindingCheck back = s.onKeyboardBindingCheck(1000 + 10 * TTL + 5, true, 100, true);
+        expectRobust("game: confirmed binding persists across Alt+Tab", keptOut && s.inGame && back.effects.sessionReset);
+    }
+    {   //a tick that goes backwards expires an armed binding...
+        GameModeState s = gameArmed();
+        s.onKeyboardBindingCheck(500, true, 200, false);
+        expectRobust("game: backwards tick expires armed binding", s.windowId == 0);
+    }
+    {   //...but never a confirmed one
+        GameModeState s = gameInGame();
+        s.onKeyboardBindingCheck(2000, true, 200, false); //tab away
+        s.onKeyboardBindingCheck(500, true, 100, true);   //back, tick went backwards
+        expectRobust("game: backwards tick keeps confirmed binding", s.windowId == 100 && s.inGame);
+    }
+    {   //a destroyed bound window clears the binding (game crashed)
+        GameModeState s = gameArmed();
+        s.onKeyboardBindingCheck(2000, false, 0, false);
+        expectRobust("game: destroyed window clears binding", s.windowId == 0 && s.processId == 0);
+    }
+    {   //the foreground window is the bound one but its pid no longer matches
+        GameModeState s = gameArmed();
+        GameModeState::BindingCheck c = s.onKeyboardBindingCheck(2000, true, 100, false);
+        expectRobust("game: pid mismatch clears binding and drops the foreground", s.windowId == 0 && !c.useForeground);
+    }
+    {   //already confirmed and in game: a key event only refreshes the tick
+        GameModeState s = gameInGame();
+        GameModeState::BindingCheck c = s.onKeyboardBindingCheck(3000, true, 100, false);
+        expectRobust("game: steady state refreshes the tick only", s.lastForegroundTick == 3000 && !c.effects.any());
+    }
+    {   //tabbing away with the chat open closes the chat as part of leaving
+        GameModeState s = gameInGame();
+        s.onGameKeyDown({ 0x0D, false }); //Enter opens the chat
+        GameModeState::BindingCheck c = s.onKeyboardBindingCheck(2000, true, 200, false);
+        expectRobust("game: leaving with chat open closes it", !s.inGame && !s.chatOpen
+            && c.effects.chatClosed && c.effects.sessionReset && s.windowId == 100);
+    }
+    {   //a click can confirm an armed binding whose window is in the foreground
+        GameModeState s = gameArmed();
+        GameModeEffects fx = s.onMouseBindingCheck(2000, true, 100, true);
+        expectRobust("game: click confirms armed binding", s.confirmed && s.inGame && fx.sessionReset);
+    }
+    {   //a click on another window of the same process rebinds to that window
+        GameModeState s = gameArmed();
+        s.onMouseBindingCheck(2000, true, 200, true);
+        expectRobust("game: click rebinds to a sibling window", s.windowId == 200 && s.confirmed && s.inGame);
+    }
+    {   //an expired armed binding is cleared by the mouse check too
+        GameModeState s = gameArmed();
+        s.onMouseBindingCheck(1000 + TTL, true, 200, false);
+        expectRobust("game: mouse check expires armed binding", s.windowId == 0);
+    }
+    {   //a click whose window fails the process checks clears the binding
+        GameModeState s = gameArmed();
+        s.onMouseBindingCheck(2000, true, 100, false);
+        expectRobust("game: click with failing checks clears binding", s.windowId == 0);
+    }
+    {   //Enter opens the chat with its own effect, flags at token start
+        GameModeState s = gameInGame();
+        GameModeEffects fx = s.onGameKeyDown({ 0x0D, false });
+        expectRobust("game: Enter opens the chat", s.chatOpen && fx.chatOpened
+            && !fx.chatClosed && s.chatTokenStart && !s.chatRawCommand);
+    }
+    {   //Enter again sends and closes; Esc closes without sending semantics
+        GameModeState s = gameInGame();
+        s.onGameKeyDown({ 0x0D, false });
+        GameModeEffects fx = s.onGameKeyDown({ 0x0D, false });
+        bool closedByEnter = !s.chatOpen && fx.chatClosed;
+        s.onGameKeyDown({ 0x0D, false });
+        GameModeEffects fx2 = s.onGameKeyDown({ 0x1B, false });
+        expectRobust("game: Enter and Esc close the chat", closedByEnter && !s.chatOpen && fx2.chatClosed);
+    }
+    {   //Esc with no chat open is a no-op beyond clearing the (already clear) flags
+        GameModeState s = gameInGame();
+        GameModeEffects fx = s.onGameKeyDown({ 0x1B, false });
+        expectRobust("game: Esc outside chat does nothing", !fx.any() && !s.chatOpen);
+    }
+    {   //Alt+Enter / Ctrl+Enter never toggle the chat; with the chat open the
+        //key falls into the token logic instead and just ends the token start
+        GameModeState s = gameInGame();
+        GameModeEffects fx = s.onGameKeyDown({ 0x0D, true });
+        bool stayedClosed = !s.chatOpen && !fx.any();
+        s.onGameKeyDown({ 0x0D, false }); //open for real
+        s.onGameKeyDown({ 0x0D, true });  //Alt+Enter inside the chat
+        expectRobust("game: Alt+Enter does not toggle the chat", stayedClosed && s.chatOpen && !s.chatTokenStart);
+    }
+    {   //plain game keys change nothing while the chat is closed
+        GameModeState s = gameInGame();
+        GameModeEffects fx = s.onGameKeyDown({ 0x57, false }); //W
+        expectRobust("game: control keys pass through untouched", !fx.any() && s.inGame && !s.chatOpen);
+    }
+    {   //a / at token start makes the whole command raw until Space
+        GameModeState s = gameInGame();
+        s.onGameKeyDown({ 0x0D, false });
+        s.onGameKeyDown({ 0xBF, false }); // /
+        bool raw = s.chatRawCommand && !s.chatTokenStart;
+        s.onGameKeyDown({ 0x46, false }); // f
+        s.onGameKeyDown({ 0x46, false }); // f
+        bool stillRaw = s.chatRawCommand;
+        s.onGameKeyDown({ 0x20, false }); // Space ends the command
+        expectRobust("game: / command stays raw until Space", raw && stillRaw && !s.chatRawCommand && s.chatTokenStart);
+    }
+    {   //a / in the middle of a token is just a character
+        GameModeState s = gameInGame();
+        s.onGameKeyDown({ 0x0D, false });
+        s.onGameKeyDown({ 0x41, false }); // a: token start is over
+        s.onGameKeyDown({ 0xBF, false }); // /
+        expectRobust("game: / mid-token does not start a raw command", !s.chatRawCommand);
+    }
+    {   //token start: Space restores it, letters end it, Shift/Caps keep it
+        GameModeState s = gameInGame();
+        s.onGameKeyDown({ 0x0D, false });
+        s.onGameKeyDown({ 0x10, false }); // Shift
+        bool afterShift = s.chatTokenStart;
+        s.onGameKeyDown({ 0x14, false }); // Caps Lock
+        bool afterCaps = s.chatTokenStart;
+        s.onGameKeyDown({ 0x41, false }); // a
+        bool afterLetter = s.chatTokenStart;
+        s.onGameKeyDown({ 0x20, false }); // Space
+        expectRobust("game: token start rules", afterShift && afterCaps && !afterLetter && s.chatTokenStart);
+    }
+    {   //a / with Ctrl or Alt held does not start a raw command
+        GameModeState s = gameInGame();
+        s.onGameKeyDown({ 0x0D, false });
+        s.onGameKeyDown({ 0xBF, true });
+        expectRobust("game: modified / is not a command", !s.chatRawCommand);
+    }
+    {   //clicking closes the chat (the Win32 layer gates the button kinds)
+        GameModeState s = gameInGame();
+        s.onGameKeyDown({ 0x0D, false });
+        GameModeEffects fx = s.closeChat();
+        expectRobust("game: click-close uses the chat close transition", !s.chatOpen && fx.chatClosed && !fx.sessionReset);
+    }
+    {   //foreground change away from the game: leaves, binding survives
+        GameModeState s = gameInGame();
+        s.onGameKeyDown({ 0x0D, false });
+        GameModeEffects fx = s.onForegroundChangedAway(2000, true);
+        expectRobust("game: foreground away leaves but keeps the binding", !s.inGame && !s.chatOpen
+            && fx.chatClosed && fx.sessionReset && s.windowId == 100);
+    }
+    {   //foreground change away with an expired armed binding clears it too
+        GameModeState s = gameArmed();
+        s.onForegroundChangedAway(1000 + TTL, true);
+        expectRobust("game: foreground away clears an expired armed binding", s.windowId == 0);
+    }
+    {   //clearing while in game with the chat open runs the full leave first
+        GameModeState s = gameInGame();
+        s.onGameKeyDown({ 0x0D, false });
+        GameModeEffects fx = s.clearBinding();
+        expectRobust("game: clear binding resets everything", s.windowId == 0 && s.processId == 0
+            && !s.confirmed && s.lastForegroundTick == 0 && !s.inGame && !s.chatOpen
+            && fx.chatClosed && fx.sessionReset);
+    }
+    {   //binding a second window replaces the first binding outright
+        GameModeState s = gameArmed();
+        s.bind(200, 43, false, 5000, true);
+        expectRobust("game: rebind replaces the old binding", s.windowId == 200 && s.processId == 43 && s.confirmed && s.inGame);
+    }
+}
+
+//Extended Game Mode cases (plan 3.2, PR 2): long event chains and cross-path
+//edges beyond the characterization set.
+static void testGameModeStateExtended() {
+    const uint64_t TTL = GameModeState::kArmedTtlMs;
+    {   //a long Alt+Tab chain: the confirmed binding survives every hop, the
+        //chat never survives a hop, and re-entry always works
+        GameModeState s = gameInGame();
+        bool ok = true;
+        for (int i = 0; i < 5; i++) {
+            uint64_t t = 2000 + (uint64_t)i * 100000;
+            s.onGameKeyDown({ 0x0D, false }); //open the chat in game
+            s.onKeyboardBindingCheck(t, true, 200, false); //tab away
+            ok = ok && !s.inGame && !s.chatOpen && s.windowId == 100 && s.confirmed;
+            s.onKeyboardBindingCheck(t + 1, true, 100, true); //tab back
+            ok = ok && s.inGame && !s.chatOpen;
+        }
+        expectRobust("game ext: repeated Alt+Tab keeps the confirmed binding", ok);
+    }
+    {   //no foreground window at all still leaves the game, binding kept
+        GameModeState s = gameInGame();
+        s.onKeyboardBindingCheck(2000, true, 0, false);
+        expectRobust("game ext: empty foreground leaves the game only", !s.inGame && s.windowId == 100);
+    }
+    {   //Enter in the middle of a raw command closes the whole chat
+        GameModeState s = gameInGame();
+        s.onGameKeyDown({ 0x0D, false });
+        s.onGameKeyDown({ 0xBF, false }); // /ff...
+        s.onGameKeyDown({ 0x46, false });
+        GameModeEffects fx = s.onGameKeyDown({ 0x0D, false });
+        expectRobust("game ext: Enter ends a raw command with the chat", !s.chatOpen && !s.chatRawCommand && fx.chatClosed);
+    }
+    {   //Esc in the middle of a raw command closes the whole chat too
+        GameModeState s = gameInGame();
+        s.onGameKeyDown({ 0x0D, false });
+        s.onGameKeyDown({ 0xBF, false });
+        GameModeEffects fx = s.onGameKeyDown({ 0x1B, false });
+        expectRobust("game ext: Esc ends a raw command with the chat", !s.chatOpen && !s.chatRawCommand && fx.chatClosed);
+    }
+    {   //after a command ends with Space, a new / starts a fresh raw command
+        GameModeState s = gameInGame();
+        s.onGameKeyDown({ 0x0D, false });
+        s.onGameKeyDown({ 0xBF, false }); // /w
+        s.onGameKeyDown({ 0x57, false });
+        s.onGameKeyDown({ 0x20, false }); // Space: command over
+        s.onGameKeyDown({ 0xBF, false }); // / again
+        expectRobust("game ext: a second / command goes raw again", s.chatRawCommand);
+    }
+    {   //Enter toggling repeatedly alternates the effects and ends closed
+        GameModeState s = gameInGame();
+        bool ok = true;
+        for (int i = 0; i < 3; i++) {
+            GameModeEffects open = s.onGameKeyDown({ 0x0D, false });
+            GameModeEffects close = s.onGameKeyDown({ 0x0D, false });
+            ok = ok && open.chatOpened && !open.chatClosed && close.chatClosed && !close.chatOpened;
+        }
+        expectRobust("game ext: Enter toggling alternates cleanly", ok && !s.chatOpen);
+    }
+    {   //the game window dying mid-chat clears everything in one check
+        GameModeState s = gameInGame();
+        s.onGameKeyDown({ 0x0D, false });
+        GameModeState::BindingCheck c = s.onKeyboardBindingCheck(2000, false, 0, false);
+        expectRobust("game ext: window destroyed mid-chat clears all", s.windowId == 0 && !s.inGame
+            && !s.chatOpen && c.effects.chatClosed && c.effects.sessionReset);
+    }
+    {   //the armed TTL boundary holds across event kinds: a mouse check at
+        //TTL - 1 keeps the binding, a foreground-away at the TTL clears it
+        GameModeState s = gameArmed();
+        s.onMouseBindingCheck(1000 + TTL - 1, true, 0, false);
+        bool kept = s.windowId == 100;
+        s.onForegroundChangedAway(1000 + TTL, true);
+        expectRobust("game ext: TTL boundary across mouse and foreground events", kept && s.windowId == 0);
+    }
+    {   //rebinding to a new foreground window while chatting in the old one
+        //closes the chat through the enter transition of the new binding
+        GameModeState s = gameInGame();
+        s.onGameKeyDown({ 0x0D, false });
+        GameModeEffects fx = s.bind(200, 43, true, 9000, true);
+        expectRobust("game ext: rebind while chatting closes the chat", s.windowId == 200 && s.inGame
+            && !s.chatOpen && fx.chatClosed && fx.sessionReset);
+    }
+    {   //a click with no foreground window changes nothing
+        GameModeState s = gameArmed();
+        GameModeEffects fx = s.onMouseBindingCheck(2000, true, 0, false);
+        expectRobust("game ext: click with no foreground is a no-op", s.windowId == 100 && !s.inGame && !fx.any());
+    }
+    {   //a destroyed armed window is cleared by the mouse path as well
+        GameModeState s = gameArmed();
+        s.onMouseBindingCheck(2000, false, 0, false);
+        expectRobust("game ext: mouse check clears a destroyed window", s.windowId == 0);
+    }
+    {   //huge ticks (GetTickCount64 uptime territory) behave linearly:
+        //an armed binding created near 2^42 still expires by plain subtraction
+        GameModeState s;
+        uint64_t base = (uint64_t)1 << 42;
+        s.bind(100, 42, false, base, false);
+        s.onKeyboardBindingCheck(base + TTL - 1, true, 200, false);
+        bool kept = s.windowId == 100;
+        s.onKeyboardBindingCheck(base + TTL, true, 200, false);
+        expectRobust("game ext: TTL arithmetic at very large ticks", kept && s.windowId == 0);
+    }
+}
+
+//Password-field state decisions (plan 3.3): state values mirror the engine's
+//enum PasswordState (0 normal, 1 password, 2 pending); sources 0 none,
+//1 Win32, 2 UIA, 3 MSAA.
+static void testPasswordState() {
+    //the word codec round-trips every state/source pair and masks to bytes
+    bool roundtrip = true;
+    for (int state = 0; state <= 2; state++)
+        for (int source = 0; source <= 3; source++) {
+            uint32_t w = makePasswordStateWord(state, source);
+            roundtrip = roundtrip && getPasswordState(w) == state && getPasswordSource(w) == source && (w >> 16) == 0;
+        }
+    expectRobust("password: state word round-trips and stays in two bytes", roundtrip
+        && makePasswordStateWord(0x100 + 1, 3) == makePasswordStateWord(1, 3));
+    {   //a probe result settles a pending state; only the not-password outcome is dirty
+        PasswordTransition pass = passwordAfterProbeResult(2, true, 2);
+        PasswordTransition fail = passwordAfterProbeResult(2, false, 2);
+        expectRobust("password: pending settles on the probe result", pass.changesWord && pass.nextState == 1
+            && pass.nextSource == 2 && !pass.markDirty
+            && fail.changesWord && fail.nextState == 0 && fail.nextSource == 0 && fail.markDirty);
+    }
+    {   //from normal, a password result upgrades (dirty); a plain result is ignored
+        PasswordTransition pass = passwordAfterProbeResult(0, true, 3);
+        PasswordTransition fail = passwordAfterProbeResult(0, false, 3);
+        expectRobust("password: normal upgrades on password only", pass.changesWord && pass.nextState == 1
+            && pass.nextSource == 3 && pass.markDirty && !fail.changesWord);
+    }
+    {   //a confirmed password state is sticky: no probe result downgrades it
+        expectRobust("password: password state never downgrades on probe results",
+            !passwordAfterProbeResult(1, true, 2).changesWord && !passwordAfterProbeResult(1, false, 2).changesWord);
+    }
+    {   //the pending timeout fires at the deadline, not before, and only from pending
+        PasswordTransition early = passwordAfterPendingTimeout(2, 1059, 1060);
+        PasswordTransition onTime = passwordAfterPendingTimeout(2, 1060, 1060);
+        expectRobust("password: pending timeout at the deadline", !early.changesWord
+            && onTime.changesWord && onTime.nextState == 0 && onTime.markDirty && onTime.bumpGeneration
+            && !passwordAfterPendingTimeout(0, 9999, 1060).changesWord
+            && !passwordAfterPendingTimeout(1, 9999, 1060).changesWord);
+    }
+    {   //scheduling: sticky password is kept unless forced; anything else goes
+        //pending with a deadline one timeout ahead of now
+        PasswordSchedule sticky = passwordOnProbeScheduled(1, false, 5000);
+        PasswordSchedule forced = passwordOnProbeScheduled(1, true, 5000);
+        PasswordSchedule normal = passwordOnProbeScheduled(0, false, 5000);
+        PasswordSchedule repending = passwordOnProbeScheduled(2, false, 5000);
+        expectRobust("password: probe scheduling and the sticky case", !sticky.schedule
+            && forced.schedule && forced.deadline == 5000 + kPasswordPendingTimeoutMs
+            && normal.schedule && normal.deadline == forced.deadline && repending.schedule);
+    }
+    {   //disabling UIA resets pending and UIA/MSAA password states, keeps Win32 ones
+        expectRobust("password: UIA-off reset rule", passwordResetWhenUiaDisabled(2, 0)
+            && passwordResetWhenUiaDisabled(1, 2) && passwordResetWhenUiaDisabled(1, 3)
+            && !passwordResetWhenUiaDisabled(1, 1) && !passwordResetWhenUiaDisabled(0, 2));
+    }
+    //exe name equality is case-insensitive and exact; callers pass base names,
+    //so a full path never equals a bare name (locked current behavior)
+    expectRobust("exe names: case-insensitive exact match", isSameExe("Game.EXE", "game.exe")
+        && isSameExe("", "") && !isSameExe("game.exe", "game2.exe")
+        && !isSameExe("game.exe", "game.ex") && !isSameExe("C:\\games\\game.exe", "game.exe"));
+}
+
+static void testConfigIndependence() {
+    //plan point 2 completion case: two different configs used back to back
+    //give independent results - the setting lives only in the object handed
+    //to vKeyHandleEvent, nothing leaks through shared state
+    vKeyConfig quick = testCfg();
+    quick.checkSpelling = 0;
+    quick.restoreIfWrongSpelling = 0;
+    quick.quickEndConsonant = 1;
+    vKeyConfig plain = quick;
+    plain.quickEndConsonant = 0;
+    expectRobust("config: quick-end config expands the pair", typeKeysWith("ag ", quick) == L"ang ");
+    expectRobust("config: plain config leaves the word as typed", typeKeysWith("ag ", plain) == L"ag ");
+    expectRobust("config: the first config still applies afterwards", typeKeysWith("ag ", quick) == L"ang ");
+    //the struct defaults are the application's defaults (AppDelegate), which
+    //differ from this suite's shared config on purpose (macro/smart switch on)
+    vKeyConfig d;
+    expectRobust("config: struct defaults are the application defaults", d.language == 1
+        && d.useMacro == 1 && d.useMacroInEnglishMode == 1 && d.useSmartSwitchKey == 1
+        && d.rememberCode == 1 && d.otherLanguage == 1 && d.checkSpelling == 1
+        && d.restoreOnEscape == 1 && d.passwordFieldBypass == 1 && d.switchKeyStatus == 0x5A00025A);
+}
+
+static void testConfigStoredCopy() {
+    //the engine keeps its own copy of the config (vKeySetConfig), so entry
+    //points outside a key event see the app's settings. Loading the macro
+    //table is the case that bites: it converts the contents with the active
+    //code table, so a TCVN3 user whose table loads at startup, before the
+    //first key press, must get TCVN3 codes for "ô" (0xAB), not the Unicode
+    //default (0xF4) a fresh engine would otherwise use
+    vKeyConfig uni = testCfg();
+    uni.codeTable = 0;
+    uni.useMacro = 1;
+    vKeySetConfig(uni);
+    addMacro("ko", "không");
+    vector<Byte> blob;
+    getMacroSaveData(blob);
+    vKeyConfig tcvn = testCfg();
+    tcvn.codeTable = 1; //TCVN3
+    tcvn.useMacro = 1;
+    vKeySetConfig(vKeyConfig()); //a fresh start: the engine holds the defaults
+    vKeySetConfig(tcvn);          //what the app does right before initMacroMap
+    initMacroMap(blob.data(), (int)blob.size());
+    vector<Uint32> key = { (Uint32)KEY_K, (Uint32)KEY_O };
+    vector<Uint32> codes;
+    expectRobust("stored config: macro found after a TCVN3 load", findMacro(key, codes) && codes.size() == 5);
+    expectRobust("stored config: content converted to TCVN3, not Unicode",
+                 codes.size() == 5 && codes[2] == (Uint32)(CHAR_CODE_MASK | 0xAB));
+    //the same data loaded under the default config converts to Unicode instead
+    vKeySetConfig(vKeyConfig());
+    initMacroMap(blob.data(), (int)blob.size());
+    vector<Uint32> key2 = { (Uint32)KEY_K, (Uint32)KEY_O };
+    expectRobust("stored config: the same load under defaults gives Unicode",
+                 findMacro(key2, codes) && codes.size() == 5 && codes[2] == (Uint32)(CHAR_CODE_MASK | 0xF4));
+    deleteMacro("ko");
+    vKeySetConfig(testCfg());
+}
+
 //EngineTests --render: for each word read, print it and what Telex makes of it (tools/make_mixed_words.py uses this)
 static int renderWords() {
-    vInputType = vTelex;
+    testCfg().inputType = vTelex;
     string word;
     while (getline(cin, word)) {
         wstring text = typeKeys(word + " ");
@@ -3087,6 +3530,11 @@ int main(int argc, char** argv) {
     testCodeTableInvariants();
     testMixedWordsParser();
     testSaveDataLimits();
+    testGameModeState();
+    testGameModeStateExtended();
+    testPasswordState();
+    testConfigIndependence();
+    testConfigStoredCopy();
     printf("%d/%d engine tests passed\n", total - failures, total);
     return failures == 0 ? 0 : 1;
 }

@@ -77,8 +77,14 @@ extern void setPasswordFieldBypass(bool enabled);
 extern void setPasswordFieldUIA(bool enabled);
 extern void applyPasswordFeatureConfigChanges();
 
+//copy the app's current settings into the engine's stored vKeyConfig
+//(engine/Engine.h); call before engine entry points that run outside a
+//key event: macro loading at startup, vEnglishMode, macro editing
+extern void syncEngineConfig();
+
 extern int vLanguage;
 extern int vMixedEnglish;
+extern int vMixedFixLast;
 extern int vTwoModesOnly;
 //0 English, 1 Vietnamese, 2 English and Vietnamese mixed (Vietnamese on, English words kept)
 #define TYPING_MODE (vLanguage ? (vMixedEnglish ? 2 : 1) : 0)
@@ -97,6 +103,9 @@ extern int vAutoCapsMacro;
 extern int vSendKeyStepByStep;
 extern int vUseSmartSwitchKey;
 extern int vUpperCaseFirstChar;
+extern int vAllowConsonantZFWJ;
+extern int vQuickStartConsonant;
+extern int vQuickEndConsonant;
 extern int vShowOnStartUp;
 extern int vShowSwitchFlyout;
 extern int vSwitchInputType;  //the input method hotkey is on

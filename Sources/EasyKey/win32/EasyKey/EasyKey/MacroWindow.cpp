@@ -340,6 +340,7 @@ void MacroWindow::addShortcut() {
 		focusEdit(name.empty() ? ID_NAME : ID_CONTENT);
 		return;
 	}
+	syncEngineConfig(); //adding converts the content with the current code table
 	addMacro(wideStringToUtf8(name), wideStringToUtf8(content));
 	save();
 	selected = -1;
@@ -352,6 +353,7 @@ void MacroWindow::addShortcut() {
 
 void MacroWindow::deleteShortcut() {
 	wstring name = getEditText(ID_NAME);
+	syncEngineConfig();
 	if (name.empty() || !deleteMacro(wideStringToUtf8(name))) {
 		MessageBeep(MB_OK);
 		return;
@@ -386,6 +388,7 @@ void MacroWindow::importFile() {
 			return;
 		append = answer == 0;
 	}
+	syncEngineConfig(); //importing converts the contents with the current code table
 	readFromFile(wideStringToUtf8(file), append);
 	save();
 	relayout();
