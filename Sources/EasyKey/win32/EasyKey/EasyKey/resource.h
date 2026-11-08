@@ -35,6 +35,7 @@
 #define IDS_STRING_REMEMBER_TABLE_CODE  126
 #define IDR_FONT_REGULAR                151
 #define IDR_FONT_SEMIBOLD               152
+#define IDR_UPDATER_CERT                153
 #define IDR_MAINFRAME                   128
 #define IDS_STRING_FIX_CHROMIUM         128
 #define IDD_DIALOG_MAIN                 129

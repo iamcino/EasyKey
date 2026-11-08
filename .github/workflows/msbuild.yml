@@ -44,6 +44,25 @@ jobs:
     - name: Run engine tests
       run: ctest --test-dir build/tests -C Release --output-on-failure
 
+    #the exe users download today must pass the updater's signature check, on a runner
+    #that never trusted the EasyKey certificate (the release job checks each new build too)
+    - name: Check the latest release with the updater's signature check
+      if: runner.os == 'Windows'
+      shell: pwsh
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        $exe = "$env:RUNNER_TEMP\latest\EasyKey.exe"
+        for ($attempt = 1; $attempt -le 4 -and -not (Test-Path $exe); $attempt++) {
+          gh release download --repo "${{ github.repository }}" --pattern EasyKey.exe --dir "$env:RUNNER_TEMP\latest" --clobber
+          if (-not (Test-Path $exe)) { Start-Sleep -Seconds (5 * $attempt) }
+        }
+        if (-not (Test-Path $exe)) { throw "Could not download the latest release's EasyKey.exe." }
+        $global:LASTEXITCODE = 0
+        $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" | Sort-Object FullName -Descending | Select-Object -First 1
+        & build\tests\Release\UpdateSignatureTests.exe $signtool.FullName $exe
+        if ($LASTEXITCODE -ne 0) { throw "The latest released EasyKey.exe does not pass the updater's signature check." }
+
   #the same suite under ASan/UBSan (refactor plan step 3.4): an out-of-bounds
   #read in the binary data parsers does not crash a normal build, so only a
   #sanitizer run turns the malformed-data tests into real evidence
@@ -198,8 +217,21 @@ jobs:
             Remove-Item $pfxTemp -Force -ErrorAction SilentlyContinue
           }
         } else {
-          Write-Warning "EASYKEY_SIGN_PFX_BASE64 not configured; release binary will remain unsigned."
+          # EasyKey 1.0.23+ refuses an update whose signature is not the pinned EasyKey certificate
+          throw "Signing credentials are required: the updater rejects unsigned releases."
         }
+
+    # the signed exe must pass the exact check the updater runs, on a runner that never trusted
+    # the EasyKey certificate; otherwise every user would be stuck on the previous version
+    - name: Verify signature as the updater does
+      if: hashFiles('signature.json') != ''
+      shell: pwsh
+      run: |
+        cmake -S Sources/EasyKey/tests -B build/signature-check
+        cmake --build build/signature-check --config Release --target UpdateSignatureTests
+        $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" | Sort-Object FullName -Descending | Select-Object -First 1
+        & build\signature-check\Release\UpdateSignatureTests.exe $signtool.FullName "${{env.SOLUTION_FILE_PATH}}\x64\Release\EasyKey.exe"
+        if ($LASTEXITCODE -ne 0) { throw "The signed EasyKey.exe does not pass the updater's signature check." }
 
     - name: Package
       shell: pwsh

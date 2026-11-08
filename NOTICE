@@ -23,6 +23,8 @@ Each of them says so in its header with
   Sources/EasyKey/win32/EasyKey/EasyKey/TrayGlyph.*
   Sources/EasyKey/win32/EasyKey/EasyKey/FluentText.*
   Sources/EasyKey/win32/EasyKey/EasyKey/Updater.*
+  Sources/EasyKey/win32/EasyKey/EasyKey/UpdateCleanup.*
+  Sources/EasyKey/win32/EasyKey/EasyKey/UpdateSignature.*
 Every other file, and EasyKey as a whole, is under the GNU GPL version 3.
 
 EasyKey.exe carries the Be Vietnam Pro font (regular and semibold, cut down

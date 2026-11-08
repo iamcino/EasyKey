@@ -17,9 +17,10 @@ the MIT license, see LICENSES/MIT.txt.
 
 /*
  * Updates EasyKey.exe in place from GitHub Releases. The new exe is downloaded
- * over HTTPS and checked against the SHA-256 published next to it. The running
+ * over HTTPS, checked against the SHA-256 published next to it and against the
+ * pinned EasyKey Authenticode certificate (UpdateSignature.h). The running
  * exe is renamed to EasyKey.old.exe, the new one takes its name and starts, and
- * the old file is deleted on the next start. Nothing is installed without asking.
+ * the old file is deleted in the background once the next start is up. Nothing is installed without asking.
  */
 class Updater {
 public:
@@ -32,8 +33,10 @@ public:
 	static void checkQuietly();
 	//the newer version a check found, empty while EasyKey is up to date
 	static const string& availableVersion();
-	//on start: remove the previous exe and wait for it to exit after an update
+	//on start, after an update: wait for the previous EasyKey to exit
 	static void finishPreviousUpdate();
+	//once the engine and tray are up: delete EasyKey.old.exe in the background
+	static void cleanupPreviousUpdate();
 	//start the EasyKey at path, which waits for this one, and exit
 	static void restartAs(const wstring& path);
 };

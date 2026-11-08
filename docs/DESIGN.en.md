@@ -210,8 +210,9 @@ Updates live in `Updater.cpp` and run on a separate thread so the keyboard and m
 
 1. Read `version.json` on the `master` branch (`latestWinVersion.versionName`) and compare it with the running version. Checked at start-up and every 6 hours when automatic checks are on.
 2. When the user agrees, download `EasyKey.exe` and `EasyKey.exe.sha256` from `releases/download/<version>/`. Refuse if the SHA-256 doesn't match or the file doesn't start with `MZ`.
-3. Write `EasyKey.new.exe`, rename the running file to `EasyKey.old.exe` (Windows allows renaming a running exe but not overwriting it), then rename the new file to `EasyKey.exe`. If any step fails, put things back.
-4. Remove the hooks, start the new version with an update argument and quit. The new version waits for the old one to exit and deletes `EasyKey.old.exe`.
+3. Write `EasyKey.new.<random>.exe` (created fresh, never over an existing file) and keep its handle open, denying writes and deletes. Check its Authenticode signature through that handle (`UpdateSignature.cpp`): exactly one SHA-256 signature, a signer certificate byte-identical to `docs/signing/EasyKey-codesign.cer` embedded in the exe, a chain built in memory that trusts only that certificate (nothing is added to the Windows certificate stores), and a mandatory RFC 3161 timestamp Windows trusts. On failure, delete the file and report it. The SHA-256 file sits next to the exe on GitHub, so it only catches a broken download; the signature is what stops a swapped exe.
+4. Rename the running file to `EasyKey.old.exe` (Windows allows renaming a running exe but not overwriting it), then rename the verified file to `EasyKey.exe` through the same handle. If any step fails, put things back.
+5. Remove the hooks, start the new version with an update argument and quit. The new version waits for the old process to exit; once its engine and tray are up it deletes `EasyKey.old.exe` on a background thread (retrying for up to a minute while the file is locked, e.g. by an antivirus scan, otherwise on the next start).
 
 ## 11. Build and release
 - Visual Studio 2022 project (toolset v143); only `Release|x64` is released. Details in [BUILD](BUILD.en.md).

@@ -12,7 +12,13 @@ the MIT license, see LICENSES/MIT.txt.
 #include <windows.h>
 #include <winhttp.h>
 #include <bcrypt.h>
+#include <cstddef>
+#include <cstring>
+#include <memory>
+#include <vector>
 #include "Updater.h"
+#include "UpdateCleanup.h"
+#include "UpdateSignature.h"
 #include "../../../app-core/VersionInfo.h"
 #include "AppDelegate.h"
 #include "EasyKeyManager.h"
@@ -120,7 +126,7 @@ static void showError(const HWND& owner, LPCTSTR message) {
 #define WM_UPDATER_DONE (WM_APP + 1)
 
 enum { JOB_CHECK, JOB_DOWNLOAD };
-enum { DOWNLOAD_OK, DOWNLOAD_FAILED, DOWNLOAD_MISMATCH, INSTALL_FAILED };
+enum { DOWNLOAD_OK, DOWNLOAD_FAILED, DOWNLOAD_MISMATCH, SIGNATURE_INVALID, INSTALL_FAILED };
 
 struct Job {
 	int kind;
@@ -139,26 +145,60 @@ static bool busy = false;
 static string available;
 
 //the downloaded exe takes the place of the running one; antivirus scans a new exe as it is
-//written and moved, which can take a while
-static bool install(const string& exe, wstring& path) {
+//written and moved, which can take a while. Before that, its Authenticode signature must
+//come from the EasyKey certificate compiled into this exe (docs/signing/EasyKey-codesign.cer):
+//the .sha256 file sits next to the exe on GitHub, so it only catches a broken download
+static int install(const string& exe, wstring& path) {
 	path = EasyKeyHelper::getFullPath();
 	wstring folder = folderOf(path);
-	wstring newPath = folder + L"EasyKey.new.exe", oldPath = folder + L"EasyKey.old.exe";
-	HANDLE file = CreateFile(newPath.c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	//a random name created fresh, never an existing file or link someone placed there
+	BYTE random[16];
+	if (!BCRYPT_SUCCESS(BCryptGenRandom(NULL, random, sizeof(random), BCRYPT_USE_SYSTEM_PREFERRED_RNG)))
+		return INSTALL_FAILED;
+	static const wchar_t digits[] = L"0123456789abcdef";
+	wstring suffix;
+	for (BYTE byte : random) {
+		suffix += digits[byte >> 4];
+		suffix += digits[byte & 15];
+	}
+	wstring newPath = folder + L"EasyKey.new." + suffix + L".exe", oldPath = folder + L"EasyKey.old.exe";
+	//the handle stays open, denying other writers and deleters, from writing through
+	//verification to the final rename, so the file checked is the file installed
+	HANDLE file = CreateFile(newPath.c_str(), GENERIC_READ | GENERIC_WRITE | DELETE,
+		FILE_SHARE_READ, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (file == INVALID_HANDLE_VALUE)
+		return INSTALL_FAILED;
 	DWORD written = 0;
-	bool saved = file != INVALID_HANDLE_VALUE && WriteFile(file, exe.data(), (DWORD)exe.size(), &written, NULL) && written == exe.size();
-	if (file != INVALID_HANDLE_VALUE)
+	bool saved = WriteFile(file, exe.data(), (DWORD)exe.size(), &written, NULL) && written == exe.size() && FlushFileBuffers(file);
+	LARGE_INTEGER beginning = {};
+	saved = saved && SetFilePointerEx(file, beginning, NULL, FILE_BEGIN);
+	HRSRC resource = FindResource(NULL, MAKEINTRESOURCE(IDR_UPDATER_CERT), RT_RCDATA);
+	HGLOBAL loaded = resource ? LoadResource(NULL, resource) : NULL;
+	const BYTE* pin = loaded ? static_cast<const BYTE*>(LockResource(loaded)) : NULL;
+	DWORD pinSize = resource ? SizeofResource(NULL, resource) : 0;
+	if (!saved || !verifyUpdateSignature(newPath, file, pin, pinSize)) {
 		CloseHandle(file);
+		DeleteFile(newPath.c_str());
+		return saved ? SIGNATURE_INVALID : INSTALL_FAILED;
+	}
 	//Windows lets a running exe be renamed but not overwritten, so the old one steps aside first
 	DeleteFile(oldPath.c_str());
-	bool swapped = saved && MoveFileEx(path.c_str(), oldPath.c_str(), MOVEFILE_REPLACE_EXISTING);
-	if (swapped && !MoveFileEx(newPath.c_str(), path.c_str(), MOVEFILE_REPLACE_EXISTING)) {
+	bool swapped = MoveFileEx(path.c_str(), oldPath.c_str(), MOVEFILE_REPLACE_EXISTING) != FALSE;
+	const DWORD nameBytes = static_cast<DWORD>(path.size() * sizeof(wchar_t));
+	std::vector<BYTE> renameBuffer(offsetof(FILE_RENAME_INFO, FileName) + nameBytes + sizeof(wchar_t));
+	FILE_RENAME_INFO* rename = reinterpret_cast<FILE_RENAME_INFO*>(renameBuffer.data());
+	rename->ReplaceIfExists = FALSE;
+	rename->RootDirectory = NULL;
+	rename->FileNameLength = nameBytes;
+	std::memcpy(rename->FileName, path.data(), nameBytes);
+	if (swapped && !SetFileInformationByHandle(file, FileRenameInfo, rename, static_cast<DWORD>(renameBuffer.size()))) {
 		MoveFileEx(oldPath.c_str(), path.c_str(), MOVEFILE_REPLACE_EXISTING);
 		swapped = false;
 	}
+	CloseHandle(file);
 	if (!swapped)
 		DeleteFile(newPath.c_str());
-	return swapped;
+	return swapped ? DOWNLOAD_OK : INSTALL_FAILED;
 }
 
 static void download(Job* job) {
@@ -176,8 +216,8 @@ static void download(Job* job) {
 	const string& exe = job->exe;
 	if (expected.size() != 64 || sha256Hex(exe) != expected || exe.size() < 2 || exe[0] != 'M' || exe[1] != 'Z')
 		job->result = DOWNLOAD_MISMATCH;
-	else if (!install(exe, job->path))
-		job->result = INSTALL_FAILED;
+	else
+		job->result = install(exe, job->path);
 }
 
 static DWORD WINAPI runJob(LPVOID param) {
@@ -266,6 +306,9 @@ static void finishJob(Job* job) {
 	else if (job->result == DOWNLOAD_MISMATCH)
 		showError(owner, TR("File tải về không khớp mã kiểm tra nên chưa được cài. Mở trang tải về?",
 			"The download did not match its checksum, so it was not installed. Open the download page?"));
+	else if (job->result == SIGNATURE_INVALID)
+		showError(owner, TR("Không xác minh được chữ ký EasyKey hoặc dấu thời gian của bản cập nhật nên chưa được cài. Mở trang tải về?",
+			"The update's EasyKey signature or timestamp could not be verified, so it was not installed. Open the download page?"));
 	else if (job->result == INSTALL_FAILED)
 		showError(owner, TR("Không ghi được vào thư mục của EasyKey, có thể cần quyền Admin. Mở trang tải về để tải thủ công?",
 			"Could not write to the EasyKey folder, it may need admin rights. Open the download page to get it yourself?"));
@@ -324,10 +367,37 @@ const string& Updater::availableVersion() {
 
 void Updater::finishPreviousUpdate() {
 	if (wcsstr(GetCommandLineW(), UPDATED_ARGUMENT)) {
-		//the old EasyKey exits right after starting this one
-		for (int i = 0; i < 50 && FindWindow(APP_CLASS, NULL); i++)
-			Sleep(100);
+		//the old EasyKey exits right after starting this one. Wait for the process,
+		//not just its window: the image can stay locked after the window is gone.
+		//Hooks are not installed in this process yet.
+		HWND previous = FindWindow(APP_CLASS, NULL);
+		DWORD pid = 0;
+		if (previous)
+			GetWindowThreadProcessId(previous, &pid);
+		HANDLE process = pid ? OpenProcess(SYNCHRONIZE, FALSE, pid) : NULL;
+		if (process) {
+			WaitForSingleObject(process, 30000);
+			CloseHandle(process);
+		} else {
+			for (int i = 0; i < 50 && FindWindow(APP_CLASS, NULL); i++)
+				Sleep(100);
+		}
 	}
-	wstring oldPath = folderOf(EasyKeyHelper::getFullPath()) + L"EasyKey.old.exe";
-	DeleteFile(oldPath.c_str());
+}
+
+static DWORD WINAPI cleanupJob(LPVOID param) {
+	std::unique_ptr<wstring> path(static_cast<wstring*>(param));
+	cleanupOldUpdateFile(*path);
+	return 0;
+}
+
+void Updater::cleanupPreviousUpdate() {
+	//on a worker so a locked backup (antivirus scan) never stalls startup; a file
+	//still locked after the retries is kept and tried again on the next start
+	wstring* path = new wstring(folderOf(EasyKeyHelper::getFullPath()) + L"EasyKey.old.exe");
+	HANDLE thread = CreateThread(NULL, 0, cleanupJob, path, 0, NULL);
+	if (thread)
+		CloseHandle(thread);
+	else
+		delete path;
 }
