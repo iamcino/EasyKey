@@ -17,10 +17,12 @@ không kèm bất kỳ bảo đảm nào**, theo [Giấy phép GNU GPL phiên b�
    cùng Windows, Task Scheduler (khi bật chạy quyền Admin) và lối tắt trên màn
    hình nền (khi bật). Tác giả không chịu trách nhiệm về việc mất dữ liệu, chữ
    gõ sai hay thiệt hại khác phát sinh từ việc sử dụng EasyKey.
-4. **Chưa có chữ ký số.** `EasyKey.exe` chưa được ký số, nên Windows hay phần
-   mềm diệt virus có thể cảnh báo. Chỉ tải EasyKey từ
-   [trang phát hành chính thức](https://github.com/iamcino/EasyKey/releases).
-   Bản tải từ nơi khác có thể đã bị sửa đổi.
+4. **Chỉ tải từ nguồn chính thức.** `EasyKey.exe` được ký số bằng chứng chỉ
+   tự cấp của dự án, chưa phải chứng chỉ thương mại, nên Windows hay phần mềm
+   diệt virus vẫn có thể cảnh báo. Chỉ tải EasyKey từ
+   [trang phát hành chính thức](https://github.com/iamcino/EasyKey/releases);
+   bản tải từ nơi khác có thể đã bị sửa đổi. Cách kiểm tra chữ ký có trong
+   [SECURITY.md](SECURITY.md#kiểm-tra-bản-tải-về).
 5. **Không liên kết.** EasyKey là dự án độc lập, không liên kết với Microsoft,
    UniKey, EVKey hay các bộ gõ khác. OpenKey là dự án gốc của Mai Vũ Tuyên;
    EasyKey là bản phát triển tiếp theo giấy phép GPL, không do tác giả OpenKey
@@ -47,10 +49,12 @@ any kind**, as set out in the [GNU GPL version 3](LICENSE).
    startup entry, Task Scheduler (when running as administrator is on) and a
    desktop shortcut (when on). The authors are not liable for lost data, wrong
    text or any other damage resulting from using EasyKey.
-4. **Not code signed.** `EasyKey.exe` is not signed yet, so Windows or
-   antivirus software may warn about it. Download EasyKey only from the
-   [official release page](https://github.com/iamcino/EasyKey/releases).
-   Copies from elsewhere may have been modified.
+4. **Download only from the official source.** `EasyKey.exe` is signed with
+   the project's own certificate rather than a commercial one, so Windows or
+   antivirus software may still warn about it. Download EasyKey only from the
+   [official release page](https://github.com/iamcino/EasyKey/releases);
+   copies from elsewhere may have been modified. How to check the signature is
+   in [SECURITY.md](SECURITY.md#verifying-a-download).
 5. **No affiliation.** EasyKey is an independent project, not affiliated with
    Microsoft, UniKey, EVKey or other keyboards. OpenKey is the original project
    by Mai Vu Tuyen; EasyKey is a continuation under the GPL and is not
