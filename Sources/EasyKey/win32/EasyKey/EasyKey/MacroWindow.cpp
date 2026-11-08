@@ -341,7 +341,15 @@ void MacroWindow::addShortcut() {
 		return;
 	}
 	syncEngineConfig(); //adding converts the content with the current code table
-	addMacro(wideStringToUtf8(name), wideStringToUtf8(content));
+	if (!addMacro(wideStringToUtf8(name), wideStringToUtf8(content))) {
+		MessageWindow::Options options;
+		options.heading = TR("Chưa lưu được gõ tắt", "Could not save shortcut");
+		options.text = TR("Tên gõ tắt tối đa 255 byte UTF-8, nội dung tối đa 65535 byte và danh sách tối đa 65535 mục.",
+			"Shortcut names can use up to 255 UTF-8 bytes, content up to 65535 bytes, and the list up to 65535 entries.");
+		options.buttons = { TR("Đóng", "Close") };
+		MessageWindow::show(hWnd, options);
+		return;
+	}
 	save();
 	selected = -1;
 	setEditText(ID_NAME, L"");
