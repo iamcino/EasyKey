@@ -12,6 +12,7 @@ add_executable(EngineTests
     ${APP_CORE_DIR}/VersionInfo.cpp
     ${APP_CORE_DIR}/GameModeState.cpp
     ${APP_CORE_DIR}/PasswordState.cpp
+    ${APP_CORE_DIR}/AppProfileState.cpp
     ${ENGINE_DIR}/ConvertTool.cpp
     ${ENGINE_DIR}/Engine.cpp
     ${ENGINE_DIR}/Macro.cpp

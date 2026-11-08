@@ -45,6 +45,9 @@
     <ClInclude Include="..\..\..\app-core\ExeName.h">
       <Filter>app-core</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\app-core\AppProfileState.h">
+      <Filter>app-core</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\..\engine\ConvertTool.h">
       <Filter>engine</Filter>
     </ClInclude>
@@ -144,6 +147,9 @@
       <Filter>app-core</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\app-core\PasswordState.cpp">
+      <Filter>app-core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\app-core\AppProfileState.cpp">
       <Filter>app-core</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\engine\ConvertTool.cpp">
