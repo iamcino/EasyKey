@@ -97,6 +97,7 @@
     <ClInclude Include="..\..\..\app-core\VersionInfo.h" />
     <ClInclude Include="..\..\..\app-core\GameModeState.h" />
     <ClInclude Include="..\..\..\app-core\PasswordState.h" />
+    <ClInclude Include="..\..\..\app-core\AppProfileState.h" />
     <ClInclude Include="..\..\..\app-core\ExeName.h" />
     <ClInclude Include="..\..\..\engine\ConvertTool.h" />
     <ClInclude Include="..\..\..\engine\DataType.h" />
@@ -133,6 +134,7 @@
     <ClCompile Include="..\..\..\app-core\VersionInfo.cpp" />
     <ClCompile Include="..\..\..\app-core\GameModeState.cpp" />
     <ClCompile Include="..\..\..\app-core\PasswordState.cpp" />
+    <ClCompile Include="..\..\..\app-core\AppProfileState.cpp" />
     <ClCompile Include="..\..\..\engine\ConvertTool.cpp" />
     <ClCompile Include="..\..\..\engine\Engine.cpp" />
     <ClCompile Include="..\..\..\engine\Macro.cpp" />

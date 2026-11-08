@@ -34,6 +34,14 @@ void getSmartSwitchKeySaveData(vector<Byte>& outData);
 int getAppInputMethodStatus(const string& bundleId, const int& currentInputMethod);
 
 /**
+ * look up language input method without creating a new entry
+ * return:
+ * -1: don't have this bundleId
+ * other: stored packed profile
+ */
+int peekAppInputMethodStatus(const string& bundleId);
+
+/**
  * Set default language for this @bundleId
  */
 void setAppInputMethodStatus(const string& bundleId, const int& language);

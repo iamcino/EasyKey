@@ -22,6 +22,7 @@ See LICENSE and NOTICE.
 #include "AboutWindow.h"
 #include "ConvertToolWindow.h"
 #include "MacroWindow.h"
+#include "../../../app-core/AppProfileState.h"
 #include <commctrl.h>
 #include <Shlobj.h>
 
@@ -401,6 +402,17 @@ void AppDelegate::onDefaultConfig() {
 	}
 }
 
+void saveProfileForApp(const string& targetApp) {
+	string exe = targetApp.empty() ? EasyKeyHelper::getLastStableAppExecuteName() : targetApp;
+	if (AppProfileState::shouldSaveProfile(exe, isGameApp(exe))) {
+		int8_t existing = (int8_t)peekAppInputMethodStatus(exe);
+		int8_t packed = AppProfileCodec::pack(vLanguage, vCodeTable, vMixedEnglish, vTwoModesOnly != 0, existing);
+		setAppInputMethodStatus(exe, packed);
+		saveSmartSwitchKeyData();
+		writeDebugProfileSave(exe, packed);
+	}
+}
+
 void AppDelegate::onNextTypingMode() {
 	//Vietnamese, English and Vietnamese mixed, English in turn, like the switch key
 	int mode = vTwoModesOnly ? (TYPING_MODE == 1 ? 0 : 1) : (TYPING_MODE == 1 ? 2 : TYPING_MODE == 2 ? 0 : 1);
@@ -414,9 +426,7 @@ void AppDelegate::onNextTypingMode() {
 	showSwitchFlyout();
 	
 	if (vUseSmartSwitchKey) {
-		string& exe = EasyKeyHelper::getLastAppExecuteName();
-		setAppInputMethodStatus(exe, vLanguage | (vCodeTable << 1));
-		saveSmartSwitchKeyData();
+		saveProfileForApp();
 	}
 }
 
@@ -437,8 +447,7 @@ void AppDelegate::setTypingMode(const int& mode) {
 	showSwitchFlyout();
 
 	if (vUseSmartSwitchKey) {
-		setAppInputMethodStatus(EasyKeyHelper::getFrontMostAppExecuteName(), vLanguage | (vCodeTable << 1));
-		saveSmartSwitchKeyData();
+		saveProfileForApp();
 	}
 }
 
@@ -481,7 +490,7 @@ void AppDelegate::onInputType(const int & type) {
 	showInputTypeFlyout();
 }
 
-void AppDelegate::onTableCode(const int & code, const bool& showFlyout) {
+void AppDelegate::onTableCode(const int & code, const bool& showFlyout, const bool& saveToProfile, const string& targetApp) {
 	APP_SET_DATA(vCodeTable, code);
 	invalidatePasswordFieldCache();
 	updatePasswordFieldState(GetForegroundWindow());
@@ -491,9 +500,8 @@ void AppDelegate::onTableCode(const int & code, const bool& showFlyout) {
 	//also when the app switch picks the code table: the tray menu kept the old tick, so the
 	//app looked like it was back on Unicode
 	SystemTrayHelper::updateData();
-	if (vRememberCode) {
-		setAppInputMethodStatus(EasyKeyHelper::getFrontMostAppExecuteName(), vLanguage | (vCodeTable << 1));
-		saveSmartSwitchKeyData();
+	if (saveToProfile && vRememberCode) {
+		saveProfileForApp(targetApp);
 	}
 	if (showFlyout)
 		showCodeTableFlyout();
@@ -514,6 +522,7 @@ void AppDelegate::onEasyKeyAbout() {
 }
 
 void AppDelegate::onEasyKeyExit() {
+	closeDebugLog();
 	EasyKeyManager::freeEngine();
 	SystemTrayHelper::removeSystemTray();
 	PostQuitMessage(0);

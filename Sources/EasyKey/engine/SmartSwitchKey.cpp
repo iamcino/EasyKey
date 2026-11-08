@@ -68,6 +68,19 @@ void getSmartSwitchKeySaveData(vector<Byte>& outData) {
     outData.insert(outData.end(), body.begin(), body.end());
 }
 
+int peekAppInputMethodStatus(const string& bundleId) {
+    if (_cacheKey.compare(bundleId) == 0) {
+        return _cacheData;
+    }
+    std::map<string, Int8>::iterator it = _smartSwitchKeyData.find(bundleId);
+    if (it != _smartSwitchKeyData.end()) {
+        _cacheKey = bundleId;
+        _cacheData = it->second;
+        return _cacheData;
+    }
+    return -1;
+}
+
 int getAppInputMethodStatus(const string& bundleId, const int& currentInputMethod) {
     if (_cacheKey.compare(bundleId) == 0) {
         return _cacheData;

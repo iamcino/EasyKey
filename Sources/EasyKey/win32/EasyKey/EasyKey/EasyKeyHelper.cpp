@@ -15,6 +15,8 @@ released under the GNU General Public License version 3.
 See LICENSE and NOTICE.
 -----------------------------------------------------------*/
 #include "EasyKeyHelper.h"
+#include <dwmapi.h>
+#include "../../../app-core/AppProfileState.h"
 #include <stdarg.h>
 #include <cwctype>
 #include <Shlobj.h>
@@ -40,12 +42,10 @@ static LPCTSTR _runOnStartupKeyPath = _T("Software\\Microsoft\\Windows\\CurrentV
 static TCHAR _executePath[MAX_PATH];
 static bool _hasGetPath = false;
 
-static DWORD _cacheProcessId = 0, _tempProcessId = 0;
-static HWND _tempWnd;
 static const char* _noAppYet = "TheEasyKeyProject"; //until the user switches to an app
-static string _exeNameUtf8 = _noAppYet; //the last app whose name was read
 static string _unknownProgram = "UnknownProgram";
-static string* _frontName = &_exeNameUtf8; //what the window of _cacheProcessId counts as
+static string _lastStableExe = "";
+static bool _lastStableIsGame = false;
 
 int CF_RTF = RegisterClipboardFormat(_T("Rich Text Format"));
 int CF_HTML = RegisterClipboardFormat(_T("HTML Format"));
@@ -240,34 +240,48 @@ LPTSTR EasyKeyHelper::getExecutePath() {
 	return _executePath;
 }
 
-//a Store app (Calculator, Settings, Photos...) runs inside a frame of ApplicationFrameHost.exe,
-//the app itself is the process of the core window in that frame
-static DWORD processOfWindow(const HWND& hWnd) {
-	DWORD processId = 0;
-	GetWindowThreadProcessId(hWnd, &processId);
-	TCHAR className[64];
-	if (GetClassName(hWnd, className, 64) && lstrcmp(className, _T("ApplicationFrameWindow")) == 0) {
-		HWND core = FindWindowEx(hWnd, NULL, _T("Windows.UI.Core.CoreWindow"), NULL);
-		DWORD coreProcessId = 0;
-		if (core && GetWindowThreadProcessId(core, &coreProcessId) && coreProcessId)
-			processId = coreProcessId;
-	}
-	return processId;
+const string& EasyKeyHelper::getLastStableAppExecuteName() {
+	return _lastStableExe;
 }
 
-string& EasyKeyHelper::getFrontMostAppExecuteName() {
-	_tempWnd = GetForegroundWindow();
-	_tempProcessId = processOfWindow(_tempWnd);
-	//EasyKey's own windows (Settings, the tray menu) keep the app the user came from,
-	//so a language or code table picked there is remembered for that app
-	if (_tempProcessId == _cacheProcessId || _tempProcessId == GetCurrentProcessId()) {
-		return *_frontName;
+void EasyKeyHelper::setLastStableApp(const string& exe, bool isGame) {
+	if (!exe.empty() && !AppProfileState::isShellTransitionExe(exe)) {
+		_lastStableExe = exe;
+		_lastStableIsGame = isGame;
 	}
-	_cacheProcessId = _tempProcessId;
-	//the limited right works for every app of the user, PROCESS_VM_READ is refused by some
-	//(and by apps run as admin), which left the name of the previous app in place
+}
+
+bool EasyKeyHelper::isLastStableGame() {
+	return _lastStableIsGame;
+}
+
+string EasyKeyHelper::getFrontMostAppExecuteName() {
+	if (!_lastStableExe.empty())
+		return _lastStableExe;
+	return _noAppYet;
+}
+
+string EasyKeyHelper::getLastAppExecuteName() {
+	return getFrontMostAppExecuteName();
+}
+
+bool EasyKeyHelper::isRealApp(const string& exe) {
+	return !exe.empty() && exe != _unknownProgram && exe != _noAppYet;
+}
+
+bool EasyKeyHelper::isWindowCloaked(HWND hWnd) {
+	if (!hWnd || !IsWindow(hWnd)) return false;
+	DWORD cloaked = 0;
+	if (SUCCEEDED(DwmGetWindowAttribute(hWnd, DWMWA_CLOAKED, &cloaked, sizeof(cloaked)))) {
+		return cloaked != 0;
+	}
+	return false;
+}
+
+string EasyKeyHelper::queryProcessExe(DWORD pid) {
+	if (pid == 0 || pid == GetCurrentProcessId()) return "";
 	string name;
-	HANDLE process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, _tempProcessId);
+	HANDLE process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
 	if (process) {
 		TCHAR path[MAX_PATH];
 		DWORD size = MAX_PATH;
@@ -277,24 +291,53 @@ string& EasyKeyHelper::getFrontMostAppExecuteName() {
 		}
 		CloseHandle(process);
 	}
-	if (name.empty()) {
-		_frontName = &_unknownProgram;
+	return name;
+}
+
+bool EasyKeyHelper::queryWindowContext(HWND hwnd, HWND& outRoot, DWORD& outPid, string& outExe, bool& outIsAppFrameWithoutCore) {
+	outRoot = NULL;
+	outPid = 0;
+	outExe.clear();
+	outIsAppFrameWithoutCore = false;
+
+	if (!hwnd || !IsWindow(hwnd)) return false;
+	outRoot = GetAncestor(hwnd, GA_ROOT);
+	if (!outRoot) outRoot = hwnd;
+
+	TCHAR className[64] = { 0 };
+	if (GetClassName(outRoot, className, 64) && lstrcmp(className, _T("ApplicationFrameWindow")) == 0) {
+		HWND core = FindWindowEx(outRoot, NULL, _T("Windows.UI.Core.CoreWindow"), NULL);
+		if (core && IsWindow(core)) {
+			GetWindowThreadProcessId(core, &outPid);
+		} else {
+			outIsAppFrameWithoutCore = true;
+			GetWindowThreadProcessId(outRoot, &outPid);
+			return false;
+		}
 	} else {
-		if (name.compare("explorer.exe") != 0) //the desktop and the taskbar keep the app the user came from
-			_exeNameUtf8 = name;
-		_frontName = &_exeNameUtf8;
+		GetWindowThreadProcessId(outRoot, &outPid);
 	}
-	return *_frontName;
-}
 
-bool EasyKeyHelper::isRealApp(const string& exe) {
-	return !exe.empty() && exe != _unknownProgram && exe != _noAppYet;
-}
+	if (outPid == 0 || outPid == GetCurrentProcessId()) {
+		return false;
+	}
 
-string & EasyKeyHelper::getLastAppExecuteName() {
-	if (!vUseSmartSwitchKey)
-		return getFrontMostAppExecuteName();
-	return _exeNameUtf8;
+	static HWND s_cachedRoot = NULL;
+	static DWORD s_cachedPid = 0;
+	static string s_cachedExe = "";
+
+	if (s_cachedRoot == outRoot && s_cachedPid == outPid && !s_cachedExe.empty()) {
+		outExe = s_cachedExe;
+	} else {
+		outExe = queryProcessExe(outPid);
+		if (!outExe.empty()) {
+			s_cachedRoot = outRoot;
+			s_cachedPid = outPid;
+			s_cachedExe = outExe;
+		}
+	}
+
+	return !outExe.empty();
 }
 
 wstring EasyKeyHelper::getFullPath() {
