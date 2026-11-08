@@ -27,13 +27,16 @@ struct GameModeEffects {
     bool sessionReset = false;
     //the chat was opened with Enter: startNewSession only
     bool chatOpened = false;
+    //the game binding was dropped entirely
+    bool bindingCleared = false;
 
     void absorb(const GameModeEffects& other) {
         chatClosed = chatClosed || other.chatClosed;
         sessionReset = sessionReset || other.sessionReset;
         chatOpened = chatOpened || other.chatOpened;
+        bindingCleared = bindingCleared || other.bindingCleared;
     }
-    bool any() const { return chatClosed || sessionReset || chatOpened; }
+    bool any() const { return chatClosed || sessionReset || chatOpened || bindingCleared; }
 };
 
 struct GameModeState {
@@ -74,13 +77,48 @@ struct GameModeState {
         //the hook may use the foreground window it found (false after a clear
         //on pid mismatch/destruction/expiry, where the original drops it)
         bool useForeground = false;
+        bool rebindOccurred = false;
     };
     //the keyboard hook's fast-path binding check on every key event
-    BindingCheck onKeyboardBindingCheck(uint64_t now, bool boundWindowAlive, uint64_t foregroundId, bool foregroundPidMatches);
+    BindingCheck onKeyboardBindingCheck(
+        uint64_t now,
+        bool processAlive,
+        bool boundWindowAlive,
+        uint64_t foregroundId,
+        uint32_t foregroundPid,
+        bool candidateEligible,
+        bool candidateExeIsGame
+    );
+    //backward-compatible overload for legacy callers/tests
+    inline BindingCheck onKeyboardBindingCheck(uint64_t now, bool boundWindowAlive, uint64_t foregroundId, bool foregroundPidMatches) {
+        bool processAlive = boundWindowAlive;
+        uint32_t fgPid = foregroundPidMatches ? (processId != 0 ? processId : 1) : 0;
+        return onKeyboardBindingCheck(now, processAlive, boundWindowAlive, foregroundId, fgPid, foregroundPidMatches, false);
+    }
+
     //the mouse hook's binding check on button-down while not in game
-    GameModeEffects onMouseBindingCheck(uint64_t now, bool boundWindowAlive, uint64_t foregroundId, bool foregroundIsBoundProcess);
+    GameModeEffects onMouseBindingCheck(
+        uint64_t now,
+        bool processAlive,
+        bool boundWindowAlive,
+        uint64_t foregroundId,
+        uint32_t foregroundPid,
+        bool candidateEligible,
+        bool candidateExeIsGame
+    );
+    //backward-compatible overload for legacy callers/tests
+    inline GameModeEffects onMouseBindingCheck(uint64_t now, bool boundWindowAlive, uint64_t foregroundId, bool foregroundIsBoundProcess) {
+        bool processAlive = boundWindowAlive;
+        uint32_t fgPid = foregroundIsBoundProcess ? (processId != 0 ? processId : 1) : 0;
+        return onMouseBindingCheck(now, processAlive, boundWindowAlive, foregroundId, fgPid, foregroundIsBoundProcess, false);
+    }
+
     //the foreground-changed handler when the new foreground is not a game app
-    GameModeEffects onForegroundChangedAway(uint64_t now, bool boundWindowAlive);
+    GameModeEffects onForegroundChangedAway(uint64_t now, bool processAlive, bool boundWindowAlive);
+    //backward-compatible overload for legacy callers/tests
+    inline GameModeEffects onForegroundChangedAway(uint64_t now, bool boundWindowAlive) {
+        return onForegroundChangedAway(now, boundWindowAlive, boundWindowAlive);
+    }
 
     struct KeyInput {
         uint16_t vkCode = 0;    //the resolved key code the hook works with

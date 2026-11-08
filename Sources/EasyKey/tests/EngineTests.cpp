@@ -3474,6 +3474,74 @@ static void testGameModeStateExtended() {
         s.onKeyboardBindingCheck(base + TTL, true, 200, false);
         expectRobust("game ext: TTL arithmetic at very large ticks", kept && s.windowId == 0);
     }
+
+    // PR 2 scenarios: Game Mode rebind after Alt+Tab
+    {   // Scenario 1: bound HWND destroyed while process is alive -> new foreground window of same process rebinds on first key
+        GameModeState s = gameInGame(); // windowId = 100, processId = 42, inGame = true
+        s.onForegroundChangedAway(2000, true, true); // tabbed away
+        expectRobust("game pr2: tabbing away leaves game but keeps process", !s.inGame && s.processId == 42);
+
+        // HWND 100 destroyed, new HWND 500 foregrounded
+        GameModeState::BindingCheck c = s.onKeyboardBindingCheck(3000, true /*processAlive*/, false /*boundWindowAlive*/,
+                                                               500 /*foregroundId*/, 42 /*foregroundPid*/,
+                                                               true /*candidateEligible*/, false /*candidateExeIsGame*/);
+        expectRobust("game pr2: rebind to new window on first key",
+                     s.inGame && s.confirmed && s.windowId == 500 && s.processId == 42 && c.rebindOccurred && c.useForeground);
+    }
+    {   // Scenario 2: process terminates -> clears binding completely
+        GameModeState s = gameInGame();
+        GameModeState::BindingCheck c = s.onKeyboardBindingCheck(3000, false /*processAlive*/, false /*boundWindowAlive*/,
+                                                               200 /*foregroundId*/, 99 /*foregroundPid*/,
+                                                               true /*candidateEligible*/, false /*candidateExeIsGame*/);
+        expectRobust("game pr2: process termination clears binding completely",
+                     s.windowId == 0 && s.processId == 0 && !s.inGame && !s.confirmed);
+    }
+    {   // Scenario 3: new process with candidate exe matching gameApps -> rebinds into game
+        GameModeState s; // no current game binding
+        GameModeState::BindingCheck c = s.onKeyboardBindingCheck(4000, true /*processAlive*/, false /*boundWindowAlive*/,
+                                                               600 /*foregroundId*/, 777 /*foregroundPid*/,
+                                                               true /*candidateEligible*/, true /*candidateExeIsGame*/);
+        expectRobust("game pr2: new process with game exe binds into game mode",
+                     s.inGame && s.confirmed && s.windowId == 600 && s.processId == 777 && c.rebindOccurred && c.useForeground);
+    }
+    {   // Scenario 4: window with child Edit/ComboBox or Chrome widget (candidateEligible == false) is NOT bound
+        GameModeState s;
+        s.bind(100, 42, true, 1000, true); // inGame = true
+        s.onForegroundChangedAway(2000, true, true); // tab away
+        // Lobby window foregrounded: same PID 42, but candidateEligible = false (has focusable Edit/Chrome)
+        GameModeState::BindingCheck c = s.onKeyboardBindingCheck(3000, true /*processAlive*/, true /*boundWindowAlive*/,
+                                                               700 /*foregroundId*/, 42 /*foregroundPid*/,
+                                                               false /*candidateEligible*/, true /*candidateExeIsGame*/);
+        expectRobust("game pr2: lobby/browser candidate not eligible is rejected",
+                     !s.inGame && s.windowId == 100 && !c.rebindOccurred);
+    }
+    {   // Scenario 5: removing game from list clears all binding
+        GameModeState s = gameInGame();
+        GameModeEffects fx = s.clearBinding();
+        expectRobust("game pr2: clearBinding resets all state",
+                     s.windowId == 0 && s.processId == 0 && !s.inGame && !s.confirmed && !s.chatOpen && fx.sessionReset);
+        // Next key in old PID window with candidateExeIsGame == false does not rebind
+        GameModeState::BindingCheck c = s.onKeyboardBindingCheck(3000, true, false, 800, 42, true, false);
+        expectRobust("game pr2: no rebind after game removed from list",
+                     !s.inGame && s.windowId == 0 && s.processId == 0 && !c.rebindOccurred);
+    }
+    {   // Scenario 6: regular non-game app never enters game mode
+        GameModeState s; // clean state
+        GameModeState::BindingCheck c = s.onKeyboardBindingCheck(3000, true, false,
+                                                               900 /*Notepad*/, 1234 /*NotepadPid*/,
+                                                               true /*candidateEligible*/, false /*candidateExeIsGame*/);
+        expectRobust("game pr2: regular app never enters game mode",
+                     !s.inGame && s.windowId == 0 && s.processId == 0 && !c.rebindOccurred);
+    }
+    {   // Scenario 7 (PR 2 Review Point 3): Bound window exists, but foreground has different PID and exe is not game -> clears binding
+        GameModeState s = gameInGame(); // windowId = 100, processId = 42
+        // HWND 100 reused by OS for another process PID 999 (or foreground PID mismatch) with non-game exe
+        GameModeState::BindingCheck c = s.onKeyboardBindingCheck(3000, true /*processAlive*/, true /*boundWindowAlive*/,
+                                                               100 /*foregroundId*/, 999 /*different PID*/,
+                                                               true /*candidateEligible*/, false /*candidateExeIsGame*/);
+        expectRobust("game pr2: bound window with mismatched PID and non-game exe clears binding",
+                     s.windowId == 0 && s.processId == 0 && !s.inGame && !c.useForeground);
+    }
 }
 
 //Password-field state decisions (plan 3.3): state values mirror the engine's

@@ -164,6 +164,164 @@ static vector<string> _gameApps;
 static GameModeState _game;
 static uint64_t gameWindowId(HWND hwnd) { return (uint64_t)(uintptr_t)hwnd; }
 static HWND gameBoundHwnd() { return (HWND)(uintptr_t)_game.windowId; }
+static string exeNameOfProcessId(DWORD processId);
+
+static HANDLE _gameProcessHandle = NULL;
+static DWORD _failedOpenProcessPid = 0;
+
+static void closeGameProcessHandle() {
+	if (_gameProcessHandle != NULL) {
+		CloseHandle(_gameProcessHandle);
+		_gameProcessHandle = NULL;
+	}
+	_failedOpenProcessPid = 0;
+}
+
+static void ensureGameProcessHandle(DWORD pid) {
+	if (!pid || pid == GetCurrentProcessId())
+		return;
+	if (pid == _failedOpenProcessPid)
+		return; // Point 1: Already failed for this PID, do not retry OpenProcess on every click/key!
+	if (_gameProcessHandle != NULL && pid == _game.processId)
+		return; // Already holding a valid handle for this PID
+
+	if (_gameProcessHandle != NULL) {
+		CloseHandle(_gameProcessHandle);
+		_gameProcessHandle = NULL;
+	}
+	_gameProcessHandle = OpenProcess(SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
+	if (_gameProcessHandle == NULL) {
+		_failedOpenProcessPid = pid;
+	}
+}
+
+static bool isGameProcessAlive(bool boundWindowAlive) {
+	if (_game.processId == 0)
+		return false;
+	if (_gameProcessHandle == NULL) {
+		if (_failedOpenProcessPid == _game.processId) {
+			// Review Point 2: Failed opening process before (anti-cheat/privilege),
+			// do NOT retry OpenProcess on every key! Fallback to bound window alive.
+			return boundWindowAlive;
+		}
+		_gameProcessHandle = OpenProcess(SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION, FALSE, _game.processId);
+		if (_gameProcessHandle == NULL) {
+			_failedOpenProcessPid = _game.processId;
+			return boundWindowAlive;
+		}
+	}
+	DWORD res = WaitForSingleObject(_gameProcessHandle, 0);
+	if (res == WAIT_OBJECT_0) {
+		closeGameProcessHandle();
+		return false;
+	}
+	return true;
+}
+
+struct ChildScanResult {
+	bool hasForbiddenChild = false;
+};
+
+static BOOL CALLBACK EnumGameChildProc(HWND child, LPARAM lParam) {
+	ChildScanResult* result = (ChildScanResult*)lParam;
+	char cls[64] = { 0 };
+	if (GetClassNameA(child, cls, sizeof(cls)) > 0) {
+		if (strncmp(cls, "Chrome_WidgetWin_", 17) == 0) {
+			result->hasForbiddenChild = true;
+			return FALSE;
+		}
+		if (_stricmp(cls, "Edit") == 0 || _stricmp(cls, "ComboBox") == 0) {
+			LONG_PTR style = GetWindowLongPtr(child, GWL_STYLE);
+			if ((style & WS_VISIBLE) && !(style & WS_DISABLED)) {
+				result->hasForbiddenChild = true;
+				return FALSE;
+			}
+		}
+	}
+	return TRUE;
+}
+
+static bool isEligibleGameWindow(HWND hwnd) {
+	if (!hwnd || !IsWindow(hwnd))
+		return false;
+	if (!IsWindowVisible(hwnd))
+		return false;
+	if (GetAncestor(hwnd, GA_ROOT) != hwnd)
+		return false;
+	if (GetWindow(hwnd, GW_OWNER) != NULL)
+		return false;
+	LONG_PTR exStyle = GetWindowLongPtr(hwnd, GWL_EXSTYLE);
+	if (exStyle & WS_EX_TOOLWINDOW)
+		return false;
+	DWORD pid = 0;
+	GetWindowThreadProcessId(hwnd, &pid);
+	if (!pid || pid == GetCurrentProcessId())
+		return false;
+	return true;
+}
+
+// Review Points 1 & 5: Foreground candidate cache {rootHwnd, pid} -> (eligible, exeIsGame)
+// Updated once when the root foreground window changes; avoids OpenProcess/EnumChildWindows on every key!
+struct ForegroundGameCandidateCache {
+	HWND rootHwnd = NULL;
+	DWORD pid = 0;
+	bool eligible = false;
+	bool exeIsGame = false;
+};
+static ForegroundGameCandidateCache s_fgCandidateCache;
+
+static void updateForegroundCandidateCache(HWND fg) {
+	if (!fg || !IsWindow(fg)) {
+		s_fgCandidateCache.rootHwnd = NULL;
+		s_fgCandidateCache.pid = 0;
+		s_fgCandidateCache.eligible = false;
+		s_fgCandidateCache.exeIsGame = false;
+		return;
+	}
+	HWND root = GetAncestor(fg, GA_ROOT);
+	if (root == NULL)
+		root = fg;
+
+	DWORD pid = 0;
+	GetWindowThreadProcessId(root, &pid);
+
+	if (s_fgCandidateCache.rootHwnd == root && s_fgCandidateCache.pid == pid) {
+		return; // Already cached for this root window
+	}
+
+	// Root changed: invalidate and scan once
+	s_fgCandidateCache.rootHwnd = root;
+	s_fgCandidateCache.pid = pid;
+	s_fgCandidateCache.eligible = false;
+	s_fgCandidateCache.exeIsGame = false;
+
+	if (pid == 0 || pid == GetCurrentProcessId()) {
+		return;
+	}
+
+	if (!isEligibleGameWindow(root)) {
+		return;
+	}
+
+	ChildScanResult res;
+	res.hasForbiddenChild = false;
+	EnumChildWindows(root, EnumGameChildProc, (LPARAM)&res);
+	s_fgCandidateCache.eligible = !res.hasForbiddenChild;
+
+	if (s_fgCandidateCache.eligible) {
+		if (_game.processId != 0 && pid == _game.processId) {
+			s_fgCandidateCache.exeIsGame = true;
+		} else {
+			string exe = exeNameOfProcessId(pid);
+			s_fgCandidateCache.exeIsGame = isGameApp(exe);
+		}
+	}
+}
+
+static bool isCandidateEligibleCached(HWND hwnd) {
+	updateForegroundCandidateCache(hwnd);
+	return s_fgCandidateCache.eligible;
+}
 //Esc that put back the typed keys: its key up is swallowed too, web chats (Facebook...) act on it
 static bool _escapeRestored = false;
 
@@ -342,10 +500,10 @@ void EasyKeyInit() {
 	watchRawKeyboard();
 }
 
-//exe name of a window, without the cache of getFrontMostAppExecuteName that keeps the previous app for Explorer
-static string exeNameOfWindow(const HWND& hWnd) {
-	DWORD processId = 0;
-	GetWindowThreadProcessId(hWnd, &processId);
+//exe name of a process id
+static string exeNameOfProcessId(DWORD processId) {
+	if (!processId)
+		return "";
 	HANDLE process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, processId);
 	if (!process)
 		return "";
@@ -358,6 +516,13 @@ static string exeNameOfWindow(const HWND& hWnd) {
 	}
 	CloseHandle(process);
 	return name;
+}
+
+//exe name of a window, without the cache of getFrontMostAppExecuteName that keeps the previous app for Explorer
+static string exeNameOfWindow(const HWND& hWnd) {
+	DWORD processId = 0;
+	GetWindowThreadProcessId(hWnd, &processId);
+	return exeNameOfProcessId(processId);
 }
 
 const vector<string>& getGameApps() {
@@ -440,11 +605,20 @@ void setGameApp(const string& exe, const bool& on, HWND candidateHwnd) {
 		if (_game.windowId != 0 && IsWindow(gameBoundHwnd()) && isGameApp(exeNameOfWindow(gameBoundHwnd()))) {
 			return;
 		}
+		bool boundAlive = (_game.windowId != 0 && IsWindow(gameBoundHwnd()));
+		if (_game.processId != 0 && isGameProcessAlive(boundAlive) && isGameApp(exeNameOfProcessId(_game.processId))) {
+			return;
+		}
 		clearGameBinding();
 		return;
 	}
-	if (_game.windowId != 0 && (!IsWindow(gameBoundHwnd()) || !isGameApp(exeNameOfWindow(gameBoundHwnd())))) {
+	bool boundAlive = (_game.windowId != 0 && IsWindow(gameBoundHwnd()));
+	if (_game.processId != 0 && (!isGameProcessAlive(boundAlive) || !isGameApp(exeNameOfProcessId(_game.processId)))) {
 		clearGameBinding();
+	} else if (_game.windowId != 0 && (!IsWindow(gameBoundHwnd()) || !isGameApp(exeNameOfWindow(gameBoundHwnd())))) {
+		if (!isGameProcessAlive(false)) {
+			clearGameBinding();
+		}
 	}
 }
 
@@ -1120,6 +1294,9 @@ static void applyGameEffects(const GameModeEffects& fx) {
 	if (fx.chatOpened) {
 		startNewSession();
 	}
+	if (fx.bindingCleared) {
+		closeGameProcessHandle();
+	}
 }
 
 static void enterGameState() {
@@ -1131,6 +1308,7 @@ static void leaveGameState() {
 }
 
 static void clearGameBinding() {
+	closeGameProcessHandle();
 	applyGameEffects(_game.clearBinding());
 }
 
@@ -1141,6 +1319,7 @@ static void bindGameWindow(HWND hwnd, bool confirmed) {
 	GetWindowThreadProcessId(hwnd, &pid);
 	if (!pid || pid == GetCurrentProcessId())
 		return;
+	ensureGameProcessHandle(pid);
 	applyGameEffects(_game.bind(gameWindowId(hwnd), pid, confirmed, GetTickCount64(), GetForegroundWindow() == hwnd));
 }
 
@@ -1588,6 +1767,48 @@ static void writeDebugForegroundLog(HWND eventHwnd, HWND rootHwnd, const char* c
 	_debugLogCount++;
 }
 
+static void applyProfileForApp(const string& exe, bool fromHook, string& exeRead, string& exeWritten) {
+	if (!vUseSmartSwitchKey && !vRememberCode)
+		return;
+	exeRead = exe;
+	int8_t raw = (int8_t)peekAppInputMethodStatus(exe);
+	if (raw != -1) {
+		AppProfileCodec::UnpackedProfile prof = AppProfileCodec::unpack(raw, vMixedEnglish, vTwoModesOnly != 0);
+		if (vUseSmartSwitchKey) {
+			if (prof.language != vLanguage || (prof.hasMixedInfo && prof.mixedEnglish != vMixedEnglish)) {
+				vLanguage = prof.language;
+				if (!vTwoModesOnly && prof.hasMixedInfo) {
+					vMixedEnglish = prof.mixedEnglish;
+				} else if (vTwoModesOnly) {
+					vMixedEnglish = 0;
+				}
+				if (!fromHook) {
+					AppDelegate::getInstance()->onInputMethodChangedFromHotKey();
+				}
+			}
+		}
+		if (vRememberCode && prof.codeTable != vCodeTable) {
+			if (fromHook) {
+				vCodeTable = prof.codeTable;
+			} else {
+				APP_SET_DATA(vCodeTable, prof.codeTable);
+				AppDelegate::getInstance()->onTableCode(prof.codeTable, false, false, exe);
+			}
+		}
+	} else {
+		// New app without profile! Remember current configuration as initial profile
+		if (AppProfileState::shouldSaveProfile(exe, false)) {
+			int8_t packed = AppProfileCodec::pack(vLanguage, vCodeTable, vMixedEnglish, vTwoModesOnly != 0, -1);
+			setAppInputMethodStatus(exe, packed);
+			exeWritten = exe;
+			writeDebugProfileSave(exe, packed);
+			if (!fromHook) {
+				saveSmartSwitchKeyData();
+			}
+		}
+	}
+}
+
 static void commitForegroundWindow(HWND hwnd, bool fromHook) {
 	HWND curFg = GetForegroundWindow();
 	if (!hwnd)
@@ -1658,60 +1879,49 @@ static void commitForegroundWindow(HWND hwnd, bool fromHook) {
 	if (decision == AppProfileState::Decision::AlreadyCommitted) {
 		// Already active foreground window, keep active typing session completely intact!
 	} else if (decision == AppProfileState::Decision::CommitGame) {
-		startNewSession();
-		vStartSentence();
-		EasyKeyHelper::setLastStableApp(exe, true);
-		bindGameWindow(root, true);
-		_game.forceInGame();
+		updateForegroundCandidateCache(root);
+		if (!s_fgCandidateCache.eligible) {
+			// Point 3: Mark log when game window is bypassed due to lobby filter (e.g. child Edit/ComboBox/Chrome)
+			decStr = "CommitGame(BypassedLobby)";
+			startNewSession();
+			vStartSentence();
+			EasyKeyHelper::setLastStableApp(exe, false);
+			bool boundAlive = (_game.windowId != 0 && IsWindow(gameBoundHwnd()));
+			bool procAlive = isGameProcessAlive(boundAlive);
+			applyGameEffects(_game.onForegroundChangedAway(nowTick, procAlive, boundAlive));
 
-		if (fromHook && s_rawInputWindow) {
-			PostMessage(s_rawInputWindow, WM_DEFERRED_FOREGROUND, (WPARAM)hwnd, 0);
+			// Point 2: Shared profile application for lobby / app
+			applyProfileForApp(exe, fromHook, exeRead, exeWritten);
+
+			if (fromHook) {
+				if (s_rawInputWindow) {
+					PostMessage(s_rawInputWindow, WM_DEFERRED_FOREGROUND, (WPARAM)hwnd, 0);
+				}
+			} else {
+				SystemTrayHelper::updateData();
+			}
+		} else {
+			// Eligible in-game combat window
+			startNewSession();
+			vStartSentence();
+			EasyKeyHelper::setLastStableApp(exe, true);
+			bindGameWindow(root, true);
+			_game.forceInGame();
+
+			if (fromHook && s_rawInputWindow) {
+				PostMessage(s_rawInputWindow, WM_DEFERRED_FOREGROUND, (WPARAM)hwnd, 0);
+			}
 		}
 	} else if (decision == AppProfileState::Decision::CommitApp) {
 		startNewSession();
 		vStartSentence();
 		EasyKeyHelper::setLastStableApp(exe, false);
-		applyGameEffects(_game.onForegroundChangedAway(nowTick, _game.windowId != 0 && IsWindow(gameBoundHwnd())));
+		bool boundAlive = (_game.windowId != 0 && IsWindow(gameBoundHwnd()));
+		bool procAlive = isGameProcessAlive(boundAlive);
+		applyGameEffects(_game.onForegroundChangedAway(nowTick, procAlive, boundAlive));
 
-		if (vUseSmartSwitchKey || vRememberCode) {
-			exeRead = exe;
-			int8_t raw = (int8_t)peekAppInputMethodStatus(exe);
-			if (raw != -1) {
-				AppProfileCodec::UnpackedProfile prof = AppProfileCodec::unpack(raw, vMixedEnglish, vTwoModesOnly != 0);
-				if (vUseSmartSwitchKey) {
-					if (prof.language != vLanguage || (prof.hasMixedInfo && prof.mixedEnglish != vMixedEnglish)) {
-						vLanguage = prof.language;
-						if (!vTwoModesOnly && prof.hasMixedInfo) {
-							vMixedEnglish = prof.mixedEnglish;
-						} else if (vTwoModesOnly) {
-							vMixedEnglish = 0;
-						}
-						if (!fromHook) {
-							AppDelegate::getInstance()->onInputMethodChangedFromHotKey();
-						}
-					}
-				}
-				if (vRememberCode && prof.codeTable != vCodeTable) {
-					if (fromHook) {
-						vCodeTable = prof.codeTable;
-					} else {
-						APP_SET_DATA(vCodeTable, prof.codeTable);
-						AppDelegate::getInstance()->onTableCode(prof.codeTable, false, false, exe);
-					}
-				}
-			} else {
-				// Point 3: New app without profile! Remember current configuration as initial profile
-				if (AppProfileState::shouldSaveProfile(exe, false)) {
-					int8_t packed = AppProfileCodec::pack(vLanguage, vCodeTable, vMixedEnglish, vTwoModesOnly != 0, -1);
-					setAppInputMethodStatus(exe, packed);
-					exeWritten = exe;
-					writeDebugProfileSave(exe, packed);
-					if (!fromHook) {
-						saveSmartSwitchKeyData();
-					}
-				}
-			}
-		}
+		// Point 2: Shared profile application
+		applyProfileForApp(exe, fromHook, exeRead, exeWritten);
 
 		if (fromHook) {
 			if (s_rawInputWindow) {
@@ -1845,25 +2055,33 @@ LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 		return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
 	}
 
-	//fast-path game window binding check (confirmed bindings persist for the lifetime of the game window;
+	//fast-path game window binding check (confirmed bindings persist for the lifetime of the game window/process;
 	//only unconfirmed armed bindings expire after the armed TTL)
 	HWND fg = NULL;
-	if (_game.windowId != 0) {
-		bool boundAlive = IsWindow(gameBoundHwnd());
-		HWND fgHwnd = NULL;
-		uint64_t fgId = 0;
-		bool fgPidMatches = false;
-		if (boundAlive && !_game.armedExpired(nowTick)) {
-			fgHwnd = GetForegroundWindow();
-			fgId = gameWindowId(fgHwnd);
-			if (fgId == _game.windowId && (!_game.confirmed || !_game.inGame)) {
-				DWORD pid = 0;
-				GetWindowThreadProcessId(fgHwnd, &pid);
-				fgPidMatches = (pid == _game.processId && IsWindow(fgHwnd));
-			}
-		}
-		GameModeState::BindingCheck check = _game.onKeyboardBindingCheck(nowTick, boundAlive, fgId, fgPidMatches);
+	if (_game.processId != 0 || _game.windowId != 0) {
+		HWND fgHwnd = GetForegroundWindow();
+		updateForegroundCandidateCache(fgHwnd);
+
+		bool boundAlive = (_game.windowId != 0 && IsWindow(gameBoundHwnd()));
+		bool processAlive = isGameProcessAlive(boundAlive);
+		uint64_t fgId = gameWindowId(fgHwnd);
+		DWORD fgPid = s_fgCandidateCache.pid;
+		bool candidateEligible = s_fgCandidateCache.eligible;
+		bool candidateExeIsGame = s_fgCandidateCache.exeIsGame;
+
+		GameModeState::BindingCheck check = _game.onKeyboardBindingCheck(
+			nowTick,
+			processAlive,
+			boundAlive,
+			fgId,
+			fgPid,
+			candidateEligible,
+			candidateExeIsGame
+		);
 		applyGameEffects(check.effects);
+		if (check.rebindOccurred && fgHwnd != NULL && fgPid != 0) {
+			ensureGameProcessHandle(fgPid);
+		}
 		if (check.useForeground)
 			fg = fgHwnd;
 	}
@@ -2093,20 +2311,30 @@ LRESULT CALLBACK mouseHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 		return CallNextHookEx(hMouseHook, nCode, wParam, lParam);
 
 	if (wParam == WM_LBUTTONDOWN || wParam == WM_RBUTTONDOWN || wParam == WM_MBUTTONDOWN) {
-		if (_game.processId != 0 && !_game.inGame) {
-			bool boundAlive = _game.windowId != 0 && IsWindow(gameBoundHwnd());
-			uint64_t fgId = 0;
-			bool fgIsBoundProcess = false;
-			if (!((_game.windowId != 0 && !boundAlive) || (!_game.confirmed && _game.lastForegroundTick != 0 && _game.armedExpired(nowTick)))) {
-				HWND fg = GetForegroundWindow();
-				fgId = gameWindowId(fg);
-				if (fg != NULL) {
-					DWORD pid = 0;
-					GetWindowThreadProcessId(fg, &pid);
-					fgIsBoundProcess = (pid == _game.processId && pid != GetCurrentProcessId() && IsWindow(fg) && IsWindowVisible(fg) && GetAncestor(fg, GA_ROOT) == fg);
-				}
+		if (_game.processId != 0 || _game.windowId != 0) {
+			HWND fg = GetForegroundWindow();
+			updateForegroundCandidateCache(fg);
+
+			bool boundAlive = (_game.windowId != 0 && IsWindow(gameBoundHwnd()));
+			bool processAlive = isGameProcessAlive(boundAlive);
+			uint64_t fgId = gameWindowId(fg);
+			DWORD fgPid = s_fgCandidateCache.pid;
+			bool candidateEligible = s_fgCandidateCache.eligible;
+			bool candidateExeIsGame = s_fgCandidateCache.exeIsGame;
+
+			GameModeEffects fx = _game.onMouseBindingCheck(
+				nowTick,
+				processAlive,
+				boundAlive,
+				fgId,
+				fgPid,
+				candidateEligible,
+				candidateExeIsGame
+			);
+			applyGameEffects(fx);
+			if (_game.inGame && fg != NULL && fgPid != 0) {
+				ensureGameProcessHandle(fgPid);
 			}
-			applyGameEffects(_game.onMouseBindingCheck(nowTick, boundAlive, fgId, fgIsBoundProcess));
 		}
 	}
 
