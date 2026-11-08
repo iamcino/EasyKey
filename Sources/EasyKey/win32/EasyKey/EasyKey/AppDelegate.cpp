@@ -126,6 +126,8 @@ int AppDelegate::run(HINSTANCE hInstance) {
 	//create system tray
 	SystemTrayHelper::createSystemTrayIcon(hInstance);
 	SystemTrayHelper::updateData();
+	//the old exe from an update can go now that this one is up
+	Updater::cleanupPreviousUpdate();
 
 	//create main control
 	if (vShowOnStartUp)

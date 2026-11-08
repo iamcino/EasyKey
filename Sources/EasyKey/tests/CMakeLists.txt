@@ -30,3 +30,11 @@ endif()
 
 enable_testing()
 add_test(NAME EngineTests COMMAND EngineTests)
+
+#Windows-only: deleting EasyKey.old.exe after an update (locked, read-only, directory)
+if(WIN32)
+    add_executable(UpdateCleanupTests UpdateCleanupTests.cpp
+        ../win32/EasyKey/EasyKey/UpdateCleanup.cpp)
+    target_compile_options(UpdateCleanupTests PRIVATE /utf-8)
+    add_test(NAME UpdateCleanupTests COMMAND UpdateCleanupTests)
+endif()
