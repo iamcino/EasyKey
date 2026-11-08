@@ -102,7 +102,7 @@ static const RowInfo advancedRows[] = {
 	{ K_SUBTOGGLE, OPT_MACRO_AUTO_CAPS, _T("Tự viết hoa theo từ gõ tắt"), _T("Match the capitalization of shortcuts") },
 	{ K_GROUP, 6, _T("Ứng dụng"), _T("Apps") },
 	{ K_SUBTOGGLE, OPT_SMART_SWITCH, _T("Nhớ chế độ Việt/Anh theo từng ứng dụng"), _T("Remember Vietnamese/English per app") },
-	{ K_SUBBUTTON, ACT_GAME_APPS, _T("Chế độ game"), _T("Game mode"), _T("Phím vào game, Enter để gõ tiếng Việt"), _T("Keys go to the game, Enter types Vietnamese") },
+	{ K_SUBBUTTON, ACT_GAME_APPS, _T("Chế độ game"), _T("Game mode"), _T("Phím vào game, Enter gõ tiếng Việt (game bỏ phím giả lập thì đổi sang Anh để chat)"), _T("Keys go to the game, Enter types Vietnamese (switch to English if the game drops simulated keys)") },
 	{ K_SUBTOGGLE, OPT_CLIPBOARD, _T("Gửi chữ qua Clipboard"), _T("Send text through the clipboard") },
 	{ K_SUBTOGGLE, OPT_FLYOUT, _T("Hiện thông báo khi chuyển Việt/Anh"), _T("Show a notice when switching") },
 	{ K_SUBTOGGLE, OPT_BEEP, _T("Kêu bíp khi chuyển Việt/Anh"), _T("Beep when switching") },
