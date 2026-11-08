@@ -72,7 +72,7 @@ public: //event
 
 	void onInputType(const int& type);
 	//showFlyout is off when EasyKey restores the code table remembered for an app
-	void onTableCode(const int& code, const bool& showFlyout = true);
+	void onTableCode(const int& code, const bool& showFlyout = true, const bool& saveToProfile = true, const string& targetApp = "");
 
 	void onControlPanel();
 	void onEasyKeyAbout();

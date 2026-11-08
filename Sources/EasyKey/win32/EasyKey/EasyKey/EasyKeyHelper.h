@@ -35,10 +35,17 @@ public:
 
 	static LPTSTR getExecutePath();
 
-	static string& getFrontMostAppExecuteName();
+	static bool isWindowCloaked(HWND hWnd);
+	static string queryProcessExe(DWORD pid);
+	static bool queryWindowContext(HWND hwnd, HWND& outRoot, DWORD& outPid, string& outExe, bool& outIsAppFrameWithoutCore);
+	static const string& getLastStableAppExecuteName();
+	static void setLastStableApp(const string& exe, bool isGame);
+	static bool isLastStableGame();
+
+	static string getFrontMostAppExecuteName();
 	//false for the placeholders getFrontMostAppExecuteName gives before any app was used
 	static bool isRealApp(const string& exe);
-	static string& getLastAppExecuteName();
+	static string getLastAppExecuteName();
 
 	static wstring getFullPath();
 

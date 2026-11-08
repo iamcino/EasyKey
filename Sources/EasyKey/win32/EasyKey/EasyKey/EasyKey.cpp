@@ -20,6 +20,7 @@ See LICENSE and NOTICE.
 #include "../../../app-core/GameModeState.h"
 #include "../../../app-core/PasswordState.h"
 #include "../../../app-core/ExeName.h"
+#include "../../../app-core/AppProfileState.h"
 #include <algorithm>
 #include <atomic>
 #include <cstdint>
@@ -113,6 +114,7 @@ static Uint32 _tempChar;
 
 static string macroText, macroContent;
 static int _languageTemp = 0; //use for smart switch key
+static AppProfileState _appProfileState;
 static vector<Byte> savedSmartSwitchKeyData; ////use for smart switch key
 
 static bool _hasJustUsedHotKey = false;
@@ -171,6 +173,12 @@ static INPUT keyEvent[2];
 static int vDebugKeyLog = 0;
 static FILE* _debugLogFile = NULL;
 static int _debugLogCount = 0;
+static bool openDebugLog();
+void writeDebugProfileSave(const string& exe, int8_t packed);
+void closeDebugLog();
+
+#define WM_DEFERRED_FOREGROUND (WM_USER + 2030)
+static HWND s_rawInputWindow = NULL;
 
 LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam);
 LRESULT CALLBACK mouseHookProcess(int nCode, WPARAM wParam, LPARAM lParam);
@@ -1393,8 +1401,7 @@ void switchLanguage() {
 	AppDelegate::getInstance()->onInputMethodChangedFromHotKey();
 	AppDelegate::getInstance()->showSwitchFlyout();
 	if (vUseSmartSwitchKey && !_game.inGame) {
-		setAppInputMethodStatus(EasyKeyHelper::getFrontMostAppExecuteName(), vLanguage | (vCodeTable << 1));
-		saveSmartSwitchKeyData();
+		saveProfileForApp();
 	}
 	startNewSession();
 }
@@ -1554,6 +1561,172 @@ static void reinstallHooks(const char* reason) {
 		writeDebugLine(reason);
 }
 
+void writeDebugProfileSave(const string& exe, int8_t packed) {
+	if (!vDebugKeyLog || !openDebugLog())
+		return;
+	fprintf(_debugLogFile, "FG_WRITE t=%llu exe=%s packed=0x%02X\n", (unsigned long long)GetTickCount64(), exe.c_str(), (unsigned char)packed);
+	_debugLogCount++;
+}
+
+void closeDebugLog() {
+	if (_debugLogFile != NULL) {
+		fclose(_debugLogFile);
+		_debugLogFile = NULL;
+		_debugLogCount = 0;
+	}
+}
+
+static void writeDebugForegroundLog(HWND eventHwnd, HWND rootHwnd, const char* className, DWORD pid,
+	const string& exe, HWND currentFg, const char* decision,
+	const string& exeRead, const string& exeWritten, bool inGame)
+{
+	if (!vDebugKeyLog || !openDebugLog())
+		return;
+	fprintf(_debugLogFile, "FG t=%llu evtHwnd=%p root=%p class=%s pid=%lu exe=%s curFg=%p dec=%s readProf=%s writeProf=%s inGame=%d\n",
+		(unsigned long long)GetTickCount64(), eventHwnd, rootHwnd, className ? className : "", pid,
+		exe.c_str(), currentFg, decision ? decision : "", exeRead.c_str(), exeWritten.c_str(), inGame ? 1 : 0);
+	_debugLogCount++;
+}
+
+static void commitForegroundWindow(HWND hwnd, bool fromHook) {
+	HWND curFg = GetForegroundWindow();
+	if (!hwnd)
+		hwnd = curFg;
+	if (!hwnd)
+		return;
+
+	uint64_t nowTick = GetTickCount64();
+	recordNavigationSignal(nowTick);
+
+	if (!fromHook) {
+		GameCandidateFinder::recordForeground(hwnd);
+		if (EasyKeyHelper::isWindowElevated(hwnd))
+			AppDelegate::getInstance()->onElevatedWindow(hwnd);
+		updatePasswordFieldState(hwnd, OBJID_WINDOW, CHILDID_SELF, true);
+	}
+
+	HWND root = NULL;
+	DWORD pid = 0;
+	string exe;
+	bool isAppFrameWithoutCore = false;
+	EasyKeyHelper::queryWindowContext(hwnd, root, pid, exe, isAppFrameWithoutCore);
+	if (!root)
+		root = hwnd;
+
+	HWND curFgRoot = curFg ? GetAncestor(curFg, GA_ROOT) : NULL;
+	if (!curFgRoot)
+		curFgRoot = curFg;
+
+	bool isWindow = root && IsWindow(root);
+	bool isVisible = root && IsWindowVisible(root);
+	bool isIconic = root && IsIconic(root);
+	bool isCloaked = root && EasyKeyHelper::isWindowCloaked(root);
+	bool isEasyKey = (pid == GetCurrentProcessId());
+	bool isGame = !_gameApps.empty() && isGameApp(exe);
+
+	AppProfileState::Decision decision = _appProfileState.onForegroundEvent(
+		(uint64_t)root,
+		(uint64_t)curFgRoot,
+		isWindow,
+		isVisible,
+		isIconic,
+		isCloaked,
+		isEasyKey,
+		isAppFrameWithoutCore,
+		exe,
+		isGame
+	);
+
+	char className[64] = { 0 };
+	if (root)
+		GetClassNameA(root, className, sizeof(className));
+
+	const char* decStr = "Unknown";
+	switch (decision) {
+	case AppProfileState::Decision::AlreadyCommitted: decStr = "AlreadyCommitted"; break;
+	case AppProfileState::Decision::IgnoreStale: decStr = "IgnoreStale"; break;
+	case AppProfileState::Decision::IgnoreShellTransition: decStr = "IgnoreShellTransition"; break;
+	case AppProfileState::Decision::IgnoreUwpWithoutCore: decStr = "IgnoreUwpWithoutCore"; break;
+	case AppProfileState::Decision::IgnoreUnknownExe: decStr = "IgnoreUnknownExe"; break;
+	case AppProfileState::Decision::CommitGame: decStr = "CommitGame"; break;
+	case AppProfileState::Decision::CommitApp: decStr = "CommitApp"; break;
+	}
+
+	string exeRead = "";
+	string exeWritten = "";
+
+	if (decision == AppProfileState::Decision::AlreadyCommitted) {
+		// Already active foreground window, keep active typing session completely intact!
+	} else if (decision == AppProfileState::Decision::CommitGame) {
+		startNewSession();
+		vStartSentence();
+		EasyKeyHelper::setLastStableApp(exe, true);
+		bindGameWindow(root, true);
+		_game.forceInGame();
+
+		if (fromHook && s_rawInputWindow) {
+			PostMessage(s_rawInputWindow, WM_DEFERRED_FOREGROUND, (WPARAM)hwnd, 0);
+		}
+	} else if (decision == AppProfileState::Decision::CommitApp) {
+		startNewSession();
+		vStartSentence();
+		EasyKeyHelper::setLastStableApp(exe, false);
+		applyGameEffects(_game.onForegroundChangedAway(nowTick, _game.windowId != 0 && IsWindow(gameBoundHwnd())));
+
+		if (vUseSmartSwitchKey || vRememberCode) {
+			exeRead = exe;
+			int8_t raw = (int8_t)peekAppInputMethodStatus(exe);
+			if (raw != -1) {
+				AppProfileCodec::UnpackedProfile prof = AppProfileCodec::unpack(raw, vMixedEnglish, vTwoModesOnly != 0);
+				if (vUseSmartSwitchKey) {
+					if (prof.language != vLanguage || (prof.hasMixedInfo && prof.mixedEnglish != vMixedEnglish)) {
+						vLanguage = prof.language;
+						if (!vTwoModesOnly && prof.hasMixedInfo) {
+							vMixedEnglish = prof.mixedEnglish;
+						} else if (vTwoModesOnly) {
+							vMixedEnglish = 0;
+						}
+						if (!fromHook) {
+							AppDelegate::getInstance()->onInputMethodChangedFromHotKey();
+						}
+					}
+				}
+				if (vRememberCode && prof.codeTable != vCodeTable) {
+					if (fromHook) {
+						vCodeTable = prof.codeTable;
+					} else {
+						APP_SET_DATA(vCodeTable, prof.codeTable);
+						AppDelegate::getInstance()->onTableCode(prof.codeTable, false, false, exe);
+					}
+				}
+			} else {
+				// Point 3: New app without profile! Remember current configuration as initial profile
+				if (AppProfileState::shouldSaveProfile(exe, false)) {
+					int8_t packed = AppProfileCodec::pack(vLanguage, vCodeTable, vMixedEnglish, vTwoModesOnly != 0, -1);
+					setAppInputMethodStatus(exe, packed);
+					exeWritten = exe;
+					writeDebugProfileSave(exe, packed);
+					if (!fromHook) {
+						saveSmartSwitchKeyData();
+					}
+				}
+			}
+		}
+
+		if (fromHook) {
+			if (s_rawInputWindow) {
+				PostMessage(s_rawInputWindow, WM_DEFERRED_FOREGROUND, (WPARAM)hwnd, 0);
+			}
+		} else {
+			SystemTrayHelper::updateData();
+		}
+	}
+
+	if (vDebugKeyLog) {
+		writeDebugForegroundLog(hwnd, root, className, pid, exe, curFg, decStr, exeRead, exeWritten, _game.inGame);
+	}
+}
+
 //Windows silently removes a low-level hook that once answered too slowly (LowLevelHooksTimeout),
 //after which keys reach the app untouched ("chaats" instead of "chất") until the hook is back.
 //Raw keyboard input (onRawKeyboard) finds a lost keyboard hook on the next key; this timer is
@@ -1596,8 +1769,22 @@ static void onRawKeyboard(HRAWINPUT input) {
 }
 
 static LRESULT CALLBACK rawInputProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
-	if (message == WM_INPUT)
+	if (message == WM_INPUT) {
 		onRawKeyboard((HRAWINPUT)lParam);
+	} else if (message == WM_DEFERRED_FOREGROUND) {
+		HWND fgHwnd = (HWND)wParam;
+		if (fgHwnd && IsWindow(fgHwnd)) {
+			GameCandidateFinder::recordForeground(fgHwnd);
+			if (EasyKeyHelper::isWindowElevated(fgHwnd))
+				AppDelegate::getInstance()->onElevatedWindow(fgHwnd);
+			updatePasswordFieldState(fgHwnd, OBJID_WINDOW, CHILDID_SELF, true);
+		}
+		EasyKeyHelper::setRegInt(_T("vCodeTable"), vCodeTable);
+		invalidatePasswordFieldCache();
+		AppDelegate::getInstance()->onInputMethodChangedFromHotKey();
+		SystemTrayHelper::updateData();
+		saveSmartSwitchKeyData();
+	}
 	return DefWindowProc(hWnd, message, wParam, lParam);
 }
 
@@ -1608,6 +1795,7 @@ static void watchRawKeyboard() {
 	wc.lpszClassName = _T("EasyKeyRawInput");
 	RegisterClass(&wc);
 	HWND window = CreateWindow(wc.lpszClassName, NULL, 0, 0, 0, 0, 0, HWND_MESSAGE, NULL, wc.hInstance, NULL);
+	s_rawInputWindow = window;
 	if (!window)
 		return;
 	RAWINPUTDEVICE device = {};
@@ -1629,6 +1817,17 @@ LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 	//ignore my event
 	if (keyboardData->dwExtraInfo == EASYKEY_EXTRA_INFO) {
 		return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
+	}
+
+	HWND currentFg = GetForegroundWindow();
+	HWND currentFgRoot = currentFg ? GetAncestor(currentFg, GA_ROOT) : NULL;
+	if (!currentFgRoot) currentFgRoot = currentFg;
+	static HWND s_lastHookFgRoot = NULL;
+	if (currentFgRoot && currentFgRoot != (HWND)_appProfileState.getCommittedRoot()) {
+		if (currentFgRoot != s_lastHookFgRoot) {
+			s_lastHookFgRoot = currentFgRoot;
+			commitForegroundWindow(currentFg, true);
+		}
 	}
 
 	uint64_t nowTick = GetTickCount64();
@@ -1942,48 +2141,7 @@ LRESULT CALLBACK mouseHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 
 VOID CALLBACK winEventProcCallback(HWINEVENTHOOK hWinEventHook, DWORD dwEvent, HWND hwnd, LONG idObject, LONG idChild, DWORD dwEventThread, DWORD dwmsEventTime) {
 	if (dwEvent == EVENT_SYSTEM_FOREGROUND) {
-		GameCandidateFinder::recordForeground(hwnd);
-		if (hwnd && EasyKeyHelper::isWindowElevated(hwnd))
-			AppDelegate::getInstance()->onElevatedWindow(hwnd);
-		//typing in another window usually starts a new sentence
-		startNewSession();
-		vStartSentence();
-		uint64_t nowTick = GetTickCount64();
-		if (!_gameApps.empty() && hwnd && isGameApp(exeNameOfWindow(hwnd))) {
-			bindGameWindow(hwnd, true);
-			_game.forceInGame();
-		} else {
-			applyGameEffects(_game.onForegroundChangedAway(nowTick, _game.windowId != 0 && IsWindow(gameBoundHwnd())));
-		}
-		recordNavigationSignal(nowTick);
-		updatePasswordFieldState(hwnd, OBJID_WINDOW, CHILDID_SELF, true);
-		//smart switch key
-		if (!_game.inGame && (vUseSmartSwitchKey || vRememberCode)) {
-			string& exe = EasyKeyHelper::getFrontMostAppExecuteName();
-			//Explorer counts as the app the user came from; an app whose name can't be read
-			//keeps what is on now instead of sharing one entry with every other such app
-			if (!EasyKeyHelper::isRealApp(exe))
-				return;
-			_languageTemp = getAppInputMethodStatus(exe, vLanguage | (vCodeTable << 1));
-			if (vUseSmartSwitchKey && (_languageTemp & 0x01) != vLanguage) {
-				if (_languageTemp != -1) {
-					vLanguage = _languageTemp & 0x01; //the other bits hold the code table
-					if (vTwoModesOnly)
-						vMixedEnglish = 0;
-					AppDelegate::getInstance()->onInputMethodChangedFromHotKey();
-				} else {
-					saveSmartSwitchKeyData();
-				}
-			}
-			startNewSession();
-			if (vRememberCode && (_languageTemp >> 1) != vCodeTable) { //for remember table code feature
-				if (_languageTemp != -1) {
-					AppDelegate::getInstance()->onTableCode(_languageTemp >> 1, false);
-				} else {
-					saveSmartSwitchKeyData();
-				}
-			}
-		}
+		commitForegroundWindow(hwnd, false);
 	} else if (dwEvent == EVENT_OBJECT_FOCUS) {
 		if (isAcceptedFocusObjectId(idObject)) {
 			updatePasswordFieldState(hwnd, idObject, idChild, false);

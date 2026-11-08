@@ -144,7 +144,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 		} else if (lParam == WM_RBUTTONDOWN) {
 			POINT curPoint;
 			GetCursorPos(&curPoint);
-			string gameApp = EasyKeyHelper::getFrontMostAppExecuteName(); //the app the user came from
+			string gameApp = EasyKeyHelper::getLastStableAppExecuteName(); //the app the user came from
 			updateGameItem(gameApp);
 			SetForegroundWindow(hWnd);
 			UINT commandId = TrackPopupMenu(

@@ -26,6 +26,7 @@
 #include "../app-core/PasswordState.h"
 #include "../app-core/ExeName.h"
 #include "../app-core/VersionInfo.h"
+#include "../app-core/AppProfileState.h"
 
 //engine settings: the engine now takes a vKeyConfig on every vKeyHandleEvent
 //call (see Engine.h). The suite keeps one shared config, initialized with the
@@ -3511,6 +3512,186 @@ static int renderWords() {
     return 0;
 }
 
+static void testAppProfileState() {
+    using namespace AppProfileCodec;
+
+    // 1. Codec tests: legacy unpack without mixed info
+    {
+        UnpackedProfile p0 = unpack(-1, 0, false);
+        expectRobust("profile unpack: non-existent entry defaults to Vietnamese, Unicode",
+                     p0.language == 1 && p0.codeTable == 0 && !p0.hasMixedInfo && p0.mixedEnglish == 0);
+
+        UnpackedProfile pLegacy = unpack(0, 1, false);
+        expectRobust("profile unpack: legacy entry (bit 5=0) inherits current mixedEnglish",
+                     pLegacy.language == 0 && pLegacy.codeTable == 0 && !pLegacy.hasMixedInfo && pLegacy.mixedEnglish == 1);
+
+        UnpackedProfile pTwoModes = unpack(0, 1, true);
+        expectRobust("profile unpack: twoModesOnly forces mixedEnglish=0",
+                     pTwoModes.language == 0 && pTwoModes.codeTable == 0 && pTwoModes.mixedEnglish == 0);
+    }
+
+    // 2. Codec tests: new entry with mixed info
+    {
+        int8_t raw = pack(1, 3, 1, false, -1);
+        expectRobust("profile pack: bit 7 must be zero (non-negative)", (raw & 0x80) == 0 && raw >= 0);
+        UnpackedProfile pNew = unpack(raw, 0, false);
+        expectRobust("profile unpack: new entry preserves language, codeTable, and mixed",
+                     pNew.language == 1 && pNew.codeTable == 3 && pNew.hasMixedInfo && pNew.mixedEnglish == 1);
+
+        // Code table masking: upper bits must not corrupt codeTable
+        int8_t rawGarbage = (int8_t)0x7F; // all 7 bits set
+        UnpackedProfile pGarbage = unpack(rawGarbage, 0, false);
+        expectRobust("profile unpack: codeTable is masked with 0x0F (bits 1..4)",
+                     pGarbage.codeTable == 0x0F);
+    }
+
+    // 3. Codec tests: vTwoModesOnly preserves saved mixed bit 5 and bit 6
+    {
+        int8_t initial = pack(1, 2, 1, false, -1); // mixed enabled (bit 5=1, bit 6=1)
+        // User turns on vTwoModesOnly: applying it gives mixedEnglish=0
+        UnpackedProfile pApp = unpack(initial, 0, true);
+        expectRobust("profile unpack: twoModesOnly overrides mixed to 0 on apply",
+                     pApp.mixedEnglish == 0);
+
+        // User switches language to English in twoModesOnly and saves
+        int8_t savedInTwoModes = pack(0, pApp.codeTable, 0, true, initial);
+        // Language updated to 0, codeTable kept at 2, and bits 5/6 preserved from initial!
+        expectRobust("profile pack: twoModesOnly updates lang/code but preserves bit 5 and 6",
+                     (savedInTwoModes & kMaskLanguage) == 0 &&
+                     ((savedInTwoModes >> 1) & kMaskCodeTable) == 2 &&
+                     (savedInTwoModes & kBitHasMixed) != 0 &&
+                     (savedInTwoModes & kBitMixedOn) != 0);
+
+        // User later turns off twoModesOnly: mixed mode is restored!
+        UnpackedProfile pRestored = unpack(savedInTwoModes, 0, false);
+        expectRobust("profile unpack: disabling twoModesOnly restores original mixed setting",
+                     pRestored.language == 0 && pRestored.codeTable == 2 && pRestored.mixedEnglish == 1);
+    }
+
+    // 4. Shell transition processes filter
+    {
+        expectRobust("shell filter: explorer.exe is shell transition",
+                     AppProfileState::isShellTransitionExe("explorer.exe") &&
+                     AppProfileState::isShellTransitionExe("Explorer.EXE"));
+        expectRobust("shell filter: shell hosts are transition processes",
+                     AppProfileState::isShellTransitionExe("shellexperiencehost.exe") &&
+                     AppProfileState::isShellTransitionExe("startmenuexperiencehost.exe") &&
+                     AppProfileState::isShellTransitionExe("SearchHost.exe"));
+        expectRobust("shell filter: UWP frame host and utility apps must NOT be filtered",
+                     !AppProfileState::isShellTransitionExe("applicationframehost.exe") &&
+                     !AppProfileState::isShellTransitionExe("conhost.exe") &&
+                     !AppProfileState::isShellTransitionExe("taskmgr.exe") &&
+                     !AppProfileState::isShellTransitionExe("systemsettings.exe") &&
+                     !AppProfileState::isShellTransitionExe("chrome.exe"));
+    }
+
+    // 5. Sequence: A -> explorer -> B with stale foreground handling
+    {
+        AppProfileState tracker;
+        // 1. Commit App A
+        auto d1 = tracker.onForegroundEvent(100, 100, true, true, false, false, false, false, "appA.exe", false);
+        expectRobust("tracker: App A commits", d1 == AppProfileState::Decision::CommitApp &&
+                     tracker.getCommittedRoot() == 100 && tracker.getLastStableExe() == "appA.exe");
+
+        // 2. Alt+Tab transient shell window (explorer.exe) appears
+        auto d2 = tracker.onForegroundEvent(200, 200, true, true, false, false, false, false, "explorer.exe", false);
+        expectRobust("tracker: explorer.exe is ignored as shell transition",
+                     d2 == AppProfileState::Decision::IgnoreShellTransition &&
+                     tracker.getCommittedRoot() == 100 && tracker.getLastStableExe() == "appA.exe");
+
+        // 3. Stale event for App A arrives out of order while current foreground is already App B (300)
+        auto d3 = tracker.onForegroundEvent(100, 300, true, true, false, false, false, false, "appA.exe", false);
+        expectRobust("tracker: out-of-order event for App A is ignored as stale",
+                     d3 == AppProfileState::Decision::IgnoreStale &&
+                     tracker.getCommittedRoot() == 100 && tracker.getLastStableExe() == "appA.exe");
+
+        // 4. Cloaked or minimized window is ignored
+        auto dCloaked = tracker.onForegroundEvent(300, 300, true, true, false, true, false, false, "appB.exe", false);
+        expectRobust("tracker: cloaked window is ignored as shell transition",
+                     dCloaked == AppProfileState::Decision::IgnoreShellTransition);
+
+        // 5. App B arrives and commits
+        auto d4 = tracker.onForegroundEvent(300, 300, true, true, false, false, false, false, "appB.exe", false);
+        expectRobust("tracker: App B commits cleanly", d4 == AppProfileState::Decision::CommitApp &&
+                     tracker.getCommittedRoot() == 300 && tracker.getLastStableExe() == "appB.exe");
+
+        // 6. Profile saving policy
+        expectRobust("tracker: can save profile for App B but not for explorer or empty",
+                     AppProfileState::shouldSaveProfile(tracker.getLastStableExe(), false) &&
+                     !AppProfileState::shouldSaveProfile("explorer.exe", false) &&
+                     !AppProfileState::shouldSaveProfile("", false));
+    }
+
+    // 6. Unknown exe & Game app & UWP frame without core
+    {
+        AppProfileState tracker;
+        // Unknown exe (e.g. anti-cheat blocking query)
+        auto dUnknown = tracker.onForegroundEvent(400, 400, true, true, false, false, false, false, "", false);
+        expectRobust("tracker: unknown exe is ignored without changing stable app",
+                     dUnknown == AppProfileState::Decision::IgnoreUnknownExe &&
+                     tracker.getLastStableExe().empty());
+
+        // UWP frame without CoreWindow child
+        auto dUwpNoCore = tracker.onForegroundEvent(450, 450, true, true, false, false, false, true, "applicationframehost.exe", false);
+        expectRobust("tracker: UWP frame without CoreWindow child is ignored without resetting commit",
+                     dUwpNoCore == AppProfileState::Decision::IgnoreUwpWithoutCore &&
+                     tracker.getCommittedRoot() == 0);
+
+        // Game app: committed as game, never eligible for profile save
+        auto dGame = tracker.onForegroundEvent(500, 500, true, true, false, false, false, false, "game.exe", true);
+        expectRobust("tracker: game app commits as game",
+                     dGame == AppProfileState::Decision::CommitGame &&
+                     tracker.getCommittedRoot() == 500 &&
+                     tracker.getLastStableExe() == "game.exe" &&
+                     tracker.isLastStableGame());
+        expectRobust("tracker: game exe in gameApps is NEVER allowed to save profile",
+                     !AppProfileState::shouldSaveProfile("game.exe", true));
+    }
+
+    // 7. AlreadyCommitted test (prevent double-commit on hook + WinEvent race)
+    {
+        AppProfileState tracker;
+        // Hook catches first keystroke in Chrome
+        auto d1 = tracker.onForegroundEvent(600, 600, true, true, false, false, false, false, "chrome.exe", false);
+        expectRobust("tracker: Chrome commits on first hook key", d1 == AppProfileState::Decision::CommitApp);
+
+        // WinEvent arrives later for the same window and process
+        auto d2 = tracker.onForegroundEvent(600, 600, true, true, false, false, false, false, "chrome.exe", false);
+        expectRobust("tracker: subsequent event for same window is AlreadyCommitted",
+                     d2 == AppProfileState::Decision::AlreadyCommitted);
+
+        // Different window with same exe (e.g. new Chrome tab window) still commits
+        auto d3 = tracker.onForegroundEvent(601, 601, true, true, false, false, false, false, "chrome.exe", false);
+        expectRobust("tracker: different window root commits", d3 == AppProfileState::Decision::CommitApp);
+
+        // Swapping to game and back
+        auto dGame = tracker.onForegroundEvent(700, 700, true, true, false, false, false, false, "lol.exe", true);
+        expectRobust("tracker: LoL commits as game", dGame == AppProfileState::Decision::CommitGame);
+        auto dGameAgain = tracker.onForegroundEvent(700, 700, true, true, false, false, false, false, "lol.exe", true);
+        expectRobust("tracker: LoL already committed returns AlreadyCommitted",
+                     dGameAgain == AppProfileState::Decision::AlreadyCommitted);
+    }
+
+    // 8. SmartSwitchKey peek vs get (non-mutating lookup)
+    {
+        expectRobust("smart switch peek: non-existent entry returns -1",
+                     peekAppInputMethodStatus("nonexistent-app.exe") == -1);
+        vector<Byte> beforeData, afterData;
+        getSmartSwitchKeySaveData(beforeData);
+        // peek again: must NOT insert into map or alter save data
+        expectRobust("smart switch peek: does not alter data or create entries",
+                     peekAppInputMethodStatus("another-nonexistent.exe") == -1);
+        getSmartSwitchKeySaveData(afterData);
+        expectRobust("smart switch peek: save data size unchanged",
+                     beforeData.size() == afterData.size());
+
+        // Set status and verify peek reads it
+        setAppInputMethodStatus("peek-test.exe", 5);
+        expectRobust("smart switch peek: finds stored value",
+                     peekAppInputMethodStatus("peek-test.exe") == 5);
+    }
+}
+
 int main(int argc, char** argv) {
     pData = (vKeyHookState*)vKeyInit();
     if (argc > 1 && strcmp(argv[1], "--render") == 0)
@@ -3535,6 +3716,7 @@ int main(int argc, char** argv) {
     testPasswordState();
     testConfigIndependence();
     testConfigStoredCopy();
+    testAppProfileState();
     printf("%d/%d engine tests passed\n", total - failures, total);
     return failures == 0 ? 0 : 1;
 }

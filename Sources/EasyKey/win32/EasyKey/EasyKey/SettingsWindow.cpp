@@ -28,6 +28,7 @@ See LICENSE and NOTICE.
 #include "MessageWindow.h"
 #include "Updater.h"
 #include "ThemeHelper.h"
+#include "../../../app-core/AppProfileState.h"
 
 #ifndef WM_DWMCOLORIZATIONCOLORCHANGED
 #define WM_DWMCOLORIZATIONCOLORCHANGED 0x0320
@@ -1226,8 +1227,7 @@ void SettingsWindow::setOption(const int& id, const bool& on) {
 		APP_SET_DATA(vLanguage, val);
 		AppDelegate::getInstance()->showSwitchFlyout();
 		if (vUseSmartSwitchKey) {
-			setAppInputMethodStatus(EasyKeyHelper::getFrontMostAppExecuteName(), vLanguage | (vCodeTable << 1));
-			saveSmartSwitchKeyData();
+			saveProfileForApp();
 		}
 		break;
 	case OPT_TWO_MODES:
@@ -1329,8 +1329,7 @@ void SettingsWindow::showDropDown(const Item& item) {
 	invalidatePasswordFieldCache();
 	updatePasswordFieldState(GetForegroundWindow());
 	if (vRememberCode) {
-		setAppInputMethodStatus(EasyKeyHelper::getFrontMostAppExecuteName(), vLanguage | (vCodeTable << 1));
-		saveSmartSwitchKeyData();
+		saveProfileForApp();
 	}
 	SystemTrayHelper::updateData();
 	AppDelegate::getInstance()->showCodeTableFlyout();
@@ -1341,7 +1340,7 @@ void SettingsWindow::showDropDown(const Item& item) {
 void SettingsWindow::showGameApps(const Item& item) {
 	vector<string> apps = getGameApps();
 	auto candidates = GameCandidateFinder::findTopCandidates(3);
-	string last = EasyKeyHelper::getFrontMostAppExecuteName();
+	string last = EasyKeyHelper::getLastStableAppExecuteName();
 	bool canAdd = EasyKeyHelper::isRealApp(last) && !isGameApp(last);
 	HMENU menu = CreatePopupMenu();
 
