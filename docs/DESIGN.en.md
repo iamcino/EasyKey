@@ -210,8 +210,9 @@ Updates live in `Updater.cpp` and run on a separate thread so the keyboard and m
 
 1. Read `version.json` on the `master` branch (`latestWinVersion.versionName`) and compare it with the running version. Checked at start-up and every 6 hours when automatic checks are on.
 2. When the user agrees, download `EasyKey.exe` and `EasyKey.exe.sha256` from `releases/download/<version>/`. Refuse if the SHA-256 doesn't match or the file doesn't start with `MZ`.
-3. Write `EasyKey.new.exe`, rename the running file to `EasyKey.old.exe` (Windows allows renaming a running exe but not overwriting it), then rename the new file to `EasyKey.exe`. If any step fails, put things back.
-4. Remove the hooks, start the new version with an update argument and quit. The new version waits for the old one to exit and deletes `EasyKey.old.exe`.
+3. Write randomly named staging with `CREATE_NEW`; hold its handle against other writers/deleters while verifying Authenticode, the exact DER certificate embedded from `docs/signing/EasyKey-codesign.cer`, SHA-256 digest and a valid RFC 3161 timestamp. The self-signed publisher uses a private in-memory chain engine without installing a machine root; the timestamp must pass Windows trust. Chain retrieval is cache-only without online revocation checking; missing required timestamp chain material causes rejection.
+4. After verification, rename the running file to `EasyKey.old.exe`, then rename staging to `EasyKey.exe` using the same verified handle. If staging rename fails, attempt to restore the old executable.
+5. Remove hooks, start the new version with the update argument and exit. The new instance waits up to 30 seconds for the previous process before the single-instance check. After engine/tray initialization, a worker retries deleting `EasyKey.old.exe` up to 120 times, 500 ms apart, including read-only backups. If deletion remains blocked, retain the backup and retry on the next successful startup without blocking the keyboard-hook thread.
 
 ## 11. Build and release
 - Visual Studio 2022 project (toolset v143); only `Release|x64` is released. Details in [BUILD](BUILD.en.md).

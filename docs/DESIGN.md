@@ -210,8 +210,9 @@ Cập nhật nằm trong `Updater.cpp`, chạy ở luồng riêng để không l
 
 1. Đọc `version.json` trên nhánh `master` (`latestWinVersion.versionName`) và so với phiên bản đang chạy. Kiểm tra lúc khởi động và 6 giờ một lần nếu bật tự kiểm tra.
 2. Khi người dùng đồng ý, tải `EasyKey.exe` và `EasyKey.exe.sha256` từ `releases/download/<phiên bản>/`. Từ chối nếu mã SHA-256 không khớp hoặc file không bắt đầu bằng `MZ`.
-3. Ghi `EasyKey.new.exe`, đổi tên file đang chạy thành `EasyKey.old.exe` (Windows cho đổi tên nhưng không cho ghi đè exe đang chạy), rồi đổi tên file mới thành `EasyKey.exe`. Lỗi ở bước nào thì trả lại như cũ.
-4. Gỡ hook, chạy bản mới với tham số cập nhật rồi thoát. Bản mới chờ bản cũ thoát hẳn và xoá `EasyKey.old.exe`.
+3. Ghi staging tên ngẫu nhiên bằng `CREATE_NEW`; giữ handle chặn ghi/xóa trong khi xác minh Authenticode, đúng chứng thư DER nhúng từ `docs/signing/EasyKey-codesign.cer`, digest SHA-256 và timestamp RFC 3161 hợp lệ. Self-signed publisher dùng chain engine riêng trong bộ nhớ, không cài root vào máy; timestamp phải qua Windows trust. Chain retrieval chỉ dùng cache, không kiểm tra revocation online; thiếu chain timestamp cần thiết sẽ bị từ chối.
+4. Sau khi xác minh, đổi tên file đang chạy thành `EasyKey.old.exe`, rồi rename staging bằng chính handle đã kiểm tra thành `EasyKey.exe`. Nếu rename staging thất bại, thử khôi phục bản cũ.
+5. Gỡ hook, chạy bản mới với tham số cập nhật rồi thoát. Bản mới chờ process cũ tối đa 30 giây trước khi kiểm tra single instance. Sau khi khởi tạo engine và tray, worker thử xóa `EasyKey.old.exe` tối đa 120 lần, cách nhau 500 ms, xử lý cả read-only. Nếu vẫn bị khóa/thiếu quyền, giữ file và thử lại khi khởi động thành công lần sau; không chặn luồng keyboard hook để chờ xóa.
 
 ## 11. Build và phát hành
 - Dự án Visual Studio 2022 (toolset v143), chỉ cấu hình `Release|x64` được phát hành. Chi tiết ở [BUILD](BUILD.md).

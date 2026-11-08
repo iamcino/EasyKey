@@ -180,7 +180,7 @@ jobs:
             Remove-Item $pfxTemp -Force -ErrorAction SilentlyContinue
           }
         } else {
-          Write-Warning "EASYKEY_SIGN_PFX_BASE64 not configured; release binary will remain unsigned."
+          throw "Signing credentials are required: the updater rejects unsigned releases."
         }
 
     - name: Package

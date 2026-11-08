@@ -51,7 +51,8 @@ bool hasMacro(const string& macroName);
 void getAllMacro(vector<vector<Uint32>>& keys, vector<string>& macroTexts, vector<string>& macroContents);
 
 /**
- * add new macro to memory
+ * Add or update a macro. Returns false if the name is empty, its UTF-8 size
+ * exceeds 255 bytes, the content exceeds 65535 bytes, or the table is full.
  */
 bool addMacro(const string& macroText, const string& macroContent);
 

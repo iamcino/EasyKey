@@ -16,6 +16,16 @@ Or build from the command line in "Developer PowerShell for VS 2022":
 msbuild Sources\EasyKey\win32\EasyKey\EasyKey.sln -p:Configuration=Release -p:Platform=x64
 ```
 
+The project defaults to native x64 tools (`PreferredToolArchitecture=x64`), including when invoked through 32-bit MSBuild. `Platform=x64` selects the application architecture, not necessarily the linker host architecture.
+
+For `LNK1101: incorrect MSPDB140.DLL version`, explicitly rebuild using the x64 host:
+
+```
+msbuild Sources\EasyKey\win32\EasyKey\EasyKey.sln -t:Rebuild -p:Configuration=Release -p:Platform=x64 -p:PreferredToolArchitecture=x64
+```
+
+On the development machine, `HostX86\x64` reproduced the PDB failure while `HostX64\x64` succeeded on the same object file. This case does not require disabling `/DEBUG`, PDB generation or LTCG. If the x64 host still fails, inspect the actual tool paths in the MSBuild log and repair Visual Studio through its Installer; do not copy standalone DLLs into `System32`.
+
 **Option 2: build on GitHub, nothing to install**
 Fork this repository. Every push or pull request to `master` makes GitHub Actions run the engine tests and build `EasyKey.exe`. Open the Actions tab, open the latest run and download `EasyKey` under Artifacts. Pushing a tag that matches `versionName` in `version.json` (for example `1.0.0`), or running the MSBuild workflow by hand on `master` (Actions › MSBuild › Run workflow), publishes a release.
 

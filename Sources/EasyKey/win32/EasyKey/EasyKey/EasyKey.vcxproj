@@ -17,6 +17,8 @@
     <RootNamespace>EasyKey</RootNamespace>
     <TargetName>EasyKey</TargetName>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <!-- Use the native x64 compiler/linker and PDB tools for this x64-only app. -->
+    <PreferredToolArchitecture Condition="'$(PreferredToolArchitecture)' == ''">x64</PreferredToolArchitecture>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
@@ -121,6 +123,8 @@
     <ClInclude Include="SettingsWindow.h" />
     <ClInclude Include="ThemeHelper.h" />
     <ClInclude Include="Updater.h" />
+    <ClInclude Include="UpdateSignature.h" />
+    <ClInclude Include="UpdateCleanup.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
@@ -146,6 +150,8 @@
     <ClCompile Include="TrayGlyph.cpp" />
     <ClCompile Include="FlyoutWindow.cpp" />
     <ClCompile Include="Updater.cpp" />
+    <ClCompile Include="UpdateSignature.cpp" />
+    <ClCompile Include="UpdateCleanup.cpp" />
     <ClCompile Include="EasyKeyManager.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>

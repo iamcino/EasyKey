@@ -10,6 +10,8 @@
 //
 
 #include <algorithm>
+#include <string>
+#include <vector>
 #include "Engine.h"
 #include <string.h>
 #include <list>
@@ -1406,6 +1408,10 @@ bool checkMixedEnglish(const int& handleCode, const bool& spaceFollows) {
         (isCuratedSafeEnglish(keys) || isAllCapsEnglishAcronym(keys, allCaps));
     int phraseMatch = (!codeLike && !keys.empty() && !allCaps) ? checkMixedPhrase(_lastRaw, _lastRawLen, keys) : 0;
     bool listed = !codeLike && !keys.empty() && findMixedWord(keys, english, vietnamese), clear = false;
+    bool protectedVietnamese = changed && !tempDisableKey && !allCaps &&
+        isProtectedShortVietnamese(keys, english, vietnamese, _mixedContext);
+    // Explicit phrase/curated/protection decisions must survive the next word.
+    bool reconsider = listed && !curatedEnglish && phraseMatch == 0 && !protectedVietnamese;
     if (codeLike) {
         language = 1;
         clear = false;
@@ -1415,7 +1421,7 @@ bool checkMixedEnglish(const int& handleCode, const bool& spaceFollows) {
     } else if (phraseMatch != 0) {
         language = phraseMatch;
         clear = true;
-    } else if (changed && !tempDisableKey && !allCaps && isProtectedShortVietnamese(keys, english, vietnamese, _mixedContext)) {
+    } else if (protectedVietnamese) {
         language = -1;
         clear = false;
     } else if (listed) {
@@ -1448,7 +1454,7 @@ bool checkMixedEnglish(const int& handleCode, const bool& spaceFollows) {
         _mixedContext = (contextBefore + language * 100) / 2;
     //this word may be the next one's "last word"
     MixedWord word;
-    if (spaceFollows && listed) {
+    if (spaceFollows && reconsider) {
         word.keys = _rawKeys;
         word.vietnamese.assign(TypingWord, TypingWord + _index);
         word.score = score;
@@ -1486,7 +1492,7 @@ bool checkMixedEnglish(const int& handleCode, const bool& spaceFollows) {
         for (i = 0; i < hNCC; i++)
             hData[hNCC - 1 - i] = text[i];
     }
-    if (spaceFollows && listed) {
+    if (spaceFollows && reconsider) {
         _mixedLast = word;
         _hasMixedLast = true;
     }

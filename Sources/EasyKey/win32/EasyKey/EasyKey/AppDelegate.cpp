@@ -125,6 +125,7 @@ int AppDelegate::run(HINSTANCE hInstance) {
 	//create system tray
 	SystemTrayHelper::createSystemTrayIcon(hInstance);
 	SystemTrayHelper::updateData();
+	Updater::cleanupPreviousUpdate();
 
 	//create main control
 	if (vShowOnStartUp)

@@ -15,6 +15,11 @@
 
 #include <memory.h>
 #include <stdio.h>
+#include <cstddef>
+#include <limits>
+#include <map>
+#include <string>
+#include <vector>
 
 using namespace std;
 
@@ -82,21 +87,26 @@ static void convert(const string& str, vector<Uint32>& outData) {
  */
 void initMacroMap(const Byte* pData, const int& size) {
     macroMap.clear();
-    Uint16 macroCount = 0;
-    Uint32 cursor = 0;
-    if (size >= 2) {
-        memcpy(&macroCount, pData + cursor, 2);
-        cursor+=2;
-    }
-    Uint8 macroTextSize;
-    Uint16 macroContentSize;
+    if (!pData || size < 2)
+        return;
+    const size_t dataSize = static_cast<size_t>(size);
+    const Uint16 macroCount = pData[0] | (static_cast<Uint16>(pData[1]) << 8);
+    size_t cursor = 2;
+    map<vector<Uint32>, MacroData> loaded;
     for (int i = 0; i < macroCount; i++) {
-        macroTextSize = pData[cursor++];
+        if (cursor >= dataSize)
+            return;
+        const size_t macroTextSize = pData[cursor++];
+        if (macroTextSize == 0 || macroTextSize > dataSize - cursor)
+            return;
         string macroText((char*)pData + cursor, macroTextSize);
         cursor += macroTextSize;
-        
-        memcpy(&macroContentSize, pData + cursor, 2);
-        cursor+=2;
+        if (dataSize - cursor < 2)
+            return;
+        const size_t macroContentSize = pData[cursor] | (static_cast<Uint16>(pData[cursor + 1]) << 8);
+        cursor += 2;
+        if (macroContentSize > dataSize - cursor)
+            return;
         string macroContent((char*)pData + cursor, macroContentSize);
         cursor += macroContentSize;
         
@@ -108,11 +118,13 @@ void initMacroMap(const Byte* pData, const int& size) {
         convert(macroText, key);
         convert(macroContent, data.macroContentCode);
         
-        macroMap[key] = data;
+        loaded[key] = data;
     }
+    macroMap.swap(loaded);
 }
 
 void getMacroSaveData(vector<Byte>& outData) {
+    outData.clear();
     Uint16 totalMacro = (Uint16)macroMap.size();
     outData.push_back((Byte)totalMacro);
     outData.push_back((Byte)(totalMacro>>8));
@@ -217,9 +229,15 @@ void getAllMacro(vector<vector<Uint32>>& keys, vector<string>& macroTexts, vecto
 }
 
 bool addMacro(const string& macroText, const string& macroContent) {
+    // Keep every accepted macro representable by the existing binary format.
+    if (macroText.empty() || macroText.size() > (std::numeric_limits<Uint8>::max)() ||
+        macroContent.size() > (std::numeric_limits<Uint16>::max)())
+        return false;
     vector<Uint32> key;
     convert(macroText, key);
     if (macroMap.find(key) == macroMap.end()) { //add new macro
+        if (macroMap.size() >= (std::numeric_limits<Uint16>::max)())
+            return false;
         MacroData data;
         data.macroText = macroText;
         data.macroContent = macroContent;

@@ -81,6 +81,12 @@
     <ClInclude Include="Updater.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="UpdateSignature.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="UpdateCleanup.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="TrayGlyph.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -162,6 +168,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Updater.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="UpdateSignature.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="UpdateCleanup.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="TrayGlyph.cpp">

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Windows App Updater"
+  short_description: "Signed Windows updates, recovery, and cleanup"
+  default_prompt: "Use $windows-app-updater to assess and improve this project's Windows updater, preserving compatibility and recording unverified recovery and signature behavior."
