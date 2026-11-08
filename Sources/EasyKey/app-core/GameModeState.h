@@ -137,13 +137,13 @@ struct GameModeState {
             return false;
         if (!chatOpen)
             return true; // Combat: all keys go straight to the game
-        if ((input.vkCode == kVkReturn || input.vkCode == kVkEscape) && !input.altOrCtrl)
-            return true; // Enter and Esc pass raw to send/close chat
+        if (input.vkCode == kVkEscape && !input.altOrCtrl)
+            return true; // Esc passes raw to cancel/close chat immediately
         if (chatRawCommand)
             return true; // Inside /command token: keys pass raw until space
         if (chatTokenStart && input.vkCode == kVkSlash && !input.altOrCtrl)
             return true; // The leading / of a command passes raw
-        return false;    // Normal typing inside game chat: goes into typing engine
+        return false;    // Normal typing inside game chat (and Enter): goes into typing engine
     }
 
     //a key-down while in game (key-up events never reach the state machine).

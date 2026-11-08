@@ -2088,6 +2088,15 @@ LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 
 	//game mode: keys go straight to the game (skills on Q, W, E, R, Alt+W...) until Enter opens the chat;
 	//Enter (send) or Esc (close) ends the chat. In game chat, typing keys flow through to the Vietnamese typing engine.
+	struct GameChatCloseScope {
+		bool armed = false;
+		~GameChatCloseScope() {
+			if (armed) {
+				applyGameEffects(_game.closeChat());
+			}
+		}
+	} gameChatCloser;
+
 	if (_game.inGame) {
 		if (!_game.chatOpen) {
 			// Combat mode: all keys go straight to the game raw; language hotkeys are suppressed
@@ -2115,13 +2124,19 @@ LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 			keyInput.altOrCtrl = (_flag & (MASK_ALT | MASK_CONTROL)) != 0;
 
 			if (_game.isKeyRawPassThrough(keyInput)) {
-				// Enter (send message & return to combat), Esc (cancel & return to combat), or /command tokens go raw
+				// Esc (cancel & return to combat), or /command tokens go raw
 				applyGameEffects(_game.onGameKeyDown(keyInput));
 				return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
 			}
 
-			// In-game Vietnamese chat typing key: advance state machine token tracking and fall through to typing engine!
-			applyGameEffects(_game.onGameKeyDown(keyInput));
+			if (keyInput.vkCode == GameModeState::kVkReturn && !keyInput.altOrCtrl) {
+				// Enter in game chat finishes the last word through the engine first (e.g. English restore
+				// see -> see, smart typing afk -> afk), then closes the chat when this hook call completes!
+				gameChatCloser.armed = true;
+			} else {
+				// In-game Vietnamese chat typing key: advance state machine token tracking and fall through to typing engine!
+				applyGameEffects(_game.onGameKeyDown(keyInput));
+			}
 		}
 		// Key-up events and regular chat typing keys fall through to modifier mask and Vietnamese typing engine
 	}
