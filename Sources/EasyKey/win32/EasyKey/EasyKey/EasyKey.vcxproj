@@ -17,6 +17,8 @@
     <RootNamespace>EasyKey</RootNamespace>
     <TargetName>EasyKey</TargetName>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <!-- Use the native x64 compiler/linker and PDB tools for this x64-only app. -->
+    <PreferredToolArchitecture Condition="'$(PreferredToolArchitecture)' == ''">x64</PreferredToolArchitecture>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
