@@ -49,10 +49,18 @@ jobs:
     - name: Check the latest release with the updater's signature check
       if: runner.os == 'Windows'
       shell: pwsh
+      env:
+        GH_TOKEN: ${{ github.token }}
       run: |
-        Invoke-WebRequest -Uri "https://github.com/iamcino/EasyKey/releases/latest/download/EasyKey.exe" -OutFile "$env:RUNNER_TEMP\EasyKey-latest.exe"
+        $exe = "$env:RUNNER_TEMP\latest\EasyKey.exe"
+        for ($attempt = 1; $attempt -le 4 -and -not (Test-Path $exe); $attempt++) {
+          gh release download --repo "${{ github.repository }}" --pattern EasyKey.exe --dir "$env:RUNNER_TEMP\latest" --clobber
+          if (-not (Test-Path $exe)) { Start-Sleep -Seconds (5 * $attempt) }
+        }
+        if (-not (Test-Path $exe)) { throw "Could not download the latest release's EasyKey.exe." }
+        $global:LASTEXITCODE = 0
         $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" | Sort-Object FullName -Descending | Select-Object -First 1
-        & build\tests\Release\UpdateSignatureTests.exe $signtool.FullName "$env:RUNNER_TEMP\EasyKey-latest.exe"
+        & build\tests\Release\UpdateSignatureTests.exe $signtool.FullName $exe
         if ($LASTEXITCODE -ne 0) { throw "The latest released EasyKey.exe does not pass the updater's signature check." }
 
   #the same suite under ASan/UBSan (refactor plan step 3.4): an out-of-bounds
