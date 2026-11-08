@@ -197,9 +197,24 @@ jobs:
           } finally {
             Remove-Item $pfxTemp -Force -ErrorAction SilentlyContinue
           }
+        } elseif ("${{ github.event_name }}" -eq 'pull_request') {
+          Write-Warning "EASYKEY_SIGN_PFX_BASE64 not configured; this PR build stays unsigned."
         } else {
-          Write-Warning "EASYKEY_SIGN_PFX_BASE64 not configured; release binary will remain unsigned."
+          # EasyKey 1.0.23+ refuses an update whose signature is not the pinned EasyKey certificate
+          throw "Signing credentials are required: the updater rejects unsigned releases."
         }
+
+    # the signed exe must pass the exact check the updater runs, on a runner that never trusted
+    # the EasyKey certificate; otherwise every user would be stuck on the previous version
+    - name: Verify signature as the updater does
+      if: hashFiles('signature.json') != ''
+      shell: pwsh
+      run: |
+        cmake -S Sources/EasyKey/tests -B build/signature-check
+        cmake --build build/signature-check --config Release --target UpdateSignatureTests
+        $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" | Sort-Object FullName -Descending | Select-Object -First 1
+        & build\signature-check\Release\UpdateSignatureTests.exe $signtool.FullName "${{env.SOLUTION_FILE_PATH}}\x64\Release\EasyKey.exe"
+        if ($LASTEXITCODE -ne 0) { throw "The signed EasyKey.exe does not pass the updater's signature check." }
 
     - name: Package
       shell: pwsh

@@ -43,6 +43,9 @@ IDR_FONT_REGULAR        RCDATA                  "fonts\\BeVietnamPro-Regular.wof
 
 IDR_FONT_SEMIBOLD       RCDATA                  "fonts\\BeVietnamPro-SemiBold.woff2"
 
+// Public signing certificate, compiled into the updater's trust policy.
+IDR_UPDATER_CERT        RCDATA                  "..\\..\\..\\..\\..\\docs\\signing\\EasyKey-codesign.cer"
+
 /////////////////////////////////////////////////////////////////////////////
 //
 // Menu

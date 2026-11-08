@@ -31,8 +31,25 @@ endif()
 enable_testing()
 add_test(NAME EngineTests COMMAND EngineTests)
 
-#Windows-only: deleting EasyKey.old.exe after an update (locked, read-only, directory)
+#Windows-only: deleting EasyKey.old.exe after an update (locked, read-only, directory),
+#and the updater's Authenticode check against the pinned EasyKey certificate
 if(WIN32)
+    add_executable(UpdateSignatureTests UpdateSignatureTests.cpp
+        ../win32/EasyKey/EasyKey/UpdateSignature.cpp)
+    target_compile_options(UpdateSignatureTests PRIVATE /utf-8)
+    target_compile_definitions(UpdateSignatureTests PRIVATE
+        EASYKEY_PUBLIC_CERT=L"${CMAKE_CURRENT_SOURCE_DIR}/../../../docs/signing/EasyKey-codesign.cer")
+    target_link_libraries(UpdateSignatureTests PRIVATE wintrust crypt32)
+    #signtool carries an embedded RFC 3161 Authenticode signature; Windows system
+    #executables may be catalog-signed instead and do not fit here
+    file(GLOB SIGNED_SDK_TOOLS "$ENV{ProgramFiles\(x86\)}/Windows Kits/10/bin/*/x64/signtool.exe")
+    if(NOT SIGNED_SDK_TOOLS)
+        message(FATAL_ERROR "Windows SDK signtool.exe is required for signature tests")
+    endif()
+    list(SORT SIGNED_SDK_TOOLS ORDER DESCENDING)
+    list(GET SIGNED_SDK_TOOLS 0 SIGNED_SDK_TOOL)
+    add_test(NAME UpdateSignatureTests COMMAND UpdateSignatureTests "${SIGNED_SDK_TOOL}")
+
     add_executable(UpdateCleanupTests UpdateCleanupTests.cpp
         ../win32/EasyKey/EasyKey/UpdateCleanup.cpp)
     target_compile_options(UpdateCleanupTests PRIVATE /utf-8)
