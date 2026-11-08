@@ -2087,25 +2087,58 @@ LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 	}
 
 	//game mode: keys go straight to the game (skills on Q, W, E, R, Alt+W...) until Enter opens the chat;
-	//Enter (send) or Esc (close) ends the chat. All key-up events and modifier combinations in game mode
-	//bypass hotkey/language-switch evaluation completely.
+	//Enter (send) or Esc (close) ends the chat. In game chat, typing keys flow through to the Vietnamese typing engine.
+	struct GameChatCloseScope {
+		bool armed = false;
+		~GameChatCloseScope() {
+			if (armed) {
+				applyGameEffects(_game.closeChat());
+			}
+		}
+	} gameChatCloser;
+
 	if (_game.inGame) {
-		updateModifierMaskOnly(wParam);
-		_lastFlag = 0;
-		_hasJustUsedHotKey = false;
-		if (wParam != WM_KEYDOWN && wParam != WM_SYSKEYDOWN) {
+		if (!_game.chatOpen) {
+			// Combat mode: all keys go straight to the game raw; language hotkeys are suppressed
+			updateModifierMaskOnly(wParam);
+			_lastFlag = 0;
+			_hasJustUsedHotKey = false;
+			if (wParam != WM_KEYDOWN && wParam != WM_SYSKEYDOWN) {
+				return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
+			}
+			if (!_isFlagKey)
+				_keycode = (Uint16)keyboardData->vkCode;
+			GameModeState::KeyInput keyInput;
+			keyInput.vkCode = _keycode;
+			keyInput.altOrCtrl = (_flag & (MASK_ALT | MASK_CONTROL)) != 0;
+			applyGameEffects(_game.onGameKeyDown(keyInput));
 			return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
 		}
-		if (!_isFlagKey)
-			_keycode = (Uint16)keyboardData->vkCode;
-		//the state machine decides chat open/close and the / raw command; every
-		//in-game key then goes straight to the game (Model W: game chat is raw
-		//by default without mutating normal app language)
-		GameModeState::KeyInput keyInput;
-		keyInput.vkCode = _keycode;
-		keyInput.altOrCtrl = (_flag & (MASK_ALT | MASK_CONTROL)) != 0;
-		applyGameEffects(_game.onGameKeyDown(keyInput));
-		return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
+
+		// Game chat is active:
+		if (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN) {
+			if (!_isFlagKey)
+				_keycode = (Uint16)keyboardData->vkCode;
+			GameModeState::KeyInput keyInput;
+			keyInput.vkCode = _keycode;
+			keyInput.altOrCtrl = (_flag & (MASK_ALT | MASK_CONTROL)) != 0;
+
+			if (_game.isKeyRawPassThrough(keyInput)) {
+				// Esc (cancel & return to combat), or /command tokens go raw
+				applyGameEffects(_game.onGameKeyDown(keyInput));
+				return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
+			}
+
+			if (keyInput.vkCode == GameModeState::kVkReturn && !keyInput.altOrCtrl) {
+				// Enter in game chat finishes the last word through the engine first (e.g. English restore
+				// see -> see, smart typing afk -> afk), then closes the chat when this hook call completes!
+				gameChatCloser.armed = true;
+			} else {
+				// In-game Vietnamese chat typing key: advance state machine token tracking and fall through to typing engine!
+				applyGameEffects(_game.onGameKeyDown(keyInput));
+			}
+		}
+		// Key-up events and regular chat typing keys fall through to modifier mask and Vietnamese typing engine
 	}
 
 	//ignore if IME pad is open when typing Japanese/Chinese...

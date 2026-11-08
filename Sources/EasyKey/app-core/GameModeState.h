@@ -120,10 +120,32 @@ struct GameModeState {
         return onForegroundChangedAway(now, boundWindowAlive, boundWindowAlive);
     }
 
+    static constexpr uint16_t kVkReturn = 0x0D;
+    static constexpr uint16_t kVkEscape = 0x1B;
+    static constexpr uint16_t kVkSpace = 0x20;
+    static constexpr uint16_t kVkSlash = 0xBF; // VK_OEM_2 = '/'
+
     struct KeyInput {
         uint16_t vkCode = 0;    //the resolved key code the hook works with
         bool altOrCtrl = false; //(the hook's MASK_ALT | MASK_CONTROL state)
     };
+
+    //decides whether a key event in game mode must be passed through directly to the game (raw)
+    //or forwarded into the typing engine for Vietnamese text composition
+    inline bool isKeyRawPassThrough(const KeyInput& input) const {
+        if (!inGame)
+            return false;
+        if (!chatOpen)
+            return true; // Combat: all keys go straight to the game
+        if (input.vkCode == kVkEscape && !input.altOrCtrl)
+            return true; // Esc passes raw to cancel/close chat immediately
+        if (chatRawCommand)
+            return true; // Inside /command token: keys pass raw until space
+        if (chatTokenStart && input.vkCode == kVkSlash && !input.altOrCtrl)
+            return true; // The leading / of a command passes raw
+        return false;    // Normal typing inside game chat (and Enter): goes into typing engine
+    }
+
     //a key-down while in game (key-up events never reach the state machine).
     //Every in-game key is passed through to the game; only the state changes
     //and the effects matter.

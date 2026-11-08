@@ -3542,6 +3542,139 @@ static void testGameModeStateExtended() {
         expectRobust("game pr2: bound window with mismatched PID and non-game exe clears binding",
                      s.windowId == 0 && s.processId == 0 && !s.inGame && !c.useForeground);
     }
+
+    // PR 3 scenarios: In-game Vietnamese chat & raw combat / slash commands
+    {   // PR 3.1: Combat mode passes all keys raw
+        GameModeState s = gameInGame(); // inGame = true, chatOpen = false
+        expectRobust("game pr3: combat passes skill keys raw",
+                     s.isKeyRawPassThrough({ 0x57 /*W*/, false }) &&
+                     s.isKeyRawPassThrough({ 0x51 /*Q*/, false }) &&
+                     s.isKeyRawPassThrough({ 0x57 /*Alt+W*/, true }));
+    }
+    {   // PR 3.2: Enter opens chat; regular keys in chat are NOT raw (flow to typing engine)
+        GameModeState s = gameInGame();
+        // Enter passes raw to open in-game chat box
+        expectRobust("game pr3: Enter passes raw to game", s.isKeyRawPassThrough({ 0x0D, false }));
+        GameModeEffects fx = s.onGameKeyDown({ 0x0D, false });
+        expectRobust("game pr3: Enter opens chat", s.chatOpen && fx.chatOpened && s.chatTokenStart && !s.chatRawCommand);
+
+        // Regular character 'T' (0x54) must NOT pass raw (it must flow into typing engine)
+        expectRobust("game pr3: typing keys in chat flow to typing engine", !s.isKeyRawPassThrough({ 0x54 /*T*/, false }));
+        s.onGameKeyDown({ 0x54, false });
+        expectRobust("game pr3: typing key clears token start", !s.chatTokenStart && !s.chatRawCommand);
+    }
+    {   // PR 3.3: Slash commands (/ff, /w) stay raw until Space, then Vietnamese resumes
+        GameModeState s = gameInGame();
+        s.onGameKeyDown({ 0x0D, false }); // Open chat
+        expectRobust("game pr3: leading / is raw", s.isKeyRawPassThrough({ 0xBF /*/*/, false }));
+        s.onGameKeyDown({ 0xBF, false }); // Type '/'
+        expectRobust("game pr3: in slash command", s.chatRawCommand && !s.chatTokenStart);
+
+        // Command letters 'f', 'f' are passed raw to game
+        expectRobust("game pr3: command letters pass raw",
+                     s.isKeyRawPassThrough({ 0x46 /*F*/, false }));
+        s.onGameKeyDown({ 0x46, false });
+        expectRobust("game pr3: second command letter passes raw",
+                     s.isKeyRawPassThrough({ 0x46 /*F*/, false }));
+        s.onGameKeyDown({ 0x46, false });
+
+        // Space ends the command token and passes raw
+        expectRobust("game pr3: space ends raw command", s.isKeyRawPassThrough({ 0x20 /*Space*/, false }));
+        s.onGameKeyDown({ 0x20, false });
+        expectRobust("game pr3: after space command is over", !s.chatRawCommand && s.chatTokenStart);
+
+        // Next word after space flows into typing engine (NOT raw)
+        expectRobust("game pr3: next word after space is Vietnamese", !s.isKeyRawPassThrough({ 0x58 /*X*/, false }));
+    }
+    {   // PR 3.4: Enter flows to engine first (not raw); Esc passes raw; both return to combat
+        GameModeState s = gameInGame();
+        s.onGameKeyDown({ 0x0D, false }); // Open chat
+        expectRobust("game pr3: Enter in chat flows to engine", !s.isKeyRawPassThrough({ 0x0D, false }));
+        GameModeEffects fx1 = s.onGameKeyDown({ 0x0D, false });
+        expectRobust("game pr3: chat closed by Enter returns to combat", !s.chatOpen && fx1.chatClosed);
+        expectRobust("game pr3: combat resumed, W is raw again", s.isKeyRawPassThrough({ 0x57, false }));
+
+        s.onGameKeyDown({ 0x0D, false }); // Open chat again
+        expectRobust("game pr3: Esc closes chat and passes raw", s.isKeyRawPassThrough({ 0x1B, false }));
+        GameModeEffects fx2 = s.onGameKeyDown({ 0x1B, false });
+        expectRobust("game pr3: chat closed by Esc returns to combat", !s.chatOpen && fx2.chatClosed);
+    }
+    {   // PR 3.6: Smart typing (afk -> àk -> afk) and English restore on Enter in game chat
+        GameModeState s = gameInGame();
+        s.onGameKeyDown({ 0x0D, false }); // Open chat
+        expectRobust("game pr3: chat is open", s.chatOpen);
+        expectRobust("game pr3: Enter in chat flows to engine", !s.isKeyRawPassThrough({ 0x0D, false }));
+
+        // 1. Smart typing: typing 'afk' in Telex produces 'àk'; pressing Enter restores 'afk'
+        vKeyConfig spellCfg = testCfg();
+        spellCfg.inputType = vTelex;
+        spellCfg.checkSpelling = 1;
+        spellCfg.restoreIfWrongSpelling = 1;
+        startNewSession();
+        wstring text;
+        for (char c : string("afk")) {
+            Uint16 code = charToKeyCode(c);
+            vKeyHandleEvent(vKeyEvent::Keyboard, vKeyEventState::KeyDown, code, spellCfg, 0, false);
+            if (pData->code == vWillProcess || pData->code == vRestore || pData->code == vRestoreAndStartNewSession) {
+                for (int i = 0; i < pData->backspaceCount && !text.empty(); i++) text.pop_back();
+                for (int i = pData->newCharCount - 1; i >= 0; i--) sendKeyCode(text, pData->charData[i]);
+            } else if (pData->code == vDoNothing) {
+                text += (wchar_t)c;
+            }
+        }
+        expectRobust("game pr3: before Enter, Telex produces àk", text == L"\u00e0k");
+
+        // When Enter arrives, engine restores 'afk'
+        vKeyHandleEvent(vKeyEvent::Keyboard, vKeyEventState::KeyDown, KEY_ENTER, spellCfg, 0, false);
+        expectRobust("game pr3: engine restores afk on Enter",
+                     pData->code == vRestoreAndStartNewSession);
+        for (int i = 0; i < pData->backspaceCount && !text.empty(); i++) text.pop_back();
+        for (int i = pData->newCharCount - 1; i >= 0; i--) sendKeyCode(text, pData->charData[i]);
+        expectRobust("game pr3: text after Enter is restored afk", text == L"afk");
+
+        // 2. Mixed English: 'you see' with Enter restores 'see' (not 'sê')
+        vKeyConfig mixedCfg = testCfg();
+        mixedCfg.inputType = vTelex;
+        mixedCfg.mixedEnglish = 1;
+        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, mixedCfg);
+        startNewSession();
+        wstring mixedText;
+        for (char c : string("you see")) {
+            Uint16 code = charToKeyCode(c);
+            vKeyHandleEvent(vKeyEvent::Keyboard, vKeyEventState::KeyDown, code, mixedCfg, 0, false);
+            if (pData->code == vWillProcess || pData->code == vRestore || pData->code == vRestoreAndStartNewSession) {
+                for (int i = 0; i < pData->backspaceCount && !mixedText.empty(); i++) mixedText.pop_back();
+                for (int i = pData->newCharCount - 1; i >= 0; i--) sendKeyCode(mixedText, pData->charData[i]);
+            } else if (pData->code == vDoNothing) {
+                if (code == KEY_SPACE) mixedText += L' ';
+                else mixedText += (wchar_t)c;
+            }
+        }
+        expectRobust("game pr3: before Enter, Telex produces you sê", mixedText == L"you s\u00ea");
+
+        vKeyHandleEvent(vKeyEvent::Keyboard, vKeyEventState::KeyDown, KEY_ENTER, mixedCfg, 0, false);
+        expectRobust("game pr3: engine restores see on Enter",
+                     pData->code == vRestoreAndStartNewSession);
+        for (int i = 0; i < pData->backspaceCount && !mixedText.empty(); i++) mixedText.pop_back();
+        for (int i = pData->newCharCount - 1; i >= 0; i--) sendKeyCode(mixedText, pData->charData[i]);
+        expectRobust("game pr3: text after Enter is restored you see", mixedText == L"you see");
+
+        // After engine completes, chat is closed and combat mode resumes
+        GameModeEffects fx = s.closeChat();
+        expectRobust("game pr3: chat closed after engine finishes", !s.chatOpen && fx.chatClosed);
+        expectRobust("game pr3: combat mode active again", s.isKeyRawPassThrough({ 'W', false }));
+    }
+    {   // PR 3.5: Tabbing away or mouse click closes chat
+        GameModeState s = gameInGame();
+        s.onGameKeyDown({ 0x0D, false }); // Open chat
+        s.onForegroundChangedAway(2000, true, true);
+        expectRobust("game pr3: tabbing away closes chat", !s.chatOpen && !s.inGame);
+
+        s = gameInGame();
+        s.onGameKeyDown({ 0x0D, false }); // Open chat
+        GameModeEffects fx = s.closeChat(); // mouse click simulation
+        expectRobust("game pr3: closeChat closes chat", !s.chatOpen && fx.chatClosed);
+    }
 }
 
 //Password-field state decisions (plan 3.3): state values mirror the engine's
