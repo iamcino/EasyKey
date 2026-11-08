@@ -49,6 +49,7 @@ GameModeEffects GameModeState::clearBinding() {
     processId = 0;
     confirmed = false;
     lastForegroundTick = 0;
+    fx.bindingCleared = true;
     return fx;
 }
 
@@ -67,69 +68,171 @@ GameModeEffects GameModeState::bind(uint64_t window, uint32_t pid, bool confirme
     return fx;
 }
 
-GameModeState::BindingCheck GameModeState::onKeyboardBindingCheck(uint64_t now, bool boundWindowAlive, uint64_t foregroundId, bool foregroundPidMatches) {
+GameModeState::BindingCheck GameModeState::onKeyboardBindingCheck(
+    uint64_t now,
+    bool processAlive,
+    bool boundWindowAlive,
+    uint64_t foregroundId,
+    uint32_t foregroundPid,
+    bool candidateEligible,
+    bool candidateExeIsGame
+) {
     BindingCheck result;
-    if (windowId == 0)
+
+    if (windowId == 0 && processId == 0 && !candidateExeIsGame) {
         return result;
-    if (!boundWindowAlive) {
+    }
+
+    // 1. Process exit check:
+    // If we have a bound process and that process died, clear binding completely
+    if (processId != 0 && !processAlive) {
         result.effects = clearBinding();
         return result;
     }
+
+    // 2. Armed binding expiry check:
     if (armedExpired(now)) {
         result.effects = clearBinding();
         return result;
     }
-    result.useForeground = true;
-    if (foregroundId == windowId) {
+
+    // 3. Bound window destruction:
+    // If the bound window was destroyed, drop windowId (leave game if inGame)
+    // but keep processId intact while the process is still alive.
+    if (windowId != 0 && !boundWindowAlive) {
+        windowId = 0;
+        if (inGame) {
+            result.effects.absorb(leaveGame());
+        }
+    }
+
+    bool pidMatches = (processId != 0 && foregroundPid != 0 && foregroundPid == processId);
+    bool matchesGame = pidMatches || candidateExeIsGame;
+
+    // Case A: Foreground is the currently bound window
+    if (foregroundId != 0 && foregroundId == windowId) {
+        result.useForeground = true;
         if (!confirmed || !inGame) {
-            if (foregroundPidMatches) {
+            // Unconfirmed armed binding or entering from inactive state
+            if (pidMatches || candidateExeIsGame) {
                 confirmed = true;
-                if (!inGame)
-                    result.effects = enterGame();
+                if (foregroundPid != 0) {
+                    processId = foregroundPid;
+                }
+                if (!inGame) {
+                    result.effects.absorb(enterGame());
+                }
                 lastForegroundTick = now;
             } else {
-                result.effects = clearBinding();
+                // PID mismatch on the bound window: clear binding
+                result.effects.absorb(clearBinding());
                 result.useForeground = false;
             }
         } else {
-            lastForegroundTick = now;
+            // Steady state: already confirmed and in game
+            if (foregroundPid != 0 && !matchesGame) {
+                result.effects.absorb(clearBinding());
+                result.useForeground = false;
+            } else {
+                lastForegroundTick = now;
+            }
         }
-    } else {
-        if (inGame)
-            result.effects = leaveGame();
+        return result;
+    }
+
+    // Case B: Foreground is a new eligible window belonging to the game process or game exe
+    if (foregroundId != 0 && candidateEligible && matchesGame) {
+        result.useForeground = true;
+        windowId = foregroundId;
+        if (foregroundPid != 0) {
+            processId = foregroundPid;
+        }
+        confirmed = true;
+        lastForegroundTick = now;
+        result.effects.absorb(enterGame());
+        result.rebindOccurred = true;
+        return result;
+    }
+
+    // Case C: Foreground is not a game window (tabbed away or ineligible window)
+    result.useForeground = true;
+    if (inGame) {
+        result.effects.absorb(leaveGame());
     }
     return result;
 }
 
-GameModeEffects GameModeState::onMouseBindingCheck(uint64_t now, bool boundWindowAlive, uint64_t foregroundId, bool foregroundIsBoundProcess) {
+GameModeEffects GameModeState::onMouseBindingCheck(
+    uint64_t now,
+    bool processAlive,
+    bool boundWindowAlive,
+    uint64_t foregroundId,
+    uint32_t foregroundPid,
+    bool candidateEligible,
+    bool candidateExeIsGame
+) {
     GameModeEffects fx;
-    if (windowId != 0 && !boundWindowAlive)
+
+    if (processId != 0 && !processAlive) {
         return clearBinding();
-    if (!confirmed && lastForegroundTick != 0 && armedExpired(now))
+    }
+
+    if (armedExpired(now)) {
         return clearBinding();
-    if (foregroundId == windowId && foregroundId != 0) {
-        if (foregroundIsBoundProcess) {
-            confirmed = true;
-            lastForegroundTick = now;
-            fx = enterGame();
-        } else {
-            fx = clearBinding();
-        }
-    } else if (foregroundId != 0) {
-        if (foregroundIsBoundProcess) {
-            windowId = foregroundId;
-            confirmed = true;
-            lastForegroundTick = now;
-            fx = enterGame();
+    }
+
+    if (windowId != 0 && !boundWindowAlive) {
+        windowId = 0;
+        if (inGame) {
+            fx.absorb(leaveGame());
         }
     }
+
+    bool pidMatches = (processId != 0 && foregroundPid != 0 && foregroundPid == processId);
+    bool matchesGame = pidMatches || candidateExeIsGame;
+
+    if (foregroundId != 0 && foregroundId == windowId) {
+        if (!confirmed || !inGame) {
+            if (pidMatches || candidateExeIsGame) {
+                confirmed = true;
+                if (foregroundPid != 0) {
+                    processId = foregroundPid;
+                }
+                lastForegroundTick = now;
+                fx.absorb(enterGame());
+            } else {
+                fx.absorb(clearBinding());
+            }
+        } else {
+            if (foregroundPid != 0 && !matchesGame) {
+                fx.absorb(clearBinding());
+            }
+        }
+        return fx;
+    }
+
+    if (foregroundId != 0 && candidateEligible && matchesGame) {
+        windowId = foregroundId;
+        if (foregroundPid != 0) {
+            processId = foregroundPid;
+        }
+        confirmed = true;
+        lastForegroundTick = now;
+        fx.absorb(enterGame());
+    }
+
     return fx;
 }
 
-GameModeEffects GameModeState::onForegroundChangedAway(uint64_t now, bool boundWindowAlive) {
+GameModeEffects GameModeState::onForegroundChangedAway(uint64_t now, bool processAlive, bool boundWindowAlive) {
     GameModeEffects fx = leaveGame();
-    if (windowId != 0 && (!boundWindowAlive || armedExpired(now)))
+    if (processId != 0 && !processAlive) {
         fx.absorb(clearBinding());
+    } else if (windowId != 0 && !boundWindowAlive) {
+        windowId = 0;
+    } else if (armedExpired(now)) {
+        fx.absorb(clearBinding());
+    }
     return fx;
 }
 
@@ -138,36 +241,41 @@ GameModeEffects GameModeState::onGameKeyDown(const KeyInput& input) {
     if ((input.vkCode == kVkReturn || input.vkCode == kVkEscape) && !input.altOrCtrl) {
         if (input.vkCode == kVkReturn) {
             if (chatOpen) {
+                //Enter sends the typed text and closes the chat
                 fx = closeChat();
             } else {
+                //Enter opens the chat
                 chatOpen = true;
                 chatRawCommand = false;
                 chatTokenStart = true;
                 fx.chatOpened = true;
             }
         } else {
+            //Escape always closes the chat (canceling input)
             fx = closeChat();
         }
         return fx;
     }
     if (!chatOpen)
         return fx;
-    if (chatRawCommand) {
-        if (input.vkCode == kVkSpace) {
-            chatRawCommand = false;
-            chatTokenStart = true;
-        }
-        return fx;
-    }
-    if (input.vkCode == kVkSlash && chatTokenStart && !input.altOrCtrl) {
+
+    //the rest runs only while chatting
+    if (chatTokenStart && input.vkCode == kVkSlash && !input.altOrCtrl) {
         chatRawCommand = true;
         chatTokenStart = false;
         return fx;
     }
     if (input.vkCode == kVkSpace) {
+        chatRawCommand = false;
         chatTokenStart = true;
-    } else if (input.vkCode != kVkShift && input.vkCode != kVkCapital && input.vkCode != kVkLShift && input.vkCode != kVkRShift) {
-        chatTokenStart = false;
+        return fx;
     }
+    //Shift and CapsLock do not advance token positions
+    if (input.vkCode == kVkShift || input.vkCode == kVkCapital ||
+        input.vkCode == kVkLShift || input.vkCode == kVkRShift) {
+        return fx;
+    }
+    //any other typed character ends the start-of-token window
+    chatTokenStart = false;
     return fx;
 }
