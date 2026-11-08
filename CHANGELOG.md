@@ -2,6 +2,20 @@
 
 **Tiếng Việt** · [English](CHANGELOG.en.md)
 
+## 1.0.23 - 2026-11-08
+
+### Fixed
+- Alt+Tab không còn làm sai chế độ gõ (Việt/Anh) và bảng mã đã nhớ theo từng ứng dụng. Chế độ Anh–Việt giờ cũng được nhớ theo ứng dụng.
+- **Game Mode**: không còn mất tác dụng sau khi Alt+Tab ra ngoài rồi quay lại, kể cả khi game tạo lại cửa sổ. Cửa sổ launcher/sảnh chờ có ô nhập liệu không bị nhận nhầm là game.
+
+### Added
+- **Game Mode**: chat trong game gõ được tiếng Việt. Bấm Enter để mở chat, phím đi qua bộ gõ theo chế độ đang bật (Việt, Anh–Việt hoặc Anh). Lệnh bắt đầu bằng `/` vẫn giữ phím thô tới dấu cách, Esc đóng chat. Ngoài lúc chat, phím vẫn đi thẳng vào game như trước.
+- **Cập nhật**: EasyKey chỉ cài bản cập nhật có chữ ký số của EasyKey; file cũ `EasyKey.old.exe` được dọn sau khi khởi động.
+- **Gõ tắt**: từ chối tên hoặc nội dung quá dài ngay khi thêm, thay vì làm mất mục khi lưu.
+
+### Notes
+- Sau khi dùng 1.0.23, nếu quay về 1.0.22 trở xuống thì bảng mã nhớ theo ứng dụng có thể bị sai; hãy chọn lại bảng mã cho ứng dụng đó.
+
 ## 1.0.22 - 2026-11-05
 
 ### Fixed

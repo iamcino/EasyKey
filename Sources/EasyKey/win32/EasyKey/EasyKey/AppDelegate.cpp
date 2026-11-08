@@ -29,10 +29,12 @@ See LICENSE and NOTICE.
 #pragma comment(lib, "comctl32.lib")
 
 //shown once after updating to this version; change it with each release
-#define WHATS_NEW_VI L"• Sửa lỗi EasyKey có thể bị tắt đột ngột khi bật gõ nhanh phụ âm cuối và gõ một từ rất dài.\n" \
-	L"• Gõ tắt và danh sách nhớ theo ứng dụng không còn lỗi khi dữ liệu bị hỏng hoặc có tên quá dài."
-#define WHATS_NEW_EN L"• Fixed EasyKey possibly shutting down when quick end consonant is on and a very long word is typed.\n" \
-	L"• Macros and the per-app remembered list no longer break on corrupted data or over-long names."
+#define WHATS_NEW_VI L"• Alt+Tab không còn làm sai chế độ gõ và bảng mã nhớ theo ứng dụng.\n" \
+	L"• Game Mode không còn mất tác dụng sau Alt+Tab.\n" \
+	L"• Chat trong game gõ được tiếng Việt theo chế độ đang bật (Enter để mở chat)."
+#define WHATS_NEW_EN L"• Alt+Tab no longer mixes up the per-app input mode and encoding.\n" \
+	L"• Game Mode keeps working after Alt+Tab.\n" \
+	L"• In-game chat types Vietnamese in the current mode (press Enter to open chat)."
 
 //6 hours
 #define UPDATE_CHECK_INTERVAL (6 * 60 * 60 * 1000)

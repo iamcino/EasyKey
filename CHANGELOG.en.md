@@ -2,6 +2,20 @@
 
 [Tiếng Việt](CHANGELOG.md) · **English**
 
+## 1.0.23 - 2026-11-08
+
+### Fixed
+- Alt+Tab no longer mixes up the input mode (Vietnamese/English) and character encoding remembered for each app. Mixed English–Vietnamese mode is now remembered per app too.
+- **Game Mode**: no longer stops working after Alt+Tab away and back, even when the game recreates its window. Launcher/lobby windows with text fields are no longer taken for the game.
+
+### Added
+- **Game Mode**: in-game chat can type Vietnamese. Press Enter to open chat; keys go through the input method in the current mode (Vietnamese, mixed or English). Commands starting with `/` stay raw until a space, and Esc closes chat. Outside chat, keys go straight to the game as before.
+- **Updates**: EasyKey only installs an update signed with the EasyKey certificate; the old `EasyKey.old.exe` is cleaned up after start.
+- **Macros**: over-long names or content are refused when added instead of being lost on save.
+
+### Notes
+- After using 1.0.23, going back to 1.0.22 or older may mix up the per-app character encoding; pick the encoding again for that app.
+
 ## 1.0.22 - 2026-11-05
 
 ### Fixed
