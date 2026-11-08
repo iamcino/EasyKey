@@ -12,7 +12,9 @@ the MIT license, see LICENSES/MIT.txt.
 #include <windows.h>
 #include <winhttp.h>
 #include <bcrypt.h>
+#include <memory>
 #include "Updater.h"
+#include "UpdateCleanup.h"
 #include "../../../app-core/VersionInfo.h"
 #include "AppDelegate.h"
 #include "EasyKeyManager.h"
@@ -324,10 +326,37 @@ const string& Updater::availableVersion() {
 
 void Updater::finishPreviousUpdate() {
 	if (wcsstr(GetCommandLineW(), UPDATED_ARGUMENT)) {
-		//the old EasyKey exits right after starting this one
-		for (int i = 0; i < 50 && FindWindow(APP_CLASS, NULL); i++)
-			Sleep(100);
+		//the old EasyKey exits right after starting this one. Wait for the process,
+		//not just its window: the image can stay locked after the window is gone.
+		//Hooks are not installed in this process yet.
+		HWND previous = FindWindow(APP_CLASS, NULL);
+		DWORD pid = 0;
+		if (previous)
+			GetWindowThreadProcessId(previous, &pid);
+		HANDLE process = pid ? OpenProcess(SYNCHRONIZE, FALSE, pid) : NULL;
+		if (process) {
+			WaitForSingleObject(process, 30000);
+			CloseHandle(process);
+		} else {
+			for (int i = 0; i < 50 && FindWindow(APP_CLASS, NULL); i++)
+				Sleep(100);
+		}
 	}
-	wstring oldPath = folderOf(EasyKeyHelper::getFullPath()) + L"EasyKey.old.exe";
-	DeleteFile(oldPath.c_str());
+}
+
+static DWORD WINAPI cleanupJob(LPVOID param) {
+	std::unique_ptr<wstring> path(static_cast<wstring*>(param));
+	cleanupOldUpdateFile(*path);
+	return 0;
+}
+
+void Updater::cleanupPreviousUpdate() {
+	//on a worker so a locked backup (antivirus scan) never stalls startup; a file
+	//still locked after the retries is kept and tried again on the next start
+	wstring* path = new wstring(folderOf(EasyKeyHelper::getFullPath()) + L"EasyKey.old.exe");
+	HANDLE thread = CreateThread(NULL, 0, cleanupJob, path, 0, NULL);
+	if (thread)
+		CloseHandle(thread);
+	else
+		delete path;
 }

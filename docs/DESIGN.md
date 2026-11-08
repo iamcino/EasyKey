@@ -211,7 +211,7 @@ Cập nhật nằm trong `Updater.cpp`, chạy ở luồng riêng để không l
 1. Đọc `version.json` trên nhánh `master` (`latestWinVersion.versionName`) và so với phiên bản đang chạy. Kiểm tra lúc khởi động và 6 giờ một lần nếu bật tự kiểm tra.
 2. Khi người dùng đồng ý, tải `EasyKey.exe` và `EasyKey.exe.sha256` từ `releases/download/<phiên bản>/`. Từ chối nếu mã SHA-256 không khớp hoặc file không bắt đầu bằng `MZ`.
 3. Ghi `EasyKey.new.exe`, đổi tên file đang chạy thành `EasyKey.old.exe` (Windows cho đổi tên nhưng không cho ghi đè exe đang chạy), rồi đổi tên file mới thành `EasyKey.exe`. Lỗi ở bước nào thì trả lại như cũ.
-4. Gỡ hook, chạy bản mới với tham số cập nhật rồi thoát. Bản mới chờ bản cũ thoát hẳn và xoá `EasyKey.old.exe`.
+4. Gỡ hook, chạy bản mới với tham số cập nhật rồi thoát. Bản mới chờ tiến trình cũ thoát hẳn, rồi sau khi engine và khay đã chạy thì xoá `EasyKey.old.exe` trên một luồng nền (thử lại tối đa 1 phút nếu file còn bị khoá, ví dụ antivirus đang quét; không xoá được thì để lần khởi động sau).
 
 ## 11. Build và phát hành
 - Dự án Visual Studio 2022 (toolset v143), chỉ cấu hình `Release|x64` được phát hành. Chi tiết ở [BUILD](BUILD.md).

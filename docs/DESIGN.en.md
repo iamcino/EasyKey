@@ -211,7 +211,7 @@ Updates live in `Updater.cpp` and run on a separate thread so the keyboard and m
 1. Read `version.json` on the `master` branch (`latestWinVersion.versionName`) and compare it with the running version. Checked at start-up and every 6 hours when automatic checks are on.
 2. When the user agrees, download `EasyKey.exe` and `EasyKey.exe.sha256` from `releases/download/<version>/`. Refuse if the SHA-256 doesn't match or the file doesn't start with `MZ`.
 3. Write `EasyKey.new.exe`, rename the running file to `EasyKey.old.exe` (Windows allows renaming a running exe but not overwriting it), then rename the new file to `EasyKey.exe`. If any step fails, put things back.
-4. Remove the hooks, start the new version with an update argument and quit. The new version waits for the old one to exit and deletes `EasyKey.old.exe`.
+4. Remove the hooks, start the new version with an update argument and quit. The new version waits for the old process to exit; once its engine and tray are up it deletes `EasyKey.old.exe` on a background thread (retrying for up to a minute while the file is locked, e.g. by an antivirus scan, otherwise on the next start).
 
 ## 11. Build and release
 - Visual Studio 2022 project (toolset v143); only `Release|x64` is released. Details in [BUILD](BUILD.en.md).
