@@ -15,6 +15,10 @@
 
 #include <memory.h>
 #include <stdio.h>
+#include <limits>
+#include <map>
+#include <string>
+#include <vector>
 
 using namespace std;
 
@@ -81,6 +85,8 @@ static void convert(const string& str, vector<Uint32>& outData) {
  */
 void initMacroMap(const Byte* pData, const int& size) {
     macroMap.clear();
+    if (!pData)
+        return;
     Uint16 macroCount = 0;
     Uint32 cursor = 0;
     if (size >= 2) {
@@ -106,6 +112,8 @@ void initMacroMap(const Byte* pData, const int& size) {
             break;
         string macroContent((char*)pData + cursor, macroContentSize);
         cursor += macroContentSize;
+        if (macroText.empty()) //addMacro refuses empty names, so skip them here too
+            continue;
         
         MacroData data;
         data.macroText = macroText;
@@ -124,6 +132,7 @@ void getMacroSaveData(vector<Byte>& outData) {
     //represent (name over the one-byte length, content over the two-byte
     //length) is skipped instead of truncating its length and corrupting the
     //entries after it (finding F7); the count covers the written entries
+    outData.clear();
     vector<Byte> body;
     Uint16 totalMacro = 0;
     for (std::map<vector<Uint32>, MacroData>::iterator it = macroMap.begin(); it != macroMap.end() && totalMacro < 0xFFFF; ++it) {
@@ -232,9 +241,16 @@ void getAllMacro(vector<vector<Uint32>>& keys, vector<string>& macroTexts, vecto
 }
 
 bool addMacro(const string& macroText, const string& macroContent) {
+    //refuse what the binary format cannot store, so getMacroSaveData never
+    //has to drop an entry the user just added
+    if (macroText.empty() || macroText.size() > (std::numeric_limits<Uint8>::max)() ||
+        macroContent.size() > (std::numeric_limits<Uint16>::max)())
+        return false;
     vector<Uint32> key;
     convert(macroText, key);
     if (macroMap.find(key) == macroMap.end()) { //add new macro
+        if (macroMap.size() >= (std::numeric_limits<Uint16>::max)())
+            return false;
         MacroData data;
         data.macroText = macroText;
         data.macroContent = macroContent;

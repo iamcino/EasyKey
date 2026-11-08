@@ -387,6 +387,17 @@ static void testMixed() {
     expectTyping("Mixed phrase", "banhs test ", L"b\u00e1nh t\u00e9t ");
     vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed phrase", "thijt test ", L"th\u1ecbt t\u00e9t ");
+    // Fix-last must preserve explicit decisions when another word follows.
+    testCfg().mixedFixLast = 1;
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
+    expectTyping("Mixed protected phrase fix-last", "banhs test case ", L"b\u00e1nh t\u00e9t case ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
+    expectTyping("Mixed protected short fix-last", "mootj too software ", L"m\u1ed9t t\u00f4 software ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
+    expectTyping("Mixed standalone short fix-last", "bus software ", L"b\u00fa software ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
+    expectTyping("Mixed English phrase fix-last", "xe bus vieetj ", L"xe bus vi\u1ec7t ");
+    testCfg().mixedFixLast = 0;
     //negative tests ensuring English loanword 'test' stays 'test'
     vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed phrase", "dungf cho test ", L"d\u00f9ng cho test ");
@@ -646,6 +657,62 @@ static void testUtf8Conversion() {
     }
 }
 
+static void testMacroSerialization() {
+    auto check = [](bool ok, const char* label) {
+        total++;
+        if (!ok) {
+            failures++;
+            printf("FAIL [macro binary %s]\n", label);
+        }
+    };
+    initMacroMap(nullptr, 0);
+    check(!addMacro(string(256, 'a'), "hello"), "reject oversized name");
+    check(!addMacro("content", string(65536, 'a')), "reject oversized content");
+    check(!addMacro("", "hello"), "reject empty name");
+    string multibyteName;
+    for (int i = 0; i < 128; i++) multibyteName += "\xc3\xa9";
+    check(!addMacro(multibyteName, "hello"), "name limit uses UTF-8 bytes");
+
+    const string maxName(255, 'a'), maxContent(65535, 'b');
+    check(addMacro(maxName, maxContent), "accept boundary sizes");
+    check(!addMacro(maxName, string(65536, 'c')), "reject oversized update");
+    vector<Byte> saved;
+    getMacroSaveData(saved);
+    vector<Byte> repeated = saved;
+    getMacroSaveData(repeated);
+    check(repeated == saved, "save replaces previous output");
+    initMacroMap(saved.data(), static_cast<int>(saved.size()));
+    vector<vector<Uint32>> keys;
+    vector<string> names, contents;
+    getAllMacro(keys, names, contents);
+    check(names.size() == 1 && names[0] == maxName && contents[0] == maxContent,
+        "boundary round trip and rejected update preserves content");
+
+    initMacroMap(nullptr, 0);
+    addMacro("vn", "Vi\xe1\xbb\x87t Nam");
+    addMacro("hn", "Ha Noi");
+    getMacroSaveData(saved);
+    for (size_t length = 0; length < saved.size(); length++) {
+        initMacroMap(saved.data(), static_cast<int>(length));
+        getAllMacro(keys, names, contents);
+        bool whole = names.size() < 2;
+        for (size_t i = 0; i < names.size(); i++)
+            whole = whole && ((names[i] == "vn" && contents[i] == "Vi\xe1\xbb\x87t Nam") ||
+                (names[i] == "hn" && contents[i] == "Ha Noi"));
+        check(whole, "truncated data keeps whole entries only");
+    }
+    initMacroMap(saved.data(), static_cast<int>(saved.size()));
+    check(hasMacro("vn") && hasMacro("hn"), "valid multi-entry round trip");
+    initMacroMap(nullptr, static_cast<int>(saved.size()));
+    check(!hasMacro("vn"), "null data with positive size");
+    initMacroMap(saved.data(), -1);
+    check(!hasMacro("vn"), "negative size");
+    const Byte emptyName[] = {1, 0, 0, 0, 0};
+    initMacroMap(emptyName, sizeof(emptyName));
+    getAllMacro(keys, names, contents);
+    check(names.empty(), "invalid empty name");
+}
+
 static void testMacroFileIO() {
     total++;
     addMacro("vn", "Việt Nam");
@@ -677,6 +744,32 @@ static void testMacroFileIO() {
     if (!hasMacro("longp")) {
         failures++;
         printf("FAIL [macro long (>4KB) readFromFile failed to restore]\n");
+    }
+    // Import uses the same limits as interactive additions and keeps valid rows.
+    FILE* oversizedFile = nullptr;
+#ifdef _WIN32
+    fopen_s(&oversizedFile, testFile, "wb");
+#else
+    oversizedFile = fopen(testFile, "wb");
+#endif
+    total++;
+    if (!oversizedFile) {
+        failures++;
+        printf("FAIL [macro oversized import fixture creation]\n");
+    } else {
+        const string oversizedName(256, 'a');
+        const string importData = ";Compatible OpenKey Macro Data file for UniKey*** version=1 ***\n" +
+            oversizedName + ":hello\nlarge:" + string(65536, 'b') + "\nvalid:hello\n";
+        fwrite(importData.data(), 1, importData.size(), oversizedFile);
+        fclose(oversizedFile);
+        readFromFile(testFile, false);
+        vector<vector<Uint32>> keys;
+        vector<string> names, contents;
+        getAllMacro(keys, names, contents);
+        if (names.size() != 1 || names[0] != "valid" || contents[0] != "hello") {
+            failures++;
+            printf("FAIL [macro import rejects oversized rows and retains valid rows]\n");
+        }
     }
     remove(testFile);
 }
@@ -3520,6 +3613,7 @@ int main(int argc, char** argv) {
     testVNI();
     testConvert();
     testUtf8Conversion();
+    testMacroSerialization();
     testMacroFileIO();
     testGameMode();
     testPasswordField();
