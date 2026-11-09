@@ -2,6 +2,12 @@
 
 [Tiếng Việt](CHANGELOG.md) · **English**
 
+## 1.1.1 - 2026-11-09
+
+### Changed
+- **Updates**: when the check fails, the notice also suggests allowing EasyKey in your antivirus (Bitdefender can block it from the network).
+- **About**: shows the EasyKey logo instead of the V badge.
+
 ## 1.1.0 - 2026-11-09
 
 ### Added

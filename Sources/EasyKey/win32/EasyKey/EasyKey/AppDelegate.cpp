@@ -30,9 +30,9 @@ See LICENSE and NOTICE.
 
 //shown once after updating to this version; change it with each release
 #define WHATS_NEW_VI L"• Cập nhật tự chuyển sang GitLab khi GitHub không vào được.\n" \
-	L"• Mỗi bản phát hành có trên cả GitHub và GitLab, cùng file đã ký số."
+	L"• Cửa sổ Giới thiệu có logo EasyKey và đường dẫn tới GitHub lẫn GitLab."
 #define WHATS_NEW_EN L"• Updates switch to GitLab automatically when GitHub cannot be reached.\n" \
-	L"• Every release is on both GitHub and GitLab, with the same signed files."
+	L"• The About window shows the EasyKey logo and links to both GitHub and GitLab."
 
 //6 hours
 #define UPDATE_CHECK_INTERVAL (6 * 60 * 60 * 1000)
