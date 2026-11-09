@@ -4,368 +4,275 @@
 
 # EasyKey
 
-**Bộ gõ tiếng Việt gọn nhẹ cho Windows 11: một file chưa tới 1 MB, gõ lẫn được tiếng Anh, giao diện đúng chất Windows 11.**
+**Gõ tiếng Việt trên Windows 11, nhẹ như không.**<br>
+Một file chưa tới 1 MB, gõ lẫn tiếng Anh không cần chuyển chế độ, chơi game không lo bộ gõ.
 
 **Tiếng Việt** · [English](README.en.md)
 
-[![Phiên bản](https://img.shields.io/github/v/release/iamcino/EasyKey?label=phi%C3%AAn%20b%E1%BA%A3n&color=1f6fe5)](https://github.com/iamcino/EasyKey/releases/latest)
+[![Phiên bản](https://img.shields.io/gitlab/v/release/cino-group/easykey?label=phi%C3%AAn%20b%E1%BA%A3n&color=1f6fe5)](https://gitlab.com/cino-group/easykey/-/releases)
 ![Nền tảng](https://img.shields.io/badge/n%E1%BB%81n%20t%E1%BA%A3ng-Windows%2011%20x64-1f6fe5)
-![C++](https://img.shields.io/badge/C%2B%2B-Win32-00599c?logo=cplusplus)
 [![Giấy phép: GPL v3](https://img.shields.io/badge/gi%E1%BA%A5y%20ph%C3%A9p-GPL%20v3-green)](LICENSE)
 
-[**Tải EasyKey.exe**](https://github.com/iamcino/EasyKey/releases/latest/download/EasyKey.exe) · [Trang phát hành](https://github.com/iamcino/EasyKey/releases/latest) · [Nhật ký thay đổi](CHANGELOG.md) · [Báo lỗi](https://github.com/iamcino/EasyKey/issues)
+### ⬇ Tải EasyKey.exe: [từ GitHub](https://github.com/iamcino/EasyKey/releases/latest/download/EasyKey.exe) · [từ GitLab](https://gitlab.com/cino-group/easykey/-/releases/permalink/latest/downloads/EasyKey.exe)
+
+Trang phát hành: [GitHub](https://github.com/iamcino/EasyKey/releases/latest) · [GitLab](https://gitlab.com/cino-group/easykey/-/releases) · [Có gì mới](CHANGELOG.md) · [Báo lỗi](https://github.com/iamcino/EasyKey/issues)
+
+<img src="docs/screenshots/settings-light-vi.png" width="420" alt="Cửa sổ Cài đặt của EasyKey">
 
 </div>
 
 ---
 
-## Mục lục
+## Bắt đầu trong một phút
 
-- [EasyKey là gì?](#easykey-là-gì)
-  - [Giao diện ứng dụng](#giao-diện-ứng-dụng)
-- [Vì sao chọn EasyKey](#vì-sao-chọn-easykey)
-- [Tính năng](#tính-năng)
-- [Yêu cầu hệ thống](#yêu-cầu-hệ-thống)
-- [Cài đặt](#cài-đặt)
-- [Bắt đầu sử dụng](#bắt-đầu-sử-dụng)
-- [Cách hoạt động](#cách-hoạt-động)
-- [Quyền riêng tư](#quyền-riêng-tư)
-- [Gỡ cài đặt](#gỡ-cài-đặt)
-- [Build từ mã nguồn](#build-từ-mã-nguồn)
-- [Câu hỏi thường gặp và xử lý sự cố](#câu-hỏi-thường-gặp-và-xử-lý-sự-cố)
-- [Miễn trừ trách nhiệm](#miễn-trừ-trách-nhiệm)
-- [Giấy phép và ghi công](#giấy-phép-và-ghi-công)
+1. **Tải** `EasyKey.exe` [từ GitHub](https://github.com/iamcino/EasyKey/releases/latest/download/EasyKey.exe) hoặc [từ GitLab](https://gitlab.com/cino-group/easykey/-/releases/permalink/latest/downloads/EasyKey.exe), rồi mở nó. Không có trình cài đặt, không cần quyền Admin.
+2. **Gõ thử** ở bất cứ đâu. Mặc định là Telex, bảng mã Unicode.
+3. **Bấm Alt + Z** để đổi qua lại giữa Tiếng Việt, Anh–Việt và Tiếng Anh.
 
-## EasyKey là gì?
+Vậy là xong. Biểu tượng EasyKey nằm ở khay hệ thống (góc phải thanh tác vụ):
+bấm đúp để mở Cài đặt, bấm phải để xem menu. Nếu Windows hiện cảnh báo khi mở
+file, xem [Cảnh báo của Windows](#cảnh-báo-của-windows).
 
-EasyKey là bộ gõ tiếng Việt cho Windows 11, phát triển từ engine
-[OpenKey](https://github.com/tuyenvm/OpenKey) và được viết lại phần ứng dụng
-để hợp với Windows hiện đại. Bạn tải một file `EasyKey.exe`, chạy, và gõ được
-ngay: Telex, VNI hay Simple Telex, bảng mã Unicode, bấm **Alt + Z** để chuyển
-Việt/Anh.
-
-EasyKey không thêm bàn phím vào Windows, nên thanh tác vụ không hiện ô
-ENG/VIE. Nó chạy ở khay hệ thống, không cần quyền Admin, không cần .NET hay
-thư viện cài thêm, và gỡ sạch bằng một nút.
-
-### Giao diện ứng dụng
-
-| Cửa sổ Cài đặt (chế độ sáng) | Cửa sổ Cài đặt (chế độ tối) |
-|:---:|:---:|
-| <img src="docs/screenshots/settings-light.png" width="390" alt="Cửa sổ Cài đặt, chế độ sáng"> | <img src="docs/screenshots/settings-dark.png" width="390" alt="Cửa sổ Cài đặt, chế độ tối"> |
-
-<p align="center">
-  <strong>Popup khi chuyển Việt/Anh</strong><br><br>
-  <img src="docs/screenshots/flyout.png" width="280" alt="Popup khi chuyển Việt/Anh">
-</p>
+> Mở lần đầu từ thư mục Tải về, EasyKey sẽ đề nghị chuyển sang
+> `%LOCALAPPDATA%\Programs\EasyKey` để không bị mất khi bạn dọn thư mục. Đang
+> dùng OpenKey? EasyKey tự chép cài đặt và bảng gõ tắt của bạn sang.
 
 ## Vì sao chọn EasyKey
 
-| Ưu thế | Ý nghĩa với bạn |
-|--------|-----------------|
-| **Một file, chưa tới 1 MB** | Không trình cài đặt, không DLL, không runtime. Chép đi đâu cũng chạy, bỏ vào USB cũng được. |
-| **Gõ Anh–Việt trong cùng một câu** | Chế độ Anh–Việt tự nhận ra từ tiếng Anh và trả lại phím gốc khi bạn gõ xong từ, kể cả từ trùng với chữ Việt như "this" (thí), "test" (tét). Không phải bấm chuyển chế độ giữa câu. |
-| **Gõ ổn định ở nơi bộ gõ hay lỗi** | Không lặp chữ ở thanh địa chỉ Chrome, Edge, Brave; tự gắn lại hook khi Windows gỡ mất (lỗi "chaats" ở Discord); chế độ game thông minh gắn kết theo cửa sổ để phím kỹ năng đi thẳng vào game. |
-| **Nhớ theo từng ứng dụng** | Mỗi ứng dụng giữ chế độ Việt/Anh và bảng mã riêng, kể cả ứng dụng Microsoft Store. Mở Word dùng TCVN3, quay lại Chrome vẫn là Unicode. |
-| **Giao diện Windows 11 thật sự** | Mica, sáng/tối theo Windows, màu nhấn tuỳ chọn, chữ DirectWrite sắc nét ở mọi mức phóng to, font Be Vietnam Pro nhúng sẵn. Giao diện tiếng Việt hoặc tiếng Anh. |
-| **Không ô ENG/VIE trên thanh tác vụ** | Windows vẫn chỉ có một bàn phím, nên không có ô ngôn ngữ chiếm chỗ hay nhảy lung tung. |
-| **Cập nhật & kiểm chứng an toàn** | Chỉ tải qua HTTPS từ trang phát hành của dự án, đối chiếu mã SHA-256 (`SHA256SUMS.txt`), luôn hỏi trước khi cài. Bản phát hành build công khai trên GitHub Actions kèm chứng thực nguồn gốc, hỗ trợ ký số Authenticode và đính kèm báo cáo quét mã độc minh bạch qua VirusTotal API v3. |
-| **Riêng tư** | Không tài khoản, không thu thập dữ liệu, không ghi lại phím bạn gõ. Kết nối duy nhất là kiểm tra bản mới trên GitHub. |
-| **Mã nguồn mở** | GPL v3. Engine gõ có bộ test chạy trên cả Windows và Linux mỗi lần đổi mã. |
+| | |
+|---|---|
+| 🪶 **Nhẹ và gọn** | Chỉ một file `EasyKey.exe`. Không trình cài đặt, không DLL, không .NET. Bỏ vào USB mang đi cũng chạy. |
+| 🔀 **Gõ Anh lẫn Việt thoải mái** | Chế độ Anh–Việt tự nhận ra từ tiếng Anh và trả lại đúng phím bạn gõ, kể cả từ dễ nhầm như "test" (tét) hay "this" (thí). Hết cảnh phải bấm chuyển giữa câu. |
+| 🎮 **Chơi game không lo bộ gõ** | Bật chế độ game là phím WASD, QWER đi thẳng vào game. Bấm Enter để chat tiếng Việt, Esc là về trận. |
+| 🧠 **Nhớ theo từng ứng dụng** | Mỗi ứng dụng giữ chế độ gõ và bảng mã riêng. Đang gõ code ở VS Code, chuyển sang Zalo vẫn là tiếng Việt. |
+| 🔒 **Riêng tư thật sự** | Không tài khoản, không quảng cáo, không thu thập dữ liệu, không ghi lại phím. Ô mật khẩu tự gõ phím thô. |
+| ✨ **Đẹp đúng chất Windows 11** | Nền Mica, sáng/tối theo Windows, chọn màu nhấn, chữ sắc nét ở mọi mức phóng to. Không có ô ENG/VIE chiếm chỗ trên thanh tác vụ. |
+| 🛡️ **Cập nhật an toàn** | Báo khi có bản mới, luôn hỏi trước khi cài, và chỉ cài file mang chữ ký số của EasyKey. |
 
 ## Tính năng
 
 ### Gõ tiếng Việt
 
-- **Kiểu gõ:** Telex, VNI, Simple Telex. Đổi bằng menu khay, trong Cài đặt,
-  hoặc bằng phím tắt (tuỳ chọn).
-- **Gõ thông minh:** chỉ bỏ dấu khi từ đúng chính tả tiếng Việt, gõ từ tiếng
-  Anh thì giữ nguyên phím. Bấm **Esc** ngay sau một từ để lấy lại phím vừa gõ
-  (việt → vieejt).
-- **Dấu kiểu mới** (hoà, thuý) hoặc kiểu cũ (hòa, thúy).
-- **Gõ tắt** không giới hạn độ dài, có sẵn vài từ thông dụng (ko → không,
-  dc → được, vs → với, mn → mọi người, ntn → như thế nào), tự viết hoa theo
-  từ gõ tắt, dùng được cả khi đang gõ tiếng Anh.
-- **Gõ nhanh** (tuỳ chọn): cc → ch, gg → gi, nn → ng; phụ âm đầu f → ph,
-  j → gi, w → qu; phụ âm cuối g → ng, h → nh, k → ch.
-- **Viết hoa chữ cái đầu câu**, kể cả sau dấu ? và ! và khi chuyển cửa sổ.
-- **Bảng mã:** Unicode. Bảng mã cũ (Unicode tổ hợp, TCVN3, VNI Windows) nằm
-  trong Nâng cao › Bảng mã, chỉ cần khi dùng font cũ.
-- **Công cụ chuyển mã** giữa các bảng mã, đổi hoa/thường, bỏ dấu, kèm phím
-  tắt chuyển mã nhanh nội dung clipboard.
+- **Telex, VNI và Simple Telex.** Đổi trong Cài đặt, menu khay, hoặc bằng phím tắt nếu bạn bật.
+- **Gõ thông minh:** chỉ bỏ dấu khi từ đúng chính tả tiếng Việt. Bỏ dấu nhầm? Bấm **Esc** ngay sau từ đó để lấy lại phím vừa gõ (việt → vieejt).
+- **Dấu kiểu mới** (hoà, thuý) hoặc kiểu cũ (hòa, thúy), tuỳ bạn.
+- **Gõ tắt** không giới hạn độ dài, có sẵn vài từ quen thuộc: ko → không, dc → được, vs → với, mn → mọi người, ntn → như thế nào. Gõ tắt tự viết hoa theo cách bạn gõ.
+- **Gõ nhanh** (tuỳ chọn): cc → ch, gg → gi, nn → ng; f → ph, j → gi, w → qu ở đầu từ; g → ng, h → nh, k → ch ở cuối từ.
+- **Tự viết hoa chữ cái đầu câu**, cả sau dấu ? và !.
+- **Công cụ chuyển mã** giữa các bảng mã, đổi hoa/thường và bỏ dấu, có phím tắt để chuyển nhanh nội dung clipboard.
+- **Bảng mã cũ** (Unicode tổ hợp, TCVN3, VNI Windows) vẫn có trong Nâng cao › Bảng mã cho ai cần dùng font cũ.
 
 ### Chế độ Anh–Việt
 
-Chế độ thứ ba bên cạnh Tiếng Việt và Tiếng Anh, dành cho người gõ lẫn hai thứ
-tiếng (lập trình, công việc, học tập):
+Dành cho người hay gõ lẫn hai thứ tiếng: lập trình, làm việc, học tập, chat.
 
-- Bạn gõ tiếng Việt như bình thường. Khi gõ xong một từ (dấu cách, dấu câu),
-  EasyKey xét xem từ đó là tiếng Anh hay tiếng Việt. Nếu là tiếng Anh, chữ đã
-  bỏ dấu được thay bằng đúng các phím bạn gõ.
-- Nhận ra cả những từ tiếng Anh trùng với chữ Việt khi gõ Telex: "this"
-  (thí), "test" (tét), "mix" (mĩ).
-- Xét theo ngữ cảnh: "tôi sẽ đi" vẫn là tiếng Việt, còn "There are" không
-  thành "Thể are".
-- Bật bằng nút **Anh–Việt** (badge EV) trong Cài đặt hoặc mục **Anh–Việt**
-  ở menu khay. **Alt + Z** hay bấm vào biểu tượng khay lần lượt
-  chuyển qua cả ba chế độ: Việt, Anh–Việt, Anh. Nếu muốn bàn phím chỉ xoay vòng giữa Tiếng Việt và Tiếng Anh (không dùng chế độ Anh–Việt), bạn có thể bật tuỳ chọn **Chỉ dùng 2 chế độ Anh và Việt** trong Cài đặt › Nâng cao › Gõ.
+Bạn cứ gõ tiếng Việt như bình thường. Mỗi khi gõ xong một từ, EasyKey xem từ
+đó là tiếng Anh hay tiếng Việt, dựa vào độ phổ biến của từ và các từ xung
+quanh. Nếu là tiếng Anh, chữ vừa bỏ dấu được trả lại đúng phím bạn đã gõ.
+
+- "tôi sẽ đi" vẫn là tiếng Việt, còn "There are" không thành "Thể are".
+- "chạy test" giữ chữ "test", nhưng "bánh tét" vẫn ra "tét".
+- Tên biến, email, `snake_case`, `camelCase` được giữ nguyên.
+- Nhầm một từ? Bấm **Esc** ngay sau từ đó.
+
+**Alt + Z** hay bấm vào biểu tượng khay sẽ lần lượt qua Tiếng Việt → Anh–Việt
+→ Tiếng Anh. Chỉ muốn hai chế độ quen thuộc? Bật **Chỉ dùng 2 chế độ Anh và
+Việt** trong Nâng cao › Gõ.
+
+### Chế độ game
+
+Bộ gõ tiếng Việt và game vốn không hợp nhau: phím W thành "ư", "gg" thành "gi".
+Chế độ game giải quyết chuyện đó.
+
+1. Mở game, rồi bấm phải vào biểu tượng khay › **Chế độ game**.
+2. Chọn game trong danh sách gợi ý (EasyKey tự tìm game đang chạy), hoặc
+   **Duyệt file .exe…** để chọn file của game.
+
+Từ đó, mỗi khi bạn ở trong game:
+
+- Phím điều khiển đi thẳng vào game, không qua bộ gõ.
+- Bấm **Enter** để mở chat và gõ tiếng Việt như thường. **Esc**, **Enter** hoặc
+  click chuột là quay lại trận ngay.
+- Lệnh bắt đầu bằng `/` như `/all`, `/ff` được giữ nguyên.
+- Alt+Tab ra ngoài rồi quay lại vẫn giữ nguyên chế độ game; các ứng dụng khác
+  không bị ảnh hưởng.
+
+Nếu game chạy với quyền Admin, hãy bật **Chạy với quyền Admin** cho EasyKey
+(Nâng cao › Hệ thống). Vài game bỏ qua phím giả lập; khi đó hãy chuyển sang
+tiếng Anh lúc chat.
 
 ### Theo từng ứng dụng
 
-- **Nhớ Việt/Anh và bảng mã cho từng ứng dụng.** Đổi cửa sổ là EasyKey đổi
-  theo, menu khay luôn đánh dấu đúng bảng mã của ứng dụng đang dùng. Ứng dụng
-  Microsoft Store được nhớ theo tên riêng của nó; ứng dụng không đọc được tên
-  thì giữ nguyên lựa chọn hiện tại thay vì ghi nhầm sang ứng dụng khác.
-- **Chế độ game (Window-Bound Game Mode):** tự động gợi ý Top 3 cửa sổ game đang chạy hoặc duyệt file `.exe`, gắn kết trực tiếp theo cửa sổ game (HWND + PID) để không ảnh hưởng ứng dụng khác khi Alt+Tab. Các phím điều khiển (WASD, QWER) đi thẳng vào game; chat game mặc định dùng phím thô (tránh biến `afk`, `gg`, `wp`, `how`, `as` thành dấu tiếng Việt), bấm Enter chuyển sang gõ tiếng Việt, bấm Esc hoặc click chuột để trở lại game ngay lập tức.
-- **Tự động bỏ qua ô mật khẩu (Password field bypass):** nhận diện các ô mật khẩu chuẩn trong ứng dụng Win32 và trình duyệt hiện đại (Chrome, Edge, Firefox, Electron), tự động chuyển sang gõ phím thô để tránh dấu tiếng Việt và gõ tắt. Hoạt động trên luồng nền bất đồng bộ, không làm chậm phím.
-- **Không lặp chữ** ở thanh địa chỉ Chrome, Edge, Brave và các ô có gợi ý tự
-  động.
-- **Ứng dụng quyền Admin:** EasyKey báo khi bạn mở một ứng dụng như vậy, và có
-  tuỳ chọn chạy với quyền Admin (qua Task Scheduler, không hỏi UAC mỗi lần đăng
-  nhập).
-- **Gửi chữ qua Clipboard** cho những ứng dụng nhận sai khi bỏ dấu.
+- **Nhớ chế độ gõ và bảng mã cho từng ứng dụng.** Chuyển cửa sổ là EasyKey đổi
+  theo, kể cả ứng dụng Microsoft Store.
+- **Ô mật khẩu tự gõ phím thô**, không bỏ dấu, không bung gõ tắt, trong ứng
+  dụng Windows lẫn Chrome, Edge, Firefox. EasyKey không đọc nội dung ô nhập.
+- **Không lặp chữ** ở thanh địa chỉ Chrome, Edge, Brave và các ô có gợi ý tự động.
+- **Ứng dụng quyền Admin** (Task Manager, trình cài đặt…): EasyKey nhắc bạn và
+  có tuỳ chọn chạy kèm quyền Admin mà không hỏi UAC mỗi lần đăng nhập.
+- **Gửi chữ qua Clipboard** cho số ít ứng dụng nhận sai khi bỏ dấu.
 
 ### Giao diện
 
-- Cửa sổ Cài đặt gọn: màn hình chính để chọn chế độ, phím tắt, kiểu gõ; phần
-  **Nâng cao** gồm các nhóm Gõ, Giao diện, Bảng mã, Chính tả, Gõ nhanh và gõ
-  tắt, Ứng dụng, Hệ thống, mỗi mục có một dòng giải thích.
-- Sáng, tối hoặc theo Windows; màu nhấn theo Windows, 7 màu có sẵn hoặc mã màu
-  tuỳ chọn (tự tạo màu cho chế độ tối, có kiểm tra độ tương phản).
-- Giao diện tiếng Việt hoặc tiếng Anh, tự chọn theo vùng của Windows.
-- Popup nhỏ khi chuyển Việt/Anh, đổi kiểu gõ hay bảng mã (không hiện khi đang
-  chơi game toàn màn hình). Tuỳ chọn kêu bíp khi chuyển.
-- Biểu tượng khay vẽ đúng cỡ pixel ở mọi mức phóng to: phím màu nhấn chữ **V** khi
-  gõ tiếng Việt, **EV** khi gõ Anh–Việt, ô trung tính chữ **E** khi gõ tiếng
-  Anh, mũi tên xanh lá phát sáng khi có bản mới.
+- Màn hình chính chỉ có những gì bạn hay dùng: chế độ gõ, phím chuyển, kiểu
+  gõ. Mọi thứ khác nằm gọn trong **Nâng cao**, mỗi mục có một dòng giải thích.
+- Sáng, tối hoặc theo Windows. Màu nhấn theo Windows, 7 màu có sẵn hoặc màu
+  bạn tự chọn.
+- Giao diện tiếng Việt hoặc tiếng Anh.
+- Popup nhỏ khi chuyển chế độ (tự ẩn khi bạn chơi game toàn màn hình), kèm
+  tuỳ chọn kêu bíp.
+- Biểu tượng khay cho biết bạn đang gõ gì: **V** là tiếng Việt, **EV** là
+  Anh–Việt, **E** là tiếng Anh. Mũi tên xanh lá nghĩa là có bản mới.
 
-### Ứng dụng
+<p align="center">
+  <img src="docs/screenshots/settings-dark.png" width="420" alt="Cửa sổ Cài đặt, chế độ tối">
+  &nbsp;
+  <img src="docs/screenshots/flyout.png" width="240" alt="Popup khi chuyển chế độ">
+</p>
 
-- **Tự cập nhật** ngay trong ứng dụng, luôn hỏi trước, kiểm tra SHA-256.
-- **Tự gắn lại hook** khi Windows gỡ mất, nhận ra ngay ở phím kế tiếp.
-- Cảnh báo khi UniKey, EVKey, OpenKey… đang chạy cùng lúc.
-- Lần đầu chạy từ thư mục Tải về, đề nghị chuyển sang thư mục cố định.
-- Đã dùng OpenKey? Lần đầu chạy, EasyKey tự chép cài đặt và bảng gõ tắt sang.
+### Luôn chạy ổn định
 
-## Yêu cầu hệ thống
+- **Tự gắn lại** khi Windows lỡ ngắt bộ gõ (lỗi gõ ra "chaats" quen thuộc ở Discord).
+- **Nhắc bạn** khi UniKey, EVKey, OpenKey… đang chạy cùng lúc, vì hai bộ gõ sẽ bỏ dấu hai lần.
 
-| | |
-|---|---|
-| Hệ điều hành | Windows 11, bản 64-bit (x64). |
-| Quyền | Không cần quyền Admin. |
-| Phần mềm kèm theo | Không cần .NET, Visual C++ Redistributable hay thư viện nào khác. |
-| Bộ gõ khác | Nên tắt UniKey, EVKey, OpenKey… vì hai bộ gõ chạy cùng lúc sẽ bỏ dấu hai lần. |
-
-## Cài đặt
-
-1. Tải [`EasyKey.exe`](https://github.com/iamcino/EasyKey/releases/latest/download/EasyKey.exe)
-   (hoặc file zip ở [trang phát hành](https://github.com/iamcino/EasyKey/releases/latest)).
-2. Chạy file vừa tải. Nếu Windows hiện cảnh báo, xem
-   [Cảnh báo của Windows](#cảnh-báo-của-windows).
-3. Lần đầu chạy từ thư mục Tải về, EasyKey đề nghị chuyển sang
-   `%LOCALAPPDATA%\Programs\EasyKey` để không bị mất khi dọn thư mục. Bấm
-   **Chuyển** là xong.
-
-Mặc định: kiểu gõ Telex, bảng mã Unicode, chạy cùng Windows, **Alt + Z** để
-chuyển Việt/Anh.
-
-### Cập nhật
-
-EasyKey kiểm tra bản mới khi khởi động và 6 giờ một lần (tắt ở Nâng cao › Hệ
-thống). Khi có bản mới, biểu tượng khay có mũi tên xanh lá, menu khay hiện
-**Cập nhật lên …** và cuối cửa sổ Cài đặt có dòng báo. Không có gì được cài cho
-tới khi bạn đồng ý. Lúc đó EasyKey tải `EasyKey.exe` mới từ trang phát hành,
-đối chiếu mã SHA-256, thay file đang chạy rồi khởi động lại. Bấm phải › **Kiểm
-tra cập nhật…** để kiểm tra ngay.
-
-## Bắt đầu sử dụng
-
-1. Chạy EasyKey. Biểu tượng xuất hiện ở khay hệ thống (góc phải thanh tác vụ).
-2. Gõ thử trong bất kỳ ứng dụng nào. Bấm **Alt + Z** để chuyển Việt/Anh.
-3. Hay gõ lẫn tiếng Anh? Bấm phải vào biểu tượng › **Anh–Việt**.
-4. Bấm đúp vào biểu tượng để mở Cài đặt và chọn kiểu gõ, màu, phím tắt.
+## Mẹo nhanh
 
 | Muốn làm gì | Cách làm |
 |---|---|
-| Chuyển Việt → Anh–Việt → Anh | Bấm **Alt + Z**, hoặc bấm vào biểu tượng ở khay |
-| Gõ lẫn tiếng Anh trong câu tiếng Việt | Bấm phải vào biểu tượng ở khay › Anh–Việt, hoặc chọn Anh–Việt trong Cài đặt |
-| Mở Cài đặt | Bấm đúp vào biểu tượng ở khay, hoặc bấm phải › Cài đặt… |
-| Đổi kiểu gõ, bảng mã | Bấm phải vào biểu tượng ở khay › Kiểu gõ / Bảng mã, hoặc trong Cài đặt |
-| Lấy lại phím vừa gõ khi bị bỏ dấu nhầm | Bấm **Esc** ngay sau từ đó (việt → vieejt) |
-| Bật chế độ game cho game đang chơi | Bấm phải vào biểu tượng ở khay › Chế độ game › chọn từ Top 3 gợi ý hoặc duyệt file .exe |
-| Đổi phím tắt chuyển Việt/Anh | Cài đặt › Phím chuyển › Đổi |
-| Sửa bảng gõ tắt | Cài đặt › Nâng cao › Gõ › Bảng gõ tắt |
+| Đổi Việt → Anh–Việt → Anh | **Alt + Z**, hoặc bấm vào biểu tượng khay |
+| Mở Cài đặt | Bấm đúp vào biểu tượng khay |
+| Lấy lại phím khi bị bỏ dấu nhầm | **Esc** ngay sau từ đó |
+| Đổi kiểu gõ, bảng mã | Bấm phải vào biểu tượng khay › Kiểu gõ / Bảng mã |
+| Bật chế độ game | Bấm phải vào biểu tượng khay › Chế độ game |
+| Đổi phím chuyển | Cài đặt › Phím chuyển › Đổi |
+| Thêm gõ tắt | Bấm phải vào biểu tượng khay › Bảng gõ tắt… |
 
-## Cách hoạt động
+## Cập nhật
 
-```
- Bàn phím
-    │
-    ▼
- Hook bàn phím cấp thấp ──► Engine (Telex / VNI / Simple Telex, chính tả, Anh–Việt)
-    │                              │
-    │                              ▼
-    │                     số ký tự cần xoá + chữ mới
-    │                              │
-    ▼                              ▼
- Ứng dụng đang gõ ◄──── Backspace + ký tự Unicode (hoặc qua clipboard)
-```
+EasyKey tự kiểm tra bản mới khi khởi động và 6 giờ một lần. Khi có bản mới,
+biểu tượng khay hiện mũi tên xanh lá và menu khay có mục **Cập nhật lên …**.
+Không có gì được cài cho tới khi bạn đồng ý. Khi bạn bấm cập nhật, EasyKey tải
+bản mới từ trang phát hành của dự án, kiểm tra mã SHA-256 và chữ ký số, rồi
+tự khởi động lại.
 
-EasyKey để phím đi vào ứng dụng như bình thường. Khi cần thêm dấu, nó xoá chữ
-cũ và gửi chữ mới. Vì không đăng ký bàn phím với Windows nên không có ô
-ENG/VIE. Khi bạn đổi cửa sổ, EasyKey đọc lại chế độ và bảng mã đã nhớ cho ứng
-dụng đó. Chi tiết trong [tài liệu thiết kế](docs/DESIGN.md).
+Muốn kiểm tra ngay: bấm phải vào biểu tượng khay › **Kiểm tra cập nhật…**.
+Không muốn tự kiểm tra: tắt ở Nâng cao › Hệ thống.
 
-| Thư mục | Vai trò |
-|---------|---------|
-| `Sources/EasyKey/engine` | Engine gõ tiếng Việt, C++ thuần, không gọi Windows API |
-| `Sources/EasyKey/tests` | Test engine (CMake, chạy trên Windows và Linux) |
-| `Sources/EasyKey/win32` | Ứng dụng Windows: hook, giao diện, cài đặt, cập nhật |
-| `tools` | Script tạo biểu tượng, font và danh sách từ Anh–Việt |
+## Câu hỏi thường gặp
 
-## Quyền riêng tư
-
-EasyKey không có tài khoản, không thu thập dữ liệu sử dụng, không quảng cáo và
-không ghi lại phím bạn gõ. Cài đặt nằm trong `HKCU\Software\EasyKey` trên máy
-bạn. Kết nối duy nhất EasyKey tự tạo là tới GitHub để kiểm tra và tải bản mới
-(tắt được). Xem [PRIVACY.md](PRIVACY.md).
-
-## Gỡ cài đặt
-
-Vào Cài đặt › Nâng cao › Hệ thống › **Gỡ EasyKey khỏi Windows**. EasyKey xoá
-mục chạy cùng Windows, tác vụ Task Scheduler (nếu có), lối tắt trên màn hình
-nền, cài đặt và bảng gõ tắt rồi thoát. Sau đó xoá file `EasyKey.exe`. EasyKey
-không ghi gì vào thư mục hệ thống.
-
-## Build từ mã nguồn
-
-Cần Visual Studio 2022 với workload **Desktop development with C++**:
-
-```powershell
-msbuild Sources\EasyKey\win32\EasyKey\EasyKey.sln -p:Configuration=Release -p:Platform=x64
-# Sources\EasyKey\win32\EasyKey\x64\Release\EasyKey.exe
-```
-
-Test engine chạy được trên cả Windows và Linux:
-
-```bash
-cmake -S Sources/EasyKey/tests -B build
-cmake --build build --config Release
-ctest --test-dir build -C Release
-```
-
-Hướng dẫn đầy đủ, kể cả build trên GitHub không cần cài gì, ở
-[docs/BUILD.md](docs/BUILD.md). Mọi đóng góp đều được hoan nghênh; vui lòng
-đọc [CONTRIBUTING.md](CONTRIBUTING.md).
-
-## Câu hỏi thường gặp và xử lý sự cố
-
-**EasyKey khác OpenKey thế nào?**
-EasyKey giữ engine gõ của OpenKey và viết lại gần như toàn bộ phần ứng dụng
-Windows: giao diện mới, chế độ Anh–Việt, chế độ game, tự cập nhật, gắn lại
-hook, sửa lỗi ở trình duyệt và nhiều lỗi khác. Xem [nhật ký thay
-đổi](CHANGELOG.md).
+**Cần Windows nào?**
+Windows 11 bản 64-bit. Không cần quyền Admin, .NET hay Visual C++ Redistributable.
 
 **Có cần gỡ UniKey hay EVKey không?**
-Không cần gỡ, chỉ cần tắt. Hai bộ gõ chạy cùng lúc sẽ bỏ dấu hai lần. EasyKey
-nhắc khi thấy bộ gõ khác đang chạy.
+Không cần gỡ, chỉ cần tắt chúng đi khi dùng EasyKey.
 
 **EasyKey có gửi phím tôi gõ đi đâu không?**
-Không. Phím chỉ được xử lý trong máy. EasyKey không ghi phím ra file, trừ khi
-bạn tự bật nhật ký phím để báo lỗi (xem [Gõ ra chữ sai](#gõ-ra-chữ-sai)).
+Không. Phím chỉ được xử lý ngay trên máy bạn và không được ghi ra đâu cả. Kết
+nối duy nhất EasyKey tự tạo là kiểm tra bản mới trên GitHub. Xem
+[chính sách quyền riêng tư](PRIVACY.md).
 
-**Có bản cho macOS, Linux hay ARM64 không?**
-Chưa. EasyKey hiện chỉ tập trung cho Windows 11 x64 cho tới khi thật ổn định.
+**EasyKey khác OpenKey thế nào?**
+EasyKey giữ bộ máy gõ của OpenKey và viết lại gần như toàn bộ phần còn lại:
+giao diện, chế độ Anh–Việt, chế độ game, tự cập nhật, cùng nhiều bản sửa lỗi
+ở trình duyệt và ứng dụng hiện đại.
 
-### Xác thực nguồn gốc và kiểm tra mã độc
+**Vì sao có cả GitHub và GitLab?**
+Mỗi bản phát hành được đăng ở cả hai nơi, cùng những file đã ký số như nhau. Nếu một nơi không vào được, bạn tải ở nơi còn lại. Mã nguồn cũng có ở cả [GitHub](https://github.com/iamcino/EasyKey) và [GitLab](https://gitlab.com/cino-group/easykey).
 
-Mỗi bản phát hành của EasyKey được build công khai trên GitHub Actions kèm chứng thực nguồn gốc (build provenance attestation), hỗ trợ ký số Authenticode và được kiểm tra mã độc độc lập qua VirusTotal API v3:
+**Có bản cho macOS, Linux hay máy ARM không?**
+Chưa. EasyKey đang tập trung làm thật tốt trên Windows 11 x64 trước.
 
-- **Báo cáo VirusTotal:** Mỗi bản phát hành đi kèm file `virustotal-<phiên bản>.json` chứa liên kết đối chiếu trực tiếp trên VirusTotal và kết quả phân tích từ hơn 70 engine diệt virus.
-- **Mã kiểm tra toàn vẹn:** Đi kèm file `SHA256SUMS.txt` và `<file>.sha256` để kiểm tra mã băm trước khi chạy.
-- **Chứng thực nguồn gốc:** Kiểm tra bằng [GitHub CLI](https://cli.github.com):
-  ```
-  gh attestation verify EasyKey<phiên bản>-Windows.zip --repo iamcino/EasyKey
-  ```
-- **Cảnh báo SmartScreen:** Nếu Windows hiện "Windows protected your PC", bấm **More info** › **Run anyway**. Bộ gõ sử dụng hook bàn phím mức thấp để bắt phím và bỏ dấu nên có thể bị các phần mềm bảo mật cảnh báo nhận nhầm (false positive). Bạn có thể kiểm tra chữ ký hoặc đối chiếu mã băm với bản quét VirusTotal đi kèm.
+**Gỡ EasyKey thế nào?**
+Cài đặt › Nâng cao › Hệ thống › **Gỡ EasyKey khỏi Windows**. EasyKey xoá mục
+chạy cùng Windows, lối tắt và toàn bộ cài đặt của nó rồi thoát. Sau đó bạn
+chỉ cần xoá file `EasyKey.exe`.
+
+## Xử lý sự cố
+
+### Cảnh báo của Windows
+
+Bản phát hành của EasyKey được ký số, nhưng bằng chứng chỉ tự cấp của dự án
+chứ chưa phải chứng chỉ thương mại. Vì vậy lần đầu mở, Windows có thể hiện
+"Windows protected your PC" hoặc "Unknown publisher". Bấm **More info** ›
+**Run anyway** là được.
+
+Một số phần mềm diệt virus cũng có thể nghi ngờ nhầm, vì bộ gõ nào cũng phải
+đọc phím bấm để bỏ dấu. Nếu muốn chắc chắn file bạn tải là bản thật:
+
+- **Chỉ tải** từ trang phát hành chính thức trên [GitHub](https://github.com/iamcino/EasyKey/releases) hoặc [GitLab](https://gitlab.com/cino-group/easykey/-/releases).
+- **Kiểm tra chữ ký:** mở PowerShell trong thư mục chứa file và chạy
+  `(Get-AuthenticodeSignature .\EasyKey.exe).SignerCertificate.Thumbprint`.
+  Kết quả phải là `073FF7FEF09B3E51C8863CA5B2168A79D396976A`.
+- **Xem báo cáo quét virus:** mỗi bản phát hành kèm file `virustotal-<phiên bản>.json`
+  có đường dẫn tới kết quả quét trên VirusTotal.
+
+Chi tiết hơn (mã SHA-256, chứng thực nguồn gốc bản build) ở
+[SECURITY.md](SECURITY.md#kiểm-tra-bản-tải-về).
 
 ### Kiểm tra chính tả tiếng Việt
 
-Chữ tiếng Việt bị gạch đỏ là do trình kiểm tra chính tả của ứng dụng đang dò
-theo tiếng Anh, không phải lỗi của EasyKey:
+Chữ tiếng Việt bị gạch đỏ là do ứng dụng đang soát chính tả theo tiếng Anh,
+không phải lỗi của EasyKey. Cách tắt:
 
-- **Chrome, Edge, Cốc Cốc:** Cài đặt › Ngôn ngữ (Languages), thêm Tiếng Việt
-  và bật kiểm tra chính tả cho Tiếng Việt, hoặc tắt kiểm tra chính tả tiếng
-  Anh.
+- **Chrome, Edge, Cốc Cốc:** Cài đặt › Ngôn ngữ, thêm Tiếng Việt và bật kiểm
+  tra chính tả cho Tiếng Việt, hoặc tắt kiểm tra chính tả tiếng Anh.
 - **Word, Outlook, PowerPoint:** chọn đoạn văn, Review › Language › Set
-  Proofing Language › Vietnamese (hoặc tích "Do not check spelling or
-  grammar").
+  Proofing Language › Vietnamese (hoặc tích "Do not check spelling or grammar").
 - **Notepad:** Cài đặt (bánh răng) › tắt Spell check.
 
-Thêm tiếng Việt trong Cài đặt Windows › Ngôn ngữ cũng hết gạch đỏ, nhưng làm
+Thêm tiếng Việt trong Cài đặt Windows › Ngôn ngữ cũng hết gạch đỏ, nhưng sẽ làm
 hiện lại ô ENG/VIE trên thanh tác vụ, nên không khuyên dùng.
 
 ### Không gõ được tiếng Việt trong một ứng dụng
 
-- **Ứng dụng chạy quyền Admin** (Task Manager, trình cài đặt…): Windows không
-  cho ứng dụng thường gửi phím vào đó. Bật Nâng cao › Hệ thống › **Chạy với
-  quyền Admin**.
-- **Ứng dụng nhận sai chữ khi bỏ dấu** (mất chữ, thừa chữ): thử bật Nâng cao ›
-  Ứng dụng › **Gửi chữ qua Clipboard**. Cách này thay nội dung clipboard mỗi lần
-  bỏ dấu, nên chỉ bật khi cần.
-- **Game:** bật chế độ game cho game đó (xem
-  [Bắt đầu sử dụng](#bắt-đầu-sử-dụng)).
-- **Từ tiếng Việt bị trả về phím tiếng Anh** (hoặc ngược lại) trong chế độ
-  Anh–Việt: bấm **Esc** ngay sau từ đó, hoặc chuyển về chế độ Tiếng Việt cho
-  đoạn văn thuần Việt. Hãy [báo lỗi](https://github.com/iamcino/EasyKey/issues)
-  kèm câu đã gõ để danh sách từ được chỉnh.
+- **Ứng dụng chạy quyền Admin:** Windows không cho ứng dụng thường gửi phím vào
+  đó. Bật Nâng cao › Hệ thống › **Chạy với quyền Admin**.
+- **Mất chữ hoặc thừa chữ khi bỏ dấu:** thử bật Nâng cao › Ứng dụng › **Gửi
+  chữ qua Clipboard**. Cách này thay nội dung clipboard mỗi lần bỏ dấu, nên chỉ
+  bật khi cần.
+- **Trong game:** bật [chế độ game](#chế-độ-game).
+- **Chế độ Anh–Việt đoán sai một từ:** bấm **Esc** ngay sau từ đó, rồi
+  [báo cho mình biết](https://github.com/iamcino/EasyKey/issues) câu bạn đã gõ
+  để EasyKey đoán đúng hơn.
 
 ### Gõ ra chữ sai
 
-Nếu gặp chữ sai lặp lại (phím thô như "chaats", chữ hoa lẫn lộn…), bạn có thể
-ghi nhật ký phím để gửi kèm báo lỗi:
+Nếu chữ sai cứ lặp lại (ra phím thô như "chaats", chữ hoa lẫn lộn…), bạn có
+thể bật nhật ký phím để gửi kèm báo lỗi:
 
 1. Mở PowerShell và chạy
    `reg add HKCU\Software\EasyKey /v vDebugKeyLog /t REG_DWORD /d 1 /f`.
-2. Thoát EasyKey (bấm phải vào biểu tượng ở khay › Thoát EasyKey) rồi mở lại.
-3. Gõ lại cho tới khi lỗi xảy ra. Nhật ký nằm ở `%TEMP%\EasyKeyKeyLog.txt`.
-4. Tắt lại bằng `reg delete HKCU\Software\EasyKey /v vDebugKeyLog /f` và mở
+2. Thoát EasyKey (bấm phải vào biểu tượng khay › Thoát EasyKey) rồi mở lại.
+3. Gõ cho tới khi lỗi xảy ra. Nhật ký nằm ở `%TEMP%\EasyKeyKeyLog.txt`.
+4. Tắt lại bằng `reg delete HKCU\Software\EasyKey /v vDebugKeyLog /f` rồi mở
    lại EasyKey.
 
-Nhật ký ghi mã phím bạn bấm, nên chỉ bật khi cần, đừng gõ mật khẩu trong lúc
-bật, và xem lại trước khi gửi.
+Nhật ký ghi lại phím bạn bấm, nên đừng gõ mật khẩu trong lúc bật và hãy xem lại
+trước khi gửi.
 
-## Miễn trừ trách nhiệm
+## Dành cho lập trình viên
 
-EasyKey là phần mềm miễn phí, được cung cấp **"nguyên trạng", không kèm bất kỳ
-bảo đảm nào**, theo giấy phép GPL v3. Tóm tắt:
+EasyKey viết bằng C++ và Win32. Nó không đăng ký bàn phím với Windows mà dùng
+hook bàn phím cấp thấp: khi cần thêm dấu, EasyKey xoá chữ vừa gõ và gửi lại chữ
+có dấu. Nhờ vậy không có ô ENG/VIE trên thanh tác vụ.
 
-- EasyKey đọc phím bấm qua hook bàn phím của Windows để bỏ dấu; phím chỉ được
-  xử lý trên máy bạn.
-- Bạn tự chịu trách nhiệm dùng EasyKey đúng pháp luật và quy định nơi bạn làm
-  việc, học tập hay phần mềm bạn dùng (ví dụ quy định của game).
-- Tác giả không chịu trách nhiệm về mất dữ liệu, chữ gõ sai hay thiệt hại khác
-  khi dùng EasyKey.
-- `EasyKey.exe` chưa có chữ ký số. Chỉ tải từ
-  [trang phát hành chính thức](https://github.com/iamcino/EasyKey/releases).
-- EasyKey là dự án độc lập, không liên kết với Microsoft hay các bộ gõ khác,
-  và không do tác giả OpenKey phát hành.
-
-Toàn văn ở [DISCLAIMER.md](DISCLAIMER.md). Nếu không đồng ý, vui lòng không
-sử dụng EasyKey.
+- [Tài liệu thiết kế](docs/DESIGN.md): đường đi của một phím, engine, giao diện, cập nhật.
+- [Tự build EasyKey](docs/BUILD.md): bằng Visual Studio 2022, hoặc ngay trên GitHub không cần cài gì.
+- [Hướng dẫn đóng góp](CONTRIBUTING.md): báo lỗi, gửi pull request.
 
 ## Giấy phép và ghi công
 
-Copyright (C) 2026 Cino. Liên hệ: duongtheson@proton.me
+Copyright (C) 2026 Cino · duongtheson@proton.me
 
-EasyKey phát hành theo [GNU GPL phiên bản 3](LICENSE), phát triển từ
-[OpenKey](https://github.com/tuyenvm/OpenKey) của Mai Vũ Tuyên (Copyright (C)
-2019, GPLv3). Một số file EasyKey viết mới hoàn toàn được cấp thêm giấy phép
-[MIT](LICENSES/MIT.txt). Thành phần bên thứ ba:
+EasyKey là phần mềm miễn phí, mã nguồn mở theo [GNU GPL phiên bản 3](LICENSE),
+phát triển từ [OpenKey](https://github.com/tuyenvm/OpenKey) của Mai Vũ Tuyên
+(Copyright (C) 2019, GPLv3). Cảm ơn anh Tuyên đã mở mã OpenKey cho cộng đồng.
+Một số file EasyKey viết mới được cấp thêm giấy phép [MIT](LICENSES/MIT.txt).
 
 - Font giao diện **Be Vietnam Pro**: [SIL OFL 1.1](LICENSES/OFL-1.1.txt).
-- Danh sách từ của chế độ Anh–Việt lấy từ dữ liệu
-  [wordfreq](https://github.com/rspeer/wordfreq): CC BY-SA 4.0.
+- Danh sách từ của chế độ Anh–Việt dựa trên dữ liệu [wordfreq](https://github.com/rspeer/wordfreq): CC BY-SA 4.0.
 
-Chi tiết trong [NOTICE](NOTICE). Báo lỗi bảo mật theo [SECURITY.md](SECURITY.md). Các thay đổi được ghi trong
-[nhật ký thay đổi](CHANGELOG.md).
+EasyKey được cung cấp "nguyên trạng", không kèm bảo đảm nào, và là dự án độc
+lập, không liên kết với Microsoft hay tác giả OpenKey. Xem
+[miễn trừ trách nhiệm](DISCLAIMER.md), [NOTICE](NOTICE) và
+[chính sách bảo mật](SECURITY.md).

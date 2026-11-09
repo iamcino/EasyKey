@@ -2,7 +2,7 @@
 
 **Tiếng Việt** · [English](#english)
 
-_Cập nhật lần cuối: 30/10/2026_
+_Cập nhật lần cuối: 08/11/2026_
 
 EasyKey không thu thập, lưu trữ hay gửi bất kỳ dữ liệu cá nhân nào cho tác giả.
 Không có tài khoản, không thu thập dữ liệu sử dụng, không phân tích, không báo
@@ -15,12 +15,20 @@ phím của từ đang gõ (và từ ngay trước đó, cho chế độ Anh–V
 dấu gì, rồi bỏ đi. Phím không bao giờ được gửi qua mạng và không được ghi ra
 file, trừ khi bạn tự bật nhật ký phím để báo lỗi (xem bên dưới).
 
+**Ô mật khẩu.** Để gõ phím thô trong ô mật khẩu, EasyKey hỏi Windows xem ô đang
+có con trỏ có phải ô mật khẩu không. EasyKey chỉ đọc loại ô đó, không bao giờ
+đọc nội dung bạn nhập, và không ghi kết quả xuống ổ đĩa.
+
+**Chế độ game.** Khi bạn mở menu chế độ game, EasyKey xem các cửa sổ đang mở để
+gợi ý game. Tiêu đề cửa sổ chỉ nằm trong bộ nhớ lúc menu mở; EasyKey chỉ lưu
+tên file của game bạn chọn (ví dụ `game.exe`).
+
 ## Dữ liệu nằm trên máy bạn
 
 | Mục | Vị trí |
 |-----|--------|
 | Cài đặt, bảng gõ tắt, danh sách game | `HKCU\Software\EasyKey` |
-| Chế độ Việt/Anh và bảng mã nhớ theo ứng dụng (tên file exe, ví dụ `chrome.exe`) | `HKCU\Software\EasyKey` |
+| Chế độ gõ (Việt, Anh–Việt, Anh) và bảng mã nhớ theo ứng dụng (tên file exe, ví dụ `chrome.exe`) | `HKCU\Software\EasyKey` |
 | Chạy cùng Windows (nếu bật) | Giá trị `EasyKey` trong `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`, hoặc tác vụ `EasyKey` trong Task Scheduler khi bật chạy quyền Admin |
 | Lối tắt trên màn hình nền (nếu bật) | `EasyKey.lnk` trên Desktop |
 | Nhật ký phím (chỉ khi bạn tự bật `vDebugKeyLog`) | `%TEMP%\EasyKeyKeyLog.txt` |
@@ -35,7 +43,8 @@ mục trên, trừ nhật ký phím bạn tự bật.
   `raw.githubusercontent.com` để biết số phiên bản mới nhất. Không gửi kèm gì
   ngoài yêu cầu tải file đó.
 - **Cập nhật** (chỉ khi bạn đồng ý): tải `EasyKey.exe` và `EasyKey.exe.sha256`
-  từ trang phát hành của dự án trên `github.com`.
+  từ trang phát hành của dự án trên `github.com`, rồi kiểm tra chữ ký số ngay
+  trên máy bạn.
 - **Liên kết** trong cửa sổ Giới thiệu và Cài đặt chỉ mở trình duyệt khi bạn
   bấm vào.
 
@@ -47,7 +56,7 @@ EasyKey không tạo kết nối nào khác.
 
 ## English
 
-_Last updated: 30 October 2026_
+_Last updated: 8 November 2026_
 
 EasyKey does not collect, store or send any personal data to its authors.
 There is no account, telemetry, analytics, crash reporting or advertising.
@@ -60,12 +69,20 @@ memory, to know which marks to add, and then drops them. Keys are never sent
 over the network and never written to a file, unless you turn on the key log
 for a bug report yourself (see below).
 
+**Password fields.** To send plain keys in password fields, EasyKey asks
+Windows whether the field with the cursor is a password field. It reads only
+the kind of field, never what you type in it, and never saves the result to disk.
+
+**Game mode.** When you open the game mode menu, EasyKey looks at open windows
+to suggest games. Window titles stay in memory only while the menu is open;
+EasyKey stores just the file name of the game you pick (such as `game.exe`).
+
 ### What stays on your computer
 
 | Item | Location |
 |------|----------|
 | Settings, shortcut list, game list | `HKCU\Software\EasyKey` |
-| Vietnamese/English mode and encoding remembered per app (exe file name, such as `chrome.exe`) | `HKCU\Software\EasyKey` |
+| Typing mode (Vietnamese, Mixed, English) and encoding remembered per app (exe file name, such as `chrome.exe`) | `HKCU\Software\EasyKey` |
 | Start with Windows (if on) | Value `EasyKey` under `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`, or Task Scheduler task `EasyKey` when running as administrator |
 | Desktop shortcut (if on) | `EasyKey.lnk` on the desktop |
 | Key log (only when you set `vDebugKeyLog` yourself) | `%TEMP%\EasyKeyKeyLog.txt` |
@@ -80,7 +97,8 @@ these, except a key log you turned on yourself.
   `raw.githubusercontent.com` to learn the latest version number. Nothing is
   sent besides the request for that file.
 - **Update** (only when you agree): downloads `EasyKey.exe` and
-  `EasyKey.exe.sha256` from the project's releases on `github.com`.
+  `EasyKey.exe.sha256` from the project's releases on `github.com`, then checks
+  the digital signature on your computer.
 - **Links** in the About and Settings windows open your browser only when you
   click them.
 
