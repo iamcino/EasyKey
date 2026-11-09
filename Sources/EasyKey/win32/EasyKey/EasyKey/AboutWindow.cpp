@@ -20,7 +20,7 @@ See LICENSE and NOTICE.
 #define WINDOW_WIDTH 400
 
 enum {
-	ID_HOME = 1, ID_RELEASES, ID_OPENKEY, ID_UPDATE
+	ID_HOME = 1, ID_GITLAB, ID_RELEASES, ID_RELEASES_GITLAB, ID_OPENKEY, ID_UPDATE
 };
 
 AboutWindow::AboutWindow(const HINSTANCE& hInstance) : FluentWindow(hInstance) {
@@ -49,20 +49,28 @@ void AboutWindow::layout() {
 	addText(TR("Phiên bản ", "Version ") + EasyKeyHelper::getVersionString(), makeRect(x, y + s(54), textW, s(18)), fontCaption, pal.sub);
 	y += s(84);
 
-	//links, one row each
+	//links, one row each; the Releases row also gets a second link for GitLab
 	struct { int id; LPCTSTR label; LPCTSTR link; } rows[] = {
 		{ ID_HOME, TR("Trang chủ", "Home page"), _T("github.com/iamcino/EasyKey") },
-		{ ID_RELEASES, TR("Các phiên bản", "Releases"), TR("Xem trên GitHub", "See on GitHub") },
+		{ ID_GITLAB, L"GitLab", _T("gitlab.com/cino-group/easykey") },
+		{ ID_RELEASES, TR("Các phiên bản", "Releases"), L"GitHub" },
 		{ ID_OPENKEY, TR("Dựa trên", "Based on"), TR("OpenKey của Mai Vũ Tuyên (GPLv3)", "OpenKey by Mai Vũ Tuyên (GPLv3)") },
 	};
+	const int rowCount = sizeof(rows) / sizeof(rows[0]);
 	int rowH = s(44), left = pad, right = width - pad;
-	addCard(makeRect(left, y, right - left, rowH * 3));
-	for (int i = 0; i < 3; i++) {
+	addCard(makeRect(left, y, right - left, rowH * rowCount));
+	for (int i = 0; i < rowCount; i++) {
 		if (i > 0)
 			addDivider(left + 1, right - 1, y);
 		addText(rows[i].label, makeRect(left + s(14), y, s(120), rowH), fontBody);
+		int linkRight = right - s(14);
+		if (rows[i].id == ID_RELEASES) {
+			int gitlabW = textWidth(fontSmall, L"GitLab");
+			addLink(ID_RELEASES_GITLAB, L"GitLab", linkRight - gitlabW, y + s(10), rowH - s(20));
+			linkRight -= gitlabW + s(20);
+		}
 		int linkW = textWidth(fontSmall, rows[i].link);
-		addLink(rows[i].id, rows[i].link, right - s(14) - linkW, y + s(10), rowH - s(20));
+		addLink(rows[i].id, rows[i].link, linkRight - linkW, y + s(10), rowH - s(20));
 		y += rowH;
 	}
 	y += s(16);
@@ -79,8 +87,14 @@ void AboutWindow::onActivate(const int& id) {
 	case ID_HOME:
 		ShellExecute(NULL, _T("open"), _T("https://github.com/iamcino/EasyKey"), NULL, NULL, SW_SHOWNORMAL);
 		break;
+	case ID_GITLAB:
+		ShellExecute(NULL, _T("open"), _T("https://gitlab.com/cino-group/easykey"), NULL, NULL, SW_SHOWNORMAL);
+		break;
 	case ID_RELEASES:
 		ShellExecute(NULL, _T("open"), _T("https://github.com/iamcino/EasyKey/releases"), NULL, NULL, SW_SHOWNORMAL);
+		break;
+	case ID_RELEASES_GITLAB:
+		ShellExecute(NULL, _T("open"), _T("https://gitlab.com/cino-group/easykey/-/releases"), NULL, NULL, SW_SHOWNORMAL);
 		break;
 	case ID_OPENKEY:
 		ShellExecute(NULL, _T("open"), _T("https://github.com/tuyenvm/OpenKey"), NULL, NULL, SW_SHOWNORMAL);
