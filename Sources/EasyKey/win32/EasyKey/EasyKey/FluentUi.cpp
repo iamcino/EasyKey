@@ -125,6 +125,62 @@ void drawChevron(Gdiplus::Graphics& g, const DWORD& color, const float& cx, cons
 	g.DrawLines(&pen, points, 3);
 }
 
+//github mark from Simple Icons (CC0), 24 x 24: per figure the bezier count, the start point, then 3 points per bezier
+static const float githubMark[] = {
+	25, 12.0f, 0.297f, 5.37f, 0.297f, 0.0f, 5.67f, 0.0f, 12.297f, 0.0f, 17.6f, 3.438f, 22.097f, 8.205f, 23.682f,
+	8.805f, 23.795f, 9.025f, 23.424f, 9.025f, 23.105f, 9.025f, 22.82f, 9.015f, 22.065f, 9.01f, 21.065f, 5.672f,
+	21.789f, 4.968f, 19.455f, 4.968f, 19.455f, 4.422f, 18.07f, 3.633f, 17.7f, 3.633f, 17.7f, 2.546f, 16.956f,
+	3.717f, 16.971f, 3.717f, 16.971f, 4.922f, 17.055f, 5.555f, 18.207f, 5.555f, 18.207f, 6.625f, 20.042f, 8.364f,
+	19.512f, 9.05f, 19.205f, 9.158f, 18.429f, 9.467f, 17.9f, 9.81f, 17.6f, 7.145f, 17.3f, 4.344f, 16.268f, 4.344f,
+	11.67f, 4.344f, 10.36f, 4.809f, 9.29f, 5.579f, 8.45f, 5.444f, 8.147f, 5.039f, 6.927f, 5.684f, 5.274f, 5.684f,
+	5.274f, 6.689f, 4.952f, 8.984f, 6.504f, 9.944f, 6.237f, 10.964f, 6.105f, 11.984f, 6.099f, 13.004f, 6.105f,
+	14.024f, 6.237f, 14.984f, 6.504f, 17.264f, 4.952f, 18.269f, 5.274f, 18.269f, 5.274f, 18.914f, 6.927f, 18.509f,
+	8.147f, 18.389f, 8.45f, 19.154f, 9.29f, 19.619f, 10.36f, 19.619f, 11.67f, 19.619f, 16.28f, 16.814f, 17.295f,
+	14.144f, 17.59f, 14.564f, 17.95f, 14.954f, 18.686f, 14.954f, 19.81f, 14.954f, 21.416f, 14.939f, 22.706f,
+	14.939f, 23.096f, 14.939f, 23.411f, 15.149f, 23.786f, 15.764f, 23.666f, 20.565f, 22.092f, 24.0f, 17.592f,
+	24.0f, 12.297f, 24.0f, 5.67f, 18.627f, 0.297f, 12.0f, 0.297f
+};
+//gitlab mark from Simple Icons (CC0), 24 x 24: per figure the bezier count, the start point, then 3 points per bezier
+static const float gitlabMark[] = {
+	26, 23.6f, 9.593f, 23.589f, 9.564f, 23.578f, 9.535f, 23.567f, 9.507f, 22.478f, 6.665f, 21.389f, 3.823f, 20.3f,
+	0.981f, 20.234f, 0.814f, 20.116f, 0.672f, 19.964f, 0.576f, 19.652f, 0.383f, 19.253f, 0.405f, 18.964f, 0.63f,
+	18.825f, 0.744f, 18.723f, 0.897f, 18.674f, 1.07f, 17.939f, 3.32f, 17.204f, 5.569f, 16.469f, 7.818f, 13.492f,
+	7.818f, 10.515f, 7.818f, 7.537f, 7.818f, 6.802f, 5.569f, 6.067f, 3.32f, 5.332f, 1.07f, 5.284f, 0.896f, 5.182f,
+	0.742f, 5.042f, 0.629f, 4.753f, 0.403f, 4.354f, 0.382f, 4.042f, 0.575f, 3.89f, 0.672f, 3.773f, 0.813f, 3.706f,
+	0.98f, 2.615f, 3.821f, 1.524f, 6.661f, 0.433f, 9.502f, 0.422f, 9.53f, 0.412f, 9.559f, 0.401f, 9.588f, -0.565f,
+	12.112f, 0.255f, 14.971f, 2.413f, 16.598f, 2.416f, 16.601f, 2.42f, 16.604f, 2.424f, 16.607f, 2.434f, 16.614f,
+	2.444f, 16.621f, 2.454f, 16.628f, 4.113f, 17.87f, 5.771f, 19.112f, 7.43f, 20.355f, 8.251f, 20.976f, 9.071f,
+	21.597f, 9.892f, 22.218f, 10.392f, 22.595f, 10.892f, 22.973f, 11.391f, 23.35f, 11.752f, 23.624f, 12.251f,
+	23.624f, 12.611f, 23.35f, 13.111f, 22.973f, 13.611f, 22.595f, 14.111f, 22.218f, 14.931f, 21.597f, 15.752f,
+	20.976f, 16.572f, 20.355f, 18.241f, 19.105f, 19.91f, 17.855f, 21.578f, 16.606f, 21.583f, 16.602f, 21.587f,
+	16.599f, 21.591f, 16.596f, 23.744f, 14.968f, 24.562f, 12.114f, 23.6f, 9.593f, 23.6f, 9.593f, 23.6f, 9.593f,
+	23.6f, 9.593f
+};
+
+void fillMark(Gdiplus::Graphics& g, const int& mark, const RECT& rc, const DWORD& color) {
+	const float* data = mark == MARK_GITHUB ? githubMark : mark == MARK_GITLAB ? gitlabMark : NULL;
+	int count = mark == MARK_GITHUB ? _countof(githubMark) : mark == MARK_GITLAB ? _countof(gitlabMark) : 0;
+	if (!data)
+		return;
+	float scale = (float)min(rc.right - rc.left, rc.bottom - rc.top) / 24.0f;
+	auto point = [&](const int& i) { return Gdiplus::PointF(rc.left + data[i] * scale, rc.top + data[i + 1] * scale); };
+	Gdiplus::GraphicsPath path(Gdiplus::FillModeAlternate);
+	for (int i = 0; i < count;) {
+		int beziers = (int)data[i];
+		Gdiplus::PointF last = point(i + 1);
+		i += 3;
+		path.StartFigure();
+		for (int b = 0; b < beziers && i + 6 <= count; b++, i += 6) {
+			Gdiplus::PointF next = point(i + 4);
+			path.AddBezier(last, point(i), point(i + 2), next);
+			last = next;
+		}
+		path.CloseFigure();
+	}
+	Gdiplus::SolidBrush brush((Gdiplus::ARGB)color);
+	g.FillPath(&brush, &path);
+}
+
 RECT makeRect(const int& left, const int& top, const int& width, const int& height) {
 	RECT rc = { left, top, left + width, top + height };
 	return rc;

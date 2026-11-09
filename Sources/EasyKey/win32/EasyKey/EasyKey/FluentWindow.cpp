@@ -298,12 +298,19 @@ int FluentWindow::addButton(const int& id, const wstring& text, const RECT& rc, 
 	return add(c);
 }
 
-int FluentWindow::addLink(const int& id, const wstring& text, const int& x, const int& y, const int& height) {
+int FluentWindow::linkWidth(const wstring& text, const int& mark) const {
+	return textWidth(fontSmall, text) + (mark != MARK_NONE ? s(14) + s(6) : 0);
+}
+
+int FluentWindow::addLink(const int& id, const wstring& text, const int& x, const int& y, const int& height,
+	const int& mark, const DWORD& markColor) {
 	Control c;
 	c.kind = F_LINK;
 	c.id = id;
 	c.text = text;
-	c.rc = makeRect(x, y, textWidth(fontSmall, text), height);
+	c.mark = mark;
+	c.markColor = markColor;
+	c.rc = makeRect(x, y, linkWidth(text, mark), height);
 	return add(c);
 }
 
@@ -600,9 +607,17 @@ void FluentWindow::paintControl(Gdiplus::Graphics& g, const Control& c, const in
 		drawText(g, c.text, rc, fontSmall, pal.onAccent, 1, 1);
 		break;
 	}
-	case F_LINK:
-		drawText(g, c.text, rc, c.font ? c.font : fontSmall, isHot ? pal.linkHover : pal.link, 0, 1);
+	case F_LINK: {
+		DWORD color = isHot ? pal.linkHover : pal.link;
+		RECT text = rc;
+		if (c.mark != MARK_NONE) {
+			int size = s(14);
+			fillMark(g, c.mark, makeRect(rc.left, centerY(rc) - size / 2, size, size), c.markColor ? c.markColor : color);
+			text.left += size + s(6);
+		}
+		drawText(g, c.text, text, c.font ? c.font : fontSmall, color, 0, 1);
 		break;
+	}
 	case F_SWITCH:
 		rowBackground(isHot);
 		drawLabel(c.ctl.left - s(12));

@@ -49,12 +49,13 @@ void AboutWindow::layout() {
 	addText(TR("Phiên bản ", "Version ") + EasyKeyHelper::getVersionString(), makeRect(x, y + s(54), textW, s(18)), fontCaption, pal.sub);
 	y += s(84);
 
-	//links, one row each; the Releases row also gets a second link for GitLab
-	struct { int id; LPCTSTR label; LPCTSTR link; } rows[] = {
-		{ ID_HOME, TR("Trang chủ", "Home page"), _T("github.com/iamcino/EasyKey") },
-		{ ID_GITLAB, L"GitLab", _T("gitlab.com/cino-group/easykey") },
-		{ ID_RELEASES, TR("Các phiên bản", "Releases"), L"GitHub" },
-		{ ID_OPENKEY, TR("Dựa trên", "Based on"), TR("OpenKey của Mai Vũ Tuyên (GPLv3)", "OpenKey by Mai Vũ Tuyên (GPLv3)") },
+	//links, one row each, with a small logo for GitHub and GitLab; the Releases row has one link per site
+	const DWORD gitlabOrange = 0xFFFC6D26;
+	struct { int id; LPCTSTR label; LPCTSTR link; int mark; } rows[] = {
+		{ ID_HOME, TR("Trang chủ", "Home page"), _T("github.com/iamcino/EasyKey"), MARK_GITHUB },
+		{ ID_GITLAB, L"GitLab", _T("gitlab.com/cino-group/easykey"), MARK_GITLAB },
+		{ ID_RELEASES, TR("Các phiên bản", "Releases"), L"GitHub", MARK_GITHUB },
+		{ ID_OPENKEY, TR("Dựa trên", "Based on"), TR("OpenKey của Mai Vũ Tuyên (GPLv3)", "OpenKey by Mai Vũ Tuyên (GPLv3)"), MARK_NONE },
 	};
 	const int rowCount = sizeof(rows) / sizeof(rows[0]);
 	int rowH = s(44), left = pad, right = width - pad;
@@ -65,12 +66,13 @@ void AboutWindow::layout() {
 		addText(rows[i].label, makeRect(left + s(14), y, s(120), rowH), fontBody);
 		int linkRight = right - s(14);
 		if (rows[i].id == ID_RELEASES) {
-			int gitlabW = textWidth(fontSmall, L"GitLab");
-			addLink(ID_RELEASES_GITLAB, L"GitLab", linkRight - gitlabW, y + s(10), rowH - s(20));
+			int gitlabW = linkWidth(L"GitLab", MARK_GITLAB);
+			addLink(ID_RELEASES_GITLAB, L"GitLab", linkRight - gitlabW, y + s(10), rowH - s(20), MARK_GITLAB, gitlabOrange);
 			linkRight -= gitlabW + s(20);
 		}
-		int linkW = textWidth(fontSmall, rows[i].link);
-		addLink(rows[i].id, rows[i].link, linkRight - linkW, y + s(10), rowH - s(20));
+		int linkW = linkWidth(rows[i].link, rows[i].mark);
+		addLink(rows[i].id, rows[i].link, linkRight - linkW, y + s(10), rowH - s(20), rows[i].mark,
+			rows[i].mark == MARK_GITLAB ? gitlabOrange : rows[i].mark == MARK_GITHUB ? pal.text : 0);
 		y += rowH;
 	}
 	y += s(16);

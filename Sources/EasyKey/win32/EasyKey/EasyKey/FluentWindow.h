@@ -54,6 +54,8 @@ protected:
 		bool enabled = true;
 		bool divider = false;    //line above a row inside a card
 		int hotKey = 0;          //F_HOTKEY keys, vSwitchKeyStatus format
+		int mark = MARK_NONE;    //F_LINK: a site logo before the text
+		DWORD markColor = 0;     //its color, 0 for the text's
 	};
 
 	HINSTANCE hInstance;
@@ -118,7 +120,10 @@ protected:
 	int addCard(const RECT& rc);
 	int addBadge(const RECT& rc);
 	int addButton(const int& id, const wstring& text, const RECT& rc, const bool& accent = false, const bool& enabled = true);
-	int addLink(const int& id, const wstring& text, const int& x, const int& y, const int& height);
+	int addLink(const int& id, const wstring& text, const int& x, const int& y, const int& height,
+		const int& mark = MARK_NONE, const DWORD& markColor = 0);
+	//width of a link, its logo included
+	int linkWidth(const wstring& text, const int& mark = MARK_NONE) const;
 	//a row of a card: label on the left; the row is rc, its control is placed at the right
 	int addSwitchRow(const int& id, const wstring& label, const wstring& hint, const RECT& rc, const bool& on, const bool& divider);
 	int addComboRow(const int& id, const wstring& label, const wstring& value, const RECT& rc, const int& fieldWidth, const bool& divider);
