@@ -316,7 +316,7 @@ static void finishJob(Job* job) {
 			busy = false;
 			if (!job->silent && job->failed)
 				AppDelegate::getInstance()->showNotice(TR("Chưa kiểm tra được bản mới", "Could not check for updates"),
-					TR("Kiểm tra kết nối mạng rồi thử lại", "Check the network connection and try again"));
+					TR("Kiểm tra mạng, hoặc cho phép EasyKey trong phần mềm diệt virus", "Check the network, or allow EasyKey in your antivirus"));
 			else if (!job->silent)
 				AppDelegate::getInstance()->showNotice(TR("EasyKey đã là bản mới nhất", "EasyKey is up to date"),
 					TR("Phiên bản ", "Version ") + EasyKeyHelper::getVersionString());

@@ -2,6 +2,12 @@
 
 **Tiếng Việt** · [English](CHANGELOG.en.md)
 
+## 1.1.1 - 2026-11-09
+
+### Changed
+- **Cập nhật**: nếu không kiểm tra được bản mới, thông báo nhắc kiểm tra cả phần mềm diệt virus (Bitdefender có thể chặn EasyKey ra mạng).
+- **Giới thiệu**: hiện logo EasyKey thay cho chữ V.
+
 ## 1.1.0 - 2026-11-09
 
 ### Added
