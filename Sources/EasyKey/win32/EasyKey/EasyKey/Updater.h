@@ -12,11 +12,8 @@ the MIT license, see LICENSES/MIT.txt.
 #pragma once
 #include "stdafx.h"
 
-//notes of one release, followed by its version
-#define RELEASE_NOTES_URL L"https://github.com/iamcino/EasyKey/releases/tag/"
-
 /*
- * Updates EasyKey.exe in place from GitHub Releases. The new exe is downloaded
+ * Updates EasyKey.exe in place from the GitHub or GitLab release (whichever answers). The new exe is downloaded
  * over HTTPS, checked against the SHA-256 published next to it and against the
  * pinned EasyKey Authenticode certificate (UpdateSignature.h). The running
  * exe is renamed to EasyKey.old.exe, the new one takes its name and starts, and
@@ -33,6 +30,8 @@ public:
 	static void checkQuietly();
 	//the newer version a check found, empty while EasyKey is up to date
 	static const string& availableVersion();
+	//release notes of a version, on the host that answered last
+	static wstring releaseNotesUrl(const wstring& version);
 	//on start, after an update: wait for the previous EasyKey to exit
 	static void finishPreviousUpdate();
 	//once the engine and tray are up: delete EasyKey.old.exe in the background
