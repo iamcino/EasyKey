@@ -316,7 +316,7 @@ void AppDelegate::showWhatsNew() {
 	options.heading = TR("Có gì mới trong EasyKey ", "What's new in EasyKey ") + version;
 	options.text = EasyKeyHelper::isEnglishUi() ? WHATS_NEW_EN : WHATS_NEW_VI;
 	options.link = TR("Xem đầy đủ các thay đổi", "See all changes");
-	options.linkUrl = wstring(RELEASE_NOTES_URL) + version;
+	options.linkUrl = Updater::releaseNotesUrl(version);
 	options.buttons.push_back(TR("OK", "OK"));
 	MessageWindow::show(NULL, options);
 }
