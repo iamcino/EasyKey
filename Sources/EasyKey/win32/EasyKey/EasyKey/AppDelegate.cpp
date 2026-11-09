@@ -29,12 +29,10 @@ See LICENSE and NOTICE.
 #pragma comment(lib, "comctl32.lib")
 
 //shown once after updating to this version; change it with each release
-#define WHATS_NEW_VI L"• Alt+Tab không còn làm sai chế độ gõ và bảng mã nhớ theo ứng dụng.\n" \
-	L"• Game Mode không còn mất tác dụng sau Alt+Tab.\n" \
-	L"• Chat trong game gõ được tiếng Việt theo chế độ đang bật (Enter để mở chat)."
-#define WHATS_NEW_EN L"• Alt+Tab no longer mixes up the per-app input mode and encoding.\n" \
-	L"• Game Mode keeps working after Alt+Tab.\n" \
-	L"• In-game chat types Vietnamese in the current mode (press Enter to open chat)."
+#define WHATS_NEW_VI L"• Cập nhật tự chuyển sang GitLab khi GitHub không vào được.\n" \
+	L"• Mỗi bản phát hành có trên cả GitHub và GitLab, cùng file đã ký số."
+#define WHATS_NEW_EN L"• Updates switch to GitLab automatically when GitHub cannot be reached.\n" \
+	L"• Every release is on both GitHub and GitLab, with the same signed files."
 
 //6 hours
 #define UPDATE_CHECK_INTERVAL (6 * 60 * 60 * 1000)

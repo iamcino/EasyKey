@@ -2,6 +2,15 @@
 
 **Tiếng Việt** · [English](CHANGELOG.en.md)
 
+## 1.1.0 - 2026-11-09
+
+### Added
+- **Cập nhật**: nếu không vào được GitHub, EasyKey tự kiểm tra và tải bản mới từ GitLab. Bản tải về vẫn phải khớp mã SHA-256 và chữ ký số EasyKey như trước.
+- Từ bản này, mỗi bản phát hành có trên cả [GitHub](https://github.com/iamcino/EasyKey/releases) và [GitLab](https://gitlab.com/cino-group/easykey/-/releases).
+
+### Notes
+- Bản 1.0.23 trở về trước chỉ tìm cập nhật trên GitHub. Nếu GitHub không vào được, hãy tải 1.1.0 bằng tay từ GitLab; từ đó trở đi EasyKey tự cập nhật từ nơi còn dùng được.
+
 ## 1.0.23 - 2026-11-08
 
 ### Fixed

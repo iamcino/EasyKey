@@ -2,6 +2,15 @@
 
 [Tiếng Việt](CHANGELOG.md) · **English**
 
+## 1.1.0 - 2026-11-09
+
+### Added
+- **Updates**: when GitHub can't be reached, EasyKey checks for and downloads new versions from GitLab. Downloads must still match their SHA-256 and the EasyKey signature.
+- From this version on, every release is on both [GitHub](https://github.com/iamcino/EasyKey/releases) and [GitLab](https://gitlab.com/cino-group/easykey/-/releases).
+
+### Notes
+- 1.0.23 and older look for updates on GitHub only. If GitHub can't be reached, download 1.1.0 by hand from GitLab; from then on EasyKey updates from whichever site works.
+
 ## 1.0.23 - 2026-11-08
 
 ### Fixed
