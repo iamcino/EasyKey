@@ -31,8 +31,8 @@
 param(
     [string]$Repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path,
     [string]$Ref = 'master',
-    [string]$Project = 'cino-group/easykey',
-    [string]$GitLab = 'https://gitlab.com',
+    [string]$Project = $(if ($env:CI_PROJECT_PATH) { $env:CI_PROJECT_PATH } else { 'cino-group/easykey' }),
+    [string]$GitLab = $(if ($env:CI_SERVER_URL) { $env:CI_SERVER_URL } else { 'https://gitlab.com' }),
     [string]$PfxPath,
     [switch]$FromGitHub,
     [string]$AssetsDir,
@@ -62,12 +62,16 @@ if (-not $token -and (Test-Path $tokenFile)) {
     $token = [Runtime.InteropServices.Marshal]::PtrToStringBSTR(
         [Runtime.InteropServices.Marshal]::SecureStringToBSTR((Import-Clixml $tokenFile)))
 }
-if (-not $token -and -not $DryRun) {
+$headers = @{ 'PRIVATE-TOKEN' = $token }
+if (-not $token -and $env:CI_JOB_TOKEN) {
+    # inside GitLab CI the job token can upload packages and create the release
+    $headers = @{ 'JOB-TOKEN' = $env:CI_JOB_TOKEN }
+} elseif (-not $token -and -not $DryRun) {
     $secure = Read-Host 'GitLab access token (scope: api)' -AsSecureString
     $token = [Runtime.InteropServices.Marshal]::PtrToStringBSTR(
         [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure))
+    $headers = @{ 'PRIVATE-TOKEN' = $token }
 }
-$headers = @{ 'PRIVATE-TOKEN' = $token }
 
 # ---------------------------------------------------------------- worktree
 Step "Preparing a clean copy of $Ref"
@@ -84,6 +88,9 @@ try {
     Set-Location $work
     $version = (Get-Content version.json -Raw | ConvertFrom-Json).latestWinVersion.versionName
     Write-Host "Version $version, commit $commit"
+    if ($env:CI_COMMIT_TAG -and $env:CI_COMMIT_TAG -ne $version) {
+        throw "Tag $($env:CI_COMMIT_TAG) does not match version.json versionName $version"
+    }
 
     if (-not $DryRun) {
         $exists = $true
