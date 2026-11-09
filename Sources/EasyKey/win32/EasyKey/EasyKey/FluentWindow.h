@@ -30,7 +30,7 @@ protected:
 		F_TEXT,   //plain text, wraps when wrap is set
 		F_CARD,   //rounded panel behind a group of rows
 		F_DIVIDER,//line between rows of a card, at the top of rc
-		F_BADGE,  //the V of EasyKey in the accent color
+		F_BADGE,  //the EasyKey app icon (the V in the accent color if it can't be loaded)
 		F_BUTTON,
 		F_ACCENT, //the main button, filled with the accent color
 		F_LINK,
@@ -112,6 +112,7 @@ protected:
 		const int& hAlign, const int& vAlign, const bool& wrap = false);
 	void paintSwitch(Gdiplus::Graphics& g, const RECT& rc, const bool& on, const bool& hot, const bool& enabled);
 	int drawKeys(Gdiplus::Graphics& g, const wstring& hotKey, int x, const int& cy);
+	bool drawAppIcon(Gdiplus::Graphics& g, const RECT& rc);
 
 	//building blocks for layout(), each returns the control's index
 	int add(const Control& c);
