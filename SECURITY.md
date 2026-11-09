@@ -25,8 +25,8 @@ hành chính thức.
 
 ## Kiểm tra bản tải về
 
-Mỗi bản phát hành được build công khai trên GitHub Actions từ mã nguồn trong
-repo này, rồi được ký số và kèm các file để bạn tự kiểm chứng.
+Mỗi bản phát hành được đăng ở cả [GitHub](https://github.com/iamcino/EasyKey/releases)
+và [GitLab](https://gitlab.com/cino-group/easykey/-/releases), cùng những file đã ký số, kèm các file để bạn tự kiểm chứng.
 
 **Chữ ký số.** `EasyKey.exe` được ký Authenticode (ECDSA P-256, SHA-256) và
 đóng dấu thời gian RFC 3161. Chứng chỉ là chứng chỉ tự cấp của dự án:
@@ -51,8 +51,8 @@ từng file tải về:
 Get-FileHash .\EasyKey.exe -Algorithm SHA256
 ```
 
-**Chứng thực nguồn gốc.** Chứng minh file được build bởi GitHub Actions từ repo
-này. Kiểm tra bằng [GitHub CLI](https://cli.github.com):
+**Chứng thực nguồn gốc.** Với bản build trên GitHub Actions, chứng minh file được
+build từ repo này. Kiểm tra bằng [GitHub CLI](https://cli.github.com):
 
 ```
 gh attestation verify EasyKey<phiên bản>-Windows.zip --repo iamcino/EasyKey
@@ -92,8 +92,8 @@ release.
 
 ### Verifying a download
 
-Every release is built in public on GitHub Actions from the source in this
-repository, then signed and shipped with files you can check yourself.
+Every release is published on both [GitHub](https://github.com/iamcino/EasyKey/releases)
+and [GitLab](https://gitlab.com/cino-group/easykey/-/releases), with the same signed files and files you can check yourself.
 
 **Digital signature.** `EasyKey.exe` is Authenticode-signed (ECDSA P-256,
 SHA-256) and timestamped (RFC 3161). The certificate is the project's own,
@@ -119,8 +119,8 @@ for every download:
 Get-FileHash .\EasyKey.exe -Algorithm SHA256
 ```
 
-**Build provenance.** Proves the file was built by GitHub Actions from this
-repository. Check it with the [GitHub CLI](https://cli.github.com):
+**Build provenance.** For builds made on GitHub Actions, proves the file was
+built from this repository. Check it with the [GitHub CLI](https://cli.github.com):
 
 ```
 gh attestation verify EasyKey<version>-Windows.zip --repo iamcino/EasyKey

@@ -9,13 +9,13 @@ Một file chưa tới 1 MB, gõ lẫn tiếng Anh không cần chuyển chế �
 
 **Tiếng Việt** · [English](README.en.md)
 
-[![Phiên bản](https://img.shields.io/github/v/release/iamcino/EasyKey?label=phi%C3%AAn%20b%E1%BA%A3n&color=1f6fe5)](https://github.com/iamcino/EasyKey/releases/latest)
+[![Phiên bản](https://img.shields.io/gitlab/v/release/cino-group/easykey?label=phi%C3%AAn%20b%E1%BA%A3n&color=1f6fe5)](https://gitlab.com/cino-group/easykey/-/releases)
 ![Nền tảng](https://img.shields.io/badge/n%E1%BB%81n%20t%E1%BA%A3ng-Windows%2011%20x64-1f6fe5)
 [![Giấy phép: GPL v3](https://img.shields.io/badge/gi%E1%BA%A5y%20ph%C3%A9p-GPL%20v3-green)](LICENSE)
 
-### [⬇ Tải EasyKey.exe](https://github.com/iamcino/EasyKey/releases/latest/download/EasyKey.exe)
+### ⬇ Tải EasyKey.exe: [từ GitHub](https://github.com/iamcino/EasyKey/releases/latest/download/EasyKey.exe) · [từ GitLab](https://gitlab.com/cino-group/easykey/-/releases/permalink/latest/downloads/EasyKey.exe)
 
-[Trang phát hành](https://github.com/iamcino/EasyKey/releases/latest) · [Có gì mới](CHANGELOG.md) · [Báo lỗi](https://github.com/iamcino/EasyKey/issues)
+Trang phát hành: [GitHub](https://github.com/iamcino/EasyKey/releases/latest) · [GitLab](https://gitlab.com/cino-group/easykey/-/releases) · [Có gì mới](CHANGELOG.md) · [Báo lỗi](https://github.com/iamcino/EasyKey/issues)
 
 <img src="docs/screenshots/settings-light-vi.png" width="420" alt="Cửa sổ Cài đặt của EasyKey">
 
@@ -25,7 +25,7 @@ Một file chưa tới 1 MB, gõ lẫn tiếng Anh không cần chuyển chế �
 
 ## Bắt đầu trong một phút
 
-1. **Tải** [`EasyKey.exe`](https://github.com/iamcino/EasyKey/releases/latest/download/EasyKey.exe) và mở nó. Không có trình cài đặt, không cần quyền Admin.
+1. **Tải** `EasyKey.exe` [từ GitHub](https://github.com/iamcino/EasyKey/releases/latest/download/EasyKey.exe) hoặc [từ GitLab](https://gitlab.com/cino-group/easykey/-/releases/permalink/latest/downloads/EasyKey.exe), rồi mở nó. Không có trình cài đặt, không cần quyền Admin.
 2. **Gõ thử** ở bất cứ đâu. Mặc định là Telex, bảng mã Unicode.
 3. **Bấm Alt + Z** để đổi qua lại giữa Tiếng Việt, Anh–Việt và Tiếng Anh.
 
@@ -176,6 +176,9 @@ EasyKey giữ bộ máy gõ của OpenKey và viết lại gần như toàn bộ
 giao diện, chế độ Anh–Việt, chế độ game, tự cập nhật, cùng nhiều bản sửa lỗi
 ở trình duyệt và ứng dụng hiện đại.
 
+**Vì sao có cả GitHub và GitLab?**
+Mỗi bản phát hành được đăng ở cả hai nơi, cùng những file đã ký số như nhau. Nếu một nơi không vào được, bạn tải ở nơi còn lại. Mã nguồn cũng có ở cả [GitHub](https://github.com/iamcino/EasyKey) và [GitLab](https://gitlab.com/cino-group/easykey).
+
 **Có bản cho macOS, Linux hay máy ARM không?**
 Chưa. EasyKey đang tập trung làm thật tốt trên Windows 11 x64 trước.
 
@@ -196,7 +199,7 @@ chứ chưa phải chứng chỉ thương mại. Vì vậy lần đầu mở, Wi
 Một số phần mềm diệt virus cũng có thể nghi ngờ nhầm, vì bộ gõ nào cũng phải
 đọc phím bấm để bỏ dấu. Nếu muốn chắc chắn file bạn tải là bản thật:
 
-- **Chỉ tải** từ [trang phát hành chính thức](https://github.com/iamcino/EasyKey/releases).
+- **Chỉ tải** từ trang phát hành chính thức trên [GitHub](https://github.com/iamcino/EasyKey/releases) hoặc [GitLab](https://gitlab.com/cino-group/easykey/-/releases).
 - **Kiểm tra chữ ký:** mở PowerShell trong thư mục chứa file và chạy
   `(Get-AuthenticodeSignature .\EasyKey.exe).SignerCertificate.Thumbprint`.
   Kết quả phải là `073FF7FEF09B3E51C8863CA5B2168A79D396976A`.

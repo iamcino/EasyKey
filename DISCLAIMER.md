@@ -20,7 +20,8 @@ không kèm bất kỳ bảo đảm nào**, theo [Giấy phép GNU GPL phiên b�
 4. **Chỉ tải từ nguồn chính thức.** `EasyKey.exe` được ký số bằng chứng chỉ
    tự cấp của dự án, chưa phải chứng chỉ thương mại, nên Windows hay phần mềm
    diệt virus vẫn có thể cảnh báo. Chỉ tải EasyKey từ
-   [trang phát hành chính thức](https://github.com/iamcino/EasyKey/releases);
+   trang phát hành chính thức trên [GitHub](https://github.com/iamcino/EasyKey/releases)
+   hoặc [GitLab](https://gitlab.com/cino-group/easykey/-/releases);
    bản tải từ nơi khác có thể đã bị sửa đổi. Cách kiểm tra chữ ký có trong
    [SECURITY.md](SECURITY.md#kiểm-tra-bản-tải-về).
 5. **Không liên kết.** EasyKey là dự án độc lập, không liên kết với Microsoft,
@@ -52,7 +53,8 @@ any kind**, as set out in the [GNU GPL version 3](LICENSE).
 4. **Download only from the official source.** `EasyKey.exe` is signed with
    the project's own certificate rather than a commercial one, so Windows or
    antivirus software may still warn about it. Download EasyKey only from the
-   [official release page](https://github.com/iamcino/EasyKey/releases);
+   official release pages on [GitHub](https://github.com/iamcino/EasyKey/releases)
+   or [GitLab](https://gitlab.com/cino-group/easykey/-/releases);
    copies from elsewhere may have been modified. How to check the signature is
    in [SECURITY.md](SECURITY.md#verifying-a-download).
 5. **No affiliation.** EasyKey is an independent project, not affiliated with

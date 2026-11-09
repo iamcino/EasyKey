@@ -9,13 +9,13 @@ One file under 1 MB, English and Vietnamese in the same sentence without switchi
 
 [Tiếng Việt](README.md) · **English**
 
-[![Release](https://img.shields.io/github/v/release/iamcino/EasyKey?label=release&color=1f6fe5)](https://github.com/iamcino/EasyKey/releases/latest)
+[![Release](https://img.shields.io/gitlab/v/release/cino-group/easykey?label=release&color=1f6fe5)](https://gitlab.com/cino-group/easykey/-/releases)
 ![Platform](https://img.shields.io/badge/platform-Windows%2011%20x64-1f6fe5)
 [![License: GPL v3](https://img.shields.io/badge/license-GPL%20v3-green)](LICENSE)
 
-### [⬇ Download EasyKey.exe](https://github.com/iamcino/EasyKey/releases/latest/download/EasyKey.exe)
+### ⬇ Download EasyKey.exe: [from GitHub](https://github.com/iamcino/EasyKey/releases/latest/download/EasyKey.exe) · [from GitLab](https://gitlab.com/cino-group/easykey/-/releases/permalink/latest/downloads/EasyKey.exe)
 
-[Releases](https://github.com/iamcino/EasyKey/releases/latest) · [What's new](CHANGELOG.en.md) · [Report a bug](https://github.com/iamcino/EasyKey/issues)
+Releases: [GitHub](https://github.com/iamcino/EasyKey/releases/latest) · [GitLab](https://gitlab.com/cino-group/easykey/-/releases) · [What's new](CHANGELOG.en.md) · [Report a bug](https://github.com/iamcino/EasyKey/issues)
 
 <img src="docs/screenshots/settings-light.png" width="420" alt="EasyKey Settings window">
 
@@ -25,7 +25,7 @@ One file under 1 MB, English and Vietnamese in the same sentence without switchi
 
 ## Up and running in a minute
 
-1. **Download** [`EasyKey.exe`](https://github.com/iamcino/EasyKey/releases/latest/download/EasyKey.exe) and open it. There is no installer and no administrator prompt.
+1. **Download** `EasyKey.exe` [from GitHub](https://github.com/iamcino/EasyKey/releases/latest/download/EasyKey.exe) or [from GitLab](https://gitlab.com/cino-group/easykey/-/releases/permalink/latest/downloads/EasyKey.exe) and open it. There is no installer and no administrator prompt.
 2. **Start typing** anywhere. The defaults are Telex and Unicode.
 3. **Press Alt + Z** to cycle through Vietnamese, Mixed and English.
 
@@ -179,6 +179,9 @@ EasyKey keeps OpenKey's typing engine and rewrites almost everything else: the
 interface, mixed mode, game mode, self-update, and many fixes for browsers and
 modern apps.
 
+**Why both GitHub and GitLab?**
+Every release is published in both places, with the same signed files. If one of them is unreachable, download from the other. The source code is on both [GitHub](https://github.com/iamcino/EasyKey) and [GitLab](https://gitlab.com/cino-group/easykey) too.
+
 **Is there a macOS, Linux or ARM version?**
 Not yet. EasyKey is focused on getting Windows 11 x64 right first.
 
@@ -200,7 +203,7 @@ Some antivirus software may also raise a false alarm, because every
 Vietnamese keyboard has to read key presses to add marks. To be sure your
 download is genuine:
 
-- **Download only** from the [official release page](https://github.com/iamcino/EasyKey/releases).
+- **Download only** from the official release pages on [GitHub](https://github.com/iamcino/EasyKey/releases) or [GitLab](https://gitlab.com/cino-group/easykey/-/releases).
 - **Check the signature:** open PowerShell in the file's folder and run
   `(Get-AuthenticodeSignature .\EasyKey.exe).SignerCertificate.Thumbprint`.
   It must print `073FF7FEF09B3E51C8863CA5B2168A79D396976A`.
