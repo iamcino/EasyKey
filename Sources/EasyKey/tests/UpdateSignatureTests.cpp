@@ -124,14 +124,19 @@ int wmain(int argc, wchar_t** argv) {
             // install without reopening the already verified path.
             const std::wstring renamed = std::wstring(copy) + L".exe";
             DWORD bytes = static_cast<DWORD>(renamed.size() * sizeof(wchar_t));
-            std::vector<BYTE> renameBuffer(offsetof(FILE_RENAME_INFO, FileName) + bytes);
+            // sized like the updater's buffer, with room for a terminating null:
+            // newer Windows rejects a FILE_RENAME_INFO without it
+            std::vector<BYTE> renameBuffer(offsetof(FILE_RENAME_INFO, FileName) + bytes + sizeof(wchar_t));
             auto info = reinterpret_cast<FILE_RENAME_INFO*>(renameBuffer.data());
             info->FileNameLength = bytes;
             std::memcpy(info->FileName, renamed.data(), bytes);
             bool moved = SetFileInformationByHandle(held, FileRenameInfo, info,
                 static_cast<DWORD>(renameBuffer.size())) != FALSE;
+            if (!moved)
+                std::printf("rename by handle failed, error %lu\n", GetLastError());
+            check(moved, "verified locked file can be renamed by its handle");
             check(moved && verifyUpdateSignature(renamed, held, pin.data(), static_cast<DWORD>(pin.size())),
-                "verified locked file can be renamed and still verifies");
+                "renamed locked file still verifies");
             // Offset 512 is in the PE's hashed content, outside its checksum and
             // certificate directory. Flip a byte while retaining the signature.
             BYTE byte = 0;
