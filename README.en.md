@@ -9,8 +9,10 @@ One file under 1 MB, English and Vietnamese in the same sentence without switchi
 
 [Tiếng Việt](README.md) · **English**
 
-[![Release](https://img.shields.io/gitlab/v/release/cino-group/easykey?label=release&color=1f6fe5)](https://gitlab.com/cino-group/easykey/-/releases)
-![Platform](https://img.shields.io/badge/platform-Windows%2011%20x64-1f6fe5)
+[![GitHub](https://img.shields.io/github/v/release/iamcino/EasyKey?label=GitHub&logo=github&color=0a7aff)](https://github.com/iamcino/EasyKey/releases/latest)
+[![GitLab](https://img.shields.io/gitlab/v/release/cino-group/easykey?label=GitLab&logo=gitlab&color=fc6d26)](https://gitlab.com/cino-group/easykey/-/releases)
+![Platform](https://img.shields.io/badge/platform-Windows%2011%20x64-0a7aff)
+![C++](https://img.shields.io/badge/C%2B%2B-Win32-00599C?logo=cplusplus)
 [![License: GPL v3](https://img.shields.io/badge/license-GPL%20v3-green)](LICENSE)
 
 ### ⬇ Download EasyKey.exe: [from GitHub](https://github.com/iamcino/EasyKey/releases/latest/download/EasyKey.exe) · [from GitLab](https://gitlab.com/cino-group/easykey/-/releases/permalink/latest/downloads/EasyKey.exe)

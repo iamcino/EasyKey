@@ -9,8 +9,10 @@ Một file chưa tới 1 MB, gõ lẫn tiếng Anh không cần chuyển chế �
 
 **Tiếng Việt** · [English](README.en.md)
 
-[![Phiên bản](https://img.shields.io/gitlab/v/release/cino-group/easykey?label=phi%C3%AAn%20b%E1%BA%A3n&color=1f6fe5)](https://gitlab.com/cino-group/easykey/-/releases)
-![Nền tảng](https://img.shields.io/badge/n%E1%BB%81n%20t%E1%BA%A3ng-Windows%2011%20x64-1f6fe5)
+[![GitHub](https://img.shields.io/github/v/release/iamcino/EasyKey?label=GitHub&logo=github&color=0a7aff)](https://github.com/iamcino/EasyKey/releases/latest)
+[![GitLab](https://img.shields.io/gitlab/v/release/cino-group/easykey?label=GitLab&logo=gitlab&color=fc6d26)](https://gitlab.com/cino-group/easykey/-/releases)
+![Nền tảng](https://img.shields.io/badge/n%E1%BB%81n%20t%E1%BA%A3ng-Windows%2011%20x64-0a7aff)
+![C++](https://img.shields.io/badge/C%2B%2B-Win32-00599C?logo=cplusplus)
 [![Giấy phép: GPL v3](https://img.shields.io/badge/gi%E1%BA%A5y%20ph%C3%A9p-GPL%20v3-green)](LICENSE)
 
 ### ⬇ Tải EasyKey.exe: [từ GitHub](https://github.com/iamcino/EasyKey/releases/latest/download/EasyKey.exe) · [từ GitLab](https://gitlab.com/cino-group/easykey/-/releases/permalink/latest/downloads/EasyKey.exe)
