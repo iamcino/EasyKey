@@ -30,7 +30,7 @@ protected:
 		F_TEXT,   //plain text, wraps when wrap is set
 		F_CARD,   //rounded panel behind a group of rows
 		F_DIVIDER,//line between rows of a card, at the top of rc
-		F_BADGE,  //the V of EasyKey in the accent color
+		F_BADGE,  //the EasyKey app icon (the V in the accent color if it can't be loaded)
 		F_BUTTON,
 		F_ACCENT, //the main button, filled with the accent color
 		F_LINK,
@@ -54,6 +54,8 @@ protected:
 		bool enabled = true;
 		bool divider = false;    //line above a row inside a card
 		int hotKey = 0;          //F_HOTKEY keys, vSwitchKeyStatus format
+		int mark = MARK_NONE;    //F_LINK: a site logo before the text
+		DWORD markColor = 0;     //its color, 0 for the text's
 	};
 
 	HINSTANCE hInstance;
@@ -110,6 +112,7 @@ protected:
 		const int& hAlign, const int& vAlign, const bool& wrap = false);
 	void paintSwitch(Gdiplus::Graphics& g, const RECT& rc, const bool& on, const bool& hot, const bool& enabled);
 	int drawKeys(Gdiplus::Graphics& g, const wstring& hotKey, int x, const int& cy);
+	bool drawAppIcon(Gdiplus::Graphics& g, const RECT& rc);
 
 	//building blocks for layout(), each returns the control's index
 	int add(const Control& c);
@@ -118,7 +121,10 @@ protected:
 	int addCard(const RECT& rc);
 	int addBadge(const RECT& rc);
 	int addButton(const int& id, const wstring& text, const RECT& rc, const bool& accent = false, const bool& enabled = true);
-	int addLink(const int& id, const wstring& text, const int& x, const int& y, const int& height);
+	int addLink(const int& id, const wstring& text, const int& x, const int& y, const int& height,
+		const int& mark = MARK_NONE, const DWORD& markColor = 0);
+	//width of a link, its logo included
+	int linkWidth(const wstring& text, const int& mark = MARK_NONE) const;
 	//a row of a card: label on the left; the row is rc, its control is placed at the right
 	int addSwitchRow(const int& id, const wstring& label, const wstring& hint, const RECT& rc, const bool& on, const bool& divider);
 	int addComboRow(const int& id, const wstring& label, const wstring& value, const RECT& rc, const int& fieldWidth, const bool& divider);

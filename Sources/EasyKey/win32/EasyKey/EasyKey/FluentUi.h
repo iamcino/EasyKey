@@ -41,6 +41,10 @@ void fillRect(Gdiplus::Graphics& g, const DWORD& color, const RECT& rc);
 void drawLine(Gdiplus::Graphics& g, const DWORD& color, const int& left, const int& right, const int& y);
 void drawChevron(Gdiplus::Graphics& g, const DWORD& color, const float& cx, const float& cy, const float& size, const bool& up);
 
+//small site logos for links
+enum { MARK_NONE = 0, MARK_GITHUB, MARK_GITLAB };
+void fillMark(Gdiplus::Graphics& g, const int& mark, const RECT& rc, const DWORD& color);
+
 //hotkeys in the vSwitchKeyStatus format: 0x100 Ctrl, 0x200 Alt, 0x400 Win, 0x800 Shift
 int modifierMask(const WPARAM& vk);
 int pressedModifiers();

@@ -10,7 +10,7 @@ Cảm ơn bạn đã quan tâm tới EasyKey! Mọi báo lỗi, góp ý và pull
 Mở [issue](https://github.com/iamcino/EasyKey/issues) kèm:
 
 - phiên bản EasyKey (Cài đặt › Giới thiệu) và Windows (`winver`)
-- chế độ (Tiếng Việt, Anh–Việt), kiểu gõ, bảng mã và ứng dụng đang gõ
+- chế độ (Tiếng Việt, Anh–Việt, chế độ game), kiểu gõ, bảng mã và ứng dụng hoặc game đang gõ
 - bạn đã gõ phím gì, mong đợi gì và thực tế ra gì
 - với lỗi gõ ra chữ sai, nhật ký phím (xem
   [Gõ ra chữ sai](README.md#gõ-ra-chữ-sai))
@@ -47,7 +47,7 @@ Nguyên tắc:
 - **Nhật ký thay đổi.** Ghi thay đổi người dùng thấy được vào cả
   [CHANGELOG.md](CHANGELOG.md) và [CHANGELOG.en.md](CHANGELOG.en.md), viết cho
   người dùng chứ không phải cho lập trình viên.
-- **Chính sách tài liệu.** Tài liệu công khai mô tả sản phẩm hiện tại, bất biến kiến trúc, hành vi người dùng cần biết, cam kết bảo mật/riêng tư và quy tắc đóng góp. Đặc tả phát triển nội bộ, quy trình agent, kế hoạch nhánh, nhật ký review, checklist phát hành và tài liệu thăm dò không nằm trong repo công khai.
+- **Tài liệu.** Tài liệu trong repo mô tả EasyKey hiện tại cho người dùng và người đóng góp. Kế hoạch, ghi chú review hay nháp thiết kế nội bộ không đưa vào repo. Sửa README thì sửa cả bản tiếng Việt lẫn tiếng Anh, và giữ nguyên tiêu đề "Kiểm tra chính tả tiếng Việt" vì ứng dụng liên kết tới đó.
 - **Ghi công.** Giữ nguyên dòng bản quyền OpenKey ở đầu các file có sẵn.
 
 Khi đóng góp, bạn đồng ý rằng phần đóng góp được cấp phép theo
@@ -66,7 +66,7 @@ all welcome.
 Open an [issue](https://github.com/iamcino/EasyKey/issues) with:
 
 - the EasyKey version (Settings › About) and Windows version (`winver`)
-- the mode (Vietnamese, Mixed), input method, encoding and the app you typed in
+- the mode (Vietnamese, Mixed, game mode), input method, encoding and the app or game you typed in
 - the keys you typed, what you expected and what you got
 - for wrong text, a key log (see [Wrong text](README.en.md#wrong-text))
 
@@ -102,7 +102,7 @@ Guidelines:
 - **Changelog.** Add user-visible changes to both
   [CHANGELOG.md](CHANGELOG.md) and [CHANGELOG.en.md](CHANGELOG.en.md), written
   for users rather than developers.
-- **Documentation policy.** Public documentation describes current product state, architectural invariants, user-facing behavior, security/privacy commitments, and contribution guidelines. Internal development specifications, agent workflows, branch plans, review logs, release checklists, and exploratory design notes do not belong in the public repository.
+- **Documentation.** Docs in the repository describe EasyKey as it is today, for users and contributors. Internal plans, review notes and design drafts stay out of it. When you change the README, change both the Vietnamese and English versions, and keep the heading "Kiểm tra chính tả tiếng Việt" because the app links to it.
 - **Credits.** Keep the OpenKey copyright lines at the top of existing files.
 
 By contributing, you agree that your contribution is licensed under the

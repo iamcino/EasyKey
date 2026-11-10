@@ -2,6 +2,22 @@
 
 **Tiếng Việt** · [English](CHANGELOG.en.md)
 
+## 1.1.1 - 2026-11-09
+
+### Changed
+- **Cập nhật**: nếu không kiểm tra được bản mới, thông báo nhắc kiểm tra cả phần mềm diệt virus (Bitdefender có thể chặn EasyKey ra mạng).
+- **Giới thiệu**: hiện logo EasyKey thay cho chữ V.
+
+## 1.1.0 - 2026-11-09
+
+### Added
+- **Cập nhật**: nếu không vào được GitHub, EasyKey tự kiểm tra và tải bản mới từ GitLab. Bản tải về vẫn phải khớp mã SHA-256 và chữ ký số EasyKey như trước.
+- Từ bản này, mỗi bản phát hành có trên cả [GitHub](https://github.com/iamcino/EasyKey/releases) và [GitLab](https://gitlab.com/cino-group/easykey/-/releases).
+- **Giới thiệu**: thêm trang chủ GitLab và đường dẫn tới các phiên bản trên GitLab.
+
+### Notes
+- Bản 1.0.23 trở về trước chỉ tìm cập nhật trên GitHub. Nếu GitHub không vào được, hãy tải 1.1.0 bằng tay từ GitLab; từ đó trở đi EasyKey tự cập nhật từ nơi còn dùng được.
+
 ## 1.0.23 - 2026-11-08
 
 ### Fixed

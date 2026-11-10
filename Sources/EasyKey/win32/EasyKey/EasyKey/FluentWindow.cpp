@@ -298,12 +298,19 @@ int FluentWindow::addButton(const int& id, const wstring& text, const RECT& rc, 
 	return add(c);
 }
 
-int FluentWindow::addLink(const int& id, const wstring& text, const int& x, const int& y, const int& height) {
+int FluentWindow::linkWidth(const wstring& text, const int& mark) const {
+	return textWidth(fontSmall, text) + (mark != MARK_NONE ? s(14) + s(6) : 0);
+}
+
+int FluentWindow::addLink(const int& id, const wstring& text, const int& x, const int& y, const int& height,
+	const int& mark, const DWORD& markColor) {
 	Control c;
 	c.kind = F_LINK;
 	c.id = id;
 	c.text = text;
-	c.rc = makeRect(x, y, textWidth(fontSmall, text), height);
+	c.mark = mark;
+	c.markColor = markColor;
+	c.rc = makeRect(x, y, linkWidth(text, mark), height);
 	return add(c);
 }
 
@@ -582,12 +589,13 @@ void FluentWindow::paintControl(Gdiplus::Graphics& g, const Control& c, const in
 	case F_DIVIDER:
 		drawLine(g, pal.divider, rc.left, rc.right, rc.top);
 		break;
-	case F_BADGE: {
-		float radius = (rc.right - rc.left) * 0.22f;
-		fillRound(g, rc, radius, pal.accent);
-		drawText(g, _T("V"), rc, fontBadge, pal.onAccent, 1, 1);
+	case F_BADGE:
+		if (!drawAppIcon(g, rc)) {
+			float radius = (rc.right - rc.left) * 0.22f;
+			fillRound(g, rc, radius, pal.accent);
+			drawText(g, _T("V"), rc, fontBadge, pal.onAccent, 1, 1);
+		}
 		break;
-	}
 	case F_BUTTON: {
 		DWORD fill = !c.enabled ? pal.field : isPressed ? pal.cardPressed : isHot ? pal.fieldHover : pal.field;
 		fillRound(g, rc, (float)s(6), fill, pal.stroke);
@@ -600,9 +608,17 @@ void FluentWindow::paintControl(Gdiplus::Graphics& g, const Control& c, const in
 		drawText(g, c.text, rc, fontSmall, pal.onAccent, 1, 1);
 		break;
 	}
-	case F_LINK:
-		drawText(g, c.text, rc, c.font ? c.font : fontSmall, isHot ? pal.linkHover : pal.link, 0, 1);
+	case F_LINK: {
+		DWORD color = isHot ? pal.linkHover : pal.link;
+		RECT text = rc;
+		if (c.mark != MARK_NONE) {
+			int size = s(14);
+			fillMark(g, c.mark, makeRect(rc.left, centerY(rc) - size / 2, size, size), c.markColor ? c.markColor : color);
+			text.left += size + s(6);
+		}
+		drawText(g, c.text, text, c.font ? c.font : fontSmall, color, 0, 1);
 		break;
+	}
 	case F_SWITCH:
 		rowBackground(isHot);
 		drawLabel(c.ctl.left - s(12));
@@ -657,6 +673,40 @@ void FluentWindow::paintControl(Gdiplus::Graphics& g, const Control& c, const in
 		paintCustom(g, c);
 		break;
 	}
+}
+
+//the app icon at the size of rc, its alpha kept (Bitmap::FromHICON would drop it)
+bool FluentWindow::drawAppIcon(Gdiplus::Graphics& g, const RECT& rc) {
+	int size = min(rc.right - rc.left, rc.bottom - rc.top);
+	HICON icon = NULL;
+	if (FAILED(LoadIconWithScaleDown(hInstance, MAKEINTRESOURCE(IDI_APP_ICON), size, size, &icon)) || !icon)
+		return false;
+	bool drawn = false;
+	ICONINFO info = {};
+	if (GetIconInfo(icon, &info)) {
+		BITMAP bm = {};
+		if (info.hbmColor && GetObject(info.hbmColor, sizeof(bm), &bm) && bm.bmBitsPixel == 32) {
+			BITMAPINFO bmi = {};
+			bmi.bmiHeader.biSize = sizeof(bmi.bmiHeader);
+			bmi.bmiHeader.biWidth = bm.bmWidth;
+			bmi.bmiHeader.biHeight = -bm.bmHeight;
+			bmi.bmiHeader.biPlanes = 1;
+			bmi.bmiHeader.biBitCount = 32;
+			bmi.bmiHeader.biCompression = BI_RGB;
+			vector<BYTE> pixels((size_t)bm.bmWidth * bm.bmHeight * 4);
+			HDC screen = GetDC(NULL);
+			if (GetDIBits(screen, info.hbmColor, 0, bm.bmHeight, pixels.data(), &bmi, DIB_RGB_COLORS) == bm.bmHeight) {
+				Gdiplus::Bitmap bitmap(bm.bmWidth, bm.bmHeight, bm.bmWidth * 4, PixelFormat32bppARGB, pixels.data());
+				g.DrawImage(&bitmap, Gdiplus::Rect(rc.left + (rc.right - rc.left - size) / 2, rc.top + (rc.bottom - rc.top - size) / 2, size, size));
+				drawn = true;
+			}
+			ReleaseDC(NULL, screen);
+		}
+		if (info.hbmColor) DeleteObject(info.hbmColor);
+		if (info.hbmMask) DeleteObject(info.hbmMask);
+	}
+	DestroyIcon(icon);
+	return drawn;
 }
 
 /*-------------------------------- input --------------------------------*/

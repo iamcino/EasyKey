@@ -2,7 +2,7 @@
 
 **Tiếng Việt** · [English](DESIGN.en.md)
 
-> Phiên bản 1.0.23 · Windows 11 x64 · C++ / Win32, Direct2D, DirectWrite
+> Phiên bản 1.1.1 · Windows 11 x64 · C++ / Win32, Direct2D, DirectWrite
 
 Tài liệu này giải thích EasyKey hoạt động thế nào và mã nguồn được tổ chức ra sao. Đối tượng là người muốn đọc, sửa hoặc đóng góp mã. Hướng dẫn dùng nằm ở [README](../README.md), cách build ở [BUILD](BUILD.md), quy tắc đóng góp ở [CONTRIBUTING](../CONTRIBUTING.md).
 
@@ -90,9 +90,9 @@ Cả hai bỏ qua khi cửa sổ đang ở trước chạy quyền Admin, vì l�
 | Ô có gợi ý tự động (thanh địa chỉ trình duyệt) | Chrome, Edge, Brave: chọn ký tự cuối bằng Shift+Left để Backspace xoá luôn phần gợi ý. Ứng dụng khác: gửi một ký tự trống (U+202F) rồi xoá thêm một lần. | `keyboardHookProcess`, `_chromiumBrowser` |
 | Ứng dụng quyền Admin | Windows không cho ứng dụng thường gửi phím vào. EasyKey báo một lần cho mỗi ứng dụng. Tuỳ chọn chạy quyền Admin dùng Task Scheduler để khởi động cùng Windows mà không hỏi UAC. | `onElevatedWindow`, `registerAdminTask` |
 | Phím tắt có Alt hoặc Win | Hook ăn mất phím chữ của phím tắt, nên ứng dụng tưởng Alt/Win được bấm riêng và mở menu hay Start. EasyKey gửi thêm phím trống 0xE8 để tránh việc này. | `maskMenuKey` |
-| Chế độ game | Với game trong danh sách, phím đi thẳng vào game (combat). Enter mở chat để gõ tiếng Việt theo chế độ đang bật; Esc hoặc click chuột thoát chat ngay tức thì về combat; lệnh bắt đầu bằng `/` giữ nguyên dạng phím thô cho tới phím cách hoặc Enter; game nào bỏ phím giả lập thì chuyển sang Anh để chat. | `_game.inGame`, `_game.chatOpen`, `exitGameChat` |
-| Bỏ qua ô mật khẩu | Khi con trỏ ở ô mật khẩu (Win32, trình duyệt Chrome/Edge/Firefox, Electron), EasyKey chuyển sang phím thô tuyệt đối: tắt toàn bộ bỏ dấu, gõ tắt, tự động viết hoa và phục hồi đệm. Cơ chế 3 tầng bất đồng bộ không khóa, sticky password, không đọc nội dung ô nhập. | `_passwordStateWord`, `updatePasswordFieldState`, `passwordProbeWorkerProc` |
-| Nhớ theo ứng dụng | Khi đổi cửa sổ (`EVENT_SYSTEM_FOREGROUND`), đọc lại Việt/Anh và bảng mã đã lưu cho file exe đó rồi cập nhật dấu chọn ở menu khay. Tên exe đọc bằng `PROCESS_QUERY_LIMITED_INFORMATION` (đủ cho cả ứng dụng không cho quyền đọc bộ nhớ). Ứng dụng Store nằm trong `ApplicationFrameHost.exe` được nhớ theo tiến trình sở hữu cửa sổ `CoreWindow` bên trong khung. Nếu không đọc được tên, giữ nguyên lựa chọn hiện tại thay vì ghi sang ứng dụng trước. | `winEventProcCallback`, `getFrontMostAppExecuteName`, `SmartSwitchKey.cpp` |
+| Chế độ game | Với game trong danh sách, phím đi thẳng vào game. Enter mở chat để gõ theo chế độ đang bật; Esc hoặc click chuột về trận; lệnh `/` giữ phím thô. Xem [Chế độ game](#chế-độ-game). | `_game.inGame`, `_game.chatOpen`, `exitGameChat` |
+| Ô mật khẩu | Gõ phím thô trong ô mật khẩu (Win32, Chrome/Edge/Firefox, Electron), nhận ra ở luồng nền, không đọc nội dung ô. Xem [Ô mật khẩu](#ô-mật-khẩu). | `_passwordStateWord`, `updatePasswordFieldState`, `passwordProbeWorkerProc` |
+| Nhớ theo ứng dụng | Khi đổi cửa sổ (`EVENT_SYSTEM_FOREGROUND`), đọc lại chế độ gõ (Việt, Anh–Việt, Anh) và bảng mã đã lưu cho file exe đó rồi cập nhật dấu chọn ở menu khay. Tên exe đọc bằng `PROCESS_QUERY_LIMITED_INFORMATION` (đủ cho cả ứng dụng không cho quyền đọc bộ nhớ). Ứng dụng Store nằm trong `ApplicationFrameHost.exe` được nhớ theo tiến trình sở hữu cửa sổ `CoreWindow` bên trong khung. Nếu không đọc được tên, giữ nguyên lựa chọn hiện tại thay vì ghi sang ứng dụng trước. | `winEventProcCallback`, `getFrontMostAppExecuteName`, `SmartSwitchKey.cpp` |
 | Bấm chuột | Bắt đầu từ mới, vì con trỏ có thể đã sang chỗ khác. | `mouseHookProcess` |
 
 ## 7. Engine
@@ -101,7 +101,7 @@ Cả hai bỏ qua khi cửa sổ đang ở trước chạy quyền Admin, vì l�
 | `Engine.cpp/.h` | Điểm vào `vKeyHandleEvent`, bộ đệm từ đang gõ, quy tắc Telex/VNI/Simple Telex, kiểm tra chính tả, trả lại phím, gõ nhanh. Các tuỳ chọn là biến toàn cục `v...` do ứng dụng đặt. |
 | `Vietnamese.cpp/.h` | Bảng nguyên âm, phụ âm, vị trí dấu và bảng ký tự cho từng bảng mã. |
 | `Macro.cpp/.h` | Gõ tắt: lưu, tìm, đọc/ghi dạng nhị phân. |
-| `SmartSwitchKey.cpp/.h` | Bảng nhớ Việt/Anh và bảng mã theo tên ứng dụng. |
+| `SmartSwitchKey.cpp/.h` | Bảng nhớ chế độ gõ và bảng mã theo tên ứng dụng. |
 | `MixedWords.cpp/.h`, `MixedWordsData.h` | Danh sách từ cho chế độ Anh–Việt (xem dưới). `MixedWordsData.h` sinh bằng `tools/make_mixed_words.py`. |
 | `ConvertTool.cpp/.h` | Chuyển văn bản giữa các bảng mã, đổi hoa/thường, bỏ dấu. |
 | `DataType.h` | `vKeyHookState` và các hằng số chung. |
@@ -110,76 +110,98 @@ Test engine ở `Sources/EasyKey/tests/EngineTests.cpp` (Telex, VNI, chuyển m�
 
 ### Chế độ Anh–Việt
 
-Chế độ Anh–Việt được thiết kế theo nguyên tắc an toàn hơn thông minh. Bộ gõ chỉ chuyển sang phím tiếng Anh thô khi có bằng chứng đủ mạnh, và mặc định không sửa ngược từ đã gõ trước đó.
+Nguyên tắc: **an toàn hơn thông minh**. EasyKey chỉ trả lại phím tiếng Anh khi có
+bằng chứng đủ mạnh, và quyết định theo từng từ ở ranh giới từ, không sửa lại từ
+đã gõ trước đó (`mixedFixLast` tắt mặc định).
 
-- Chế độ Anh–Việt sử dụng quy trình đánh giá phân tầng tất định (deterministic cascade): chuỗi dạng mã nguồn (`code-like`), danh sách từ tiếng Anh chọn lọc và từ viết tắt ALL-CAPS (`US`, `AI`, `ER`, `UK`, `AS`, `IS`, `IF`, `OR`...), quy tắc cụm hai từ (`xe bus`, `with us`, `me too`, `mập ú`, `một tô`, `đi ẻ`, `bánh tét`, `thịt tét`...), bảo vệ các từ tiếng Việt ngắn/khẩu ngữ có dấu (`bus` → `bú`, `us` → `ú`, `too` → `tô`, `er` → `ẻ`), điểm tần suất động và mặc định an toàn là tiếng Việt.
-- Từ tiếng Việt hợp lệ có dấu không bị thay thế chỉ vì một chuỗi tiếng Anh hiếm, viết tắt hoặc danh từ riêng tình cờ trùng phím gõ.
-- Từ điển hỗ trợ chế độ Anh–Việt được sinh ngoại tuyến từ dữ liệu tần suất ngôn ngữ và được lọc để giảm nhiễu từ các token không phải từ tiếng Anh thông dụng.
-- Việc đánh giá ngôn ngữ diễn ra theo từng từ, tại ranh giới từ, không can thiệp vào các từ đứng trước.
-- Một số cặp đồng âm được xử lý bằng quy tắc cụm từ hạn chế. Ví dụ: `bánh tét` và `thịt tét` được nhận diện là tiếng Việt, trong khi `test` trong các ngữ cảnh phổ biến như `chạy test`, `unit test`, `test case` được giữ nguyên.
-- Với các ngữ cảnh tiếng Việt khác của từ `tét`, người dùng có thể gõ `tets` để chủ động nhận về `tét`.
+Một từ vừa gõ xong được xét lần lượt qua các bước sau, bước nào kết luận được
+thì dừng:
 
-Giới hạn đã biết:
-- Chế độ Anh–Việt tối ưu cho bảng mã Unicode.
-- URL, email, tên miền và một số chuỗi kỹ thuật có thể được xử lý theo từng phân đoạn.
-- Kebab-case như `read-only` hoặc `end-to-end` hiện được xử lý theo từng từ con phân cách bởi dấu `-`.
-- Chuỗi rất dài không được bảo đảm tuyệt đối ở mọi trường hợp; phím Esc có thể khôi phục phím thô của từ hiện tại.
+1. **Chuỗi dạng mã nguồn**: `snake_case`, `camelCase`, chữ lẫn số, email. Giữ phím gốc.
+2. **Từ viết tắt viết hoa** (`US`, `AI`, `UK`, `IF`, `OR`…) và danh sách từ công nghệ chọn lọc (`qwen`, `claude`, `commit`…). Giữ phím gốc.
+3. **Quy tắc cụm hai từ**: `xe bus`, `mập ú`, `một tô`, `bánh tét`, `thịt tét` là tiếng Việt; `with us`, `me too`, `chạy test`, `unit test` là tiếng Anh.
+4. **Bảo vệ từ Việt ngắn hay khẩu ngữ**: ở ngữ cảnh trung tính, `bus` → `bú`, `us` → `ú`, `too` → `tô`.
+5. **Điểm tần suất** của từ trong mỗi thứ tiếng, có tính từ đứng trước.
+6. Không đủ bằng chứng thì **giữ tiếng Việt**.
 
-### Chế độ Game
-
-Chế độ Game ưu tiên bảo vệ phím điều khiển. Khi đang chơi, các phím như `W`, `A`, `S`, `D`, `Q`, `E`, `R` phải đi thẳng vào game mà không bị bộ gõ tiếng Việt xen vào.
-
-- **Window-Bound Game Mode (Bảo vệ suốt vòng đời cửa sổ & Alt+Tab)**: Ràng buộc cửa sổ game đã xác nhận theo cặp `HWND + PID` đã lưu cache. Khi đã xác nhận, liên kết được giữ hiệu lực suốt vòng đời của cửa sổ đó và chỉ bị xoá khi cửa sổ bị huỷ, PID không còn khớp, người dùng gỡ game khỏi danh sách, hoặc gắn sang cửa sổ game khác (TTL tạm thời chỉ áp dụng cho ứng viên vừa chọn từ Picker nhưng chưa từng vào foreground). Cơ chế fast-path trong hook tái gắn kết trạng thái game ngay phím đầu tiên khi Alt+Tab quay lại mà không phải gọi API nặng trên từng phím.
-- **Pass-through bàn phím & Cách ly Modifier/Hotkey**: Khi Chế độ Game đang kích hoạt, các sự kiện bàn phím đi thẳng vào game. Trạng thái phím bổ trợ (modifier) vẫn được cập nhật nội bộ nhẹ nhàng, nhưng toàn bộ phím tắt ứng dụng, chuyển ngôn ngữ và xử lý bộ gõ đều được bỏ qua; trạng thái modifier được làm sạch khi vào hoặc rời game.
-- **Bảo vệ sự cố sập game (IsWindow Guard)**: Kiểm tra tính hợp lệ của cửa sổ (`IsWindow`) trong fast-path để tự động dọn sạch binding khi game bị crash hoặc taskkill đột ngột.
-- **Cách ly hoàn toàn khỏi SmartSwitchKey**: Game Mode hoàn toàn tách biệt khỏi bộ nhớ chế độ gõ theo ứng dụng. Khi chơi game, EasyKey không ghi đè chế độ tiếng Anh/thô vào ứng dụng trước đó; khi Alt+Tab ra ngoài, các ứng dụng như Chrome, Word vẫn giữ nguyên đúng chế độ gõ đã nhớ.
-- **Gõ tiếng Việt trong khung chat (Enter)**: Bấm Enter mở chat, phím đi qua bộ gõ tiếng Việt theo chế độ đang bật (Việt / Anh–Việt / Anh). Trong chat, phím tắt đổi chế độ hoạt động bình thường nhưng không ghi đè profile theo app (SmartSwitchKey). Với game nào bỏ phím giả lập (SendInput), chuyển sang chế độ tiếng Anh để chat.
-- **Điều khiển chat tức thời**: Phím Enter mở/đóng chat; phím Esc đóng chat và dọn sạch bộ đệm; click chuột trái, phải hoặc giữa thoát chat ngay lập tức để phím điều khiển trở về game trong combat. Di chuột, lăn chuột và các nút chuột phụ (XBUTTON) không làm thoát chat.
-- **Lệnh game bắt đầu bằng `/`**: Các lệnh như `/ff`, `/w`, `/give`, `/tp` được giữ nguyên dạng phím thô cho tới khi gặp phím cách hoặc Enter.
-- **Game Window Picker & Gợi ý Top 3**:
-  - Gợi ý thông minh: Tự động xếp hạng Top 3 cửa sổ ứng viên dựa trên MRU foreground gần nhất (`+100`), chế độ toàn màn hình (`+30`), và loại trừ blacklist hệ thống (`explorer.exe`, `dwm.exe`, `taskmgr.exe`, ...) cùng ứng dụng văn phòng (`winword.exe`, `excel.exe`, ...). Giúp chọn đúng cửa sổ/process đang hiển thị, giảm mạnh nguy cơ chọn nhầm launcher.
-  - An toàn chống treo UI: Quá trình quét `EnumWindows` không lấy tiêu đề của tất cả cửa sổ; tiêu đề chỉ được lấy an toàn cho Top ứng viên cuối cùng bằng `SendMessageTimeout` (timeout 50 ms kèm cờ `SMTO_ABORTIFHUNG` và kiểm tra `IsHungAppWindow`), đảm bảo nếu có ứng dụng bên ngoài bị treo thì menu EasyKey vẫn phản hồi tức thì.
-  - Ranh giới phân quyền rõ ràng (Privilege Boundary): Quá trình tìm kiếm kiểm tra quyền nâng cao (Elevated / Admin). Nếu game chạy quyền Admin mà EasyKey chạy quyền Standard, ứng viên được đánh dấu rõ `[Quyền Admin]` và hiển thị thông báo yêu cầu chạy EasyKey với quyền Admin để hỗ trợ; EasyKey tuyệt đối không tự ý nâng quyền ngầm hay restart âm thầm.
-  - Luồng duyệt file `.exe` dự phòng: Cung cấp nút "Duyệt file .exe…" trong Cài đặt và Menu khay; chỉ lưu tên thực thi cơ sở (`exeBaseName`, so khớp không phân biệt hoa/thường) để không bị gãy khi game cập nhật hoặc di chuyển thư mục, kèm cảnh báo người dùng chọn file thực thi của trận đấu thay vì launcher.
-- **Cam kết quyền riêng tư (Privacy Guarantees)**: Candidate Finder chỉ chạy theo yêu cầu (on-demand) khi mở menu khay hoặc Cài đặt (tuyệt đối không chạy trong keyboard hook). Tiêu đề cửa sổ chỉ đọc tạm thời trong bộ nhớ RAM để hiển thị menu cho người dùng chọn, không ghi log ra đĩa, không lưu tiêu đề vào Registry và không gửi bất kỳ dữ liệu nào ra bên ngoài mạng (Zero Telemetry).
+Danh sách từ (`MixedWordsData.h`) sinh ngoại tuyến từ dữ liệu wordfreq bằng
+`tools/make_mixed_words.py`, đã lọc bớt token không phải từ tiếng Anh thông dụng.
+Muốn "tét" ở ngữ cảnh khác thì gõ `tets`.
 
 Giới hạn đã biết:
-- Trùng tên file thực thi (Basename Collision): Game Mode nhận diện theo tên file thực thi. Nếu nhiều ứng dụng dùng cùng tên exe (ví dụ `game.exe`), cấu hình sẽ áp dụng chung.
-- Game UWP / Microsoft Store: Một số game UWP/MSIX hoặc ứng dụng chạy qua host đặc thù (như `ApplicationFrameHost.exe`) có thể không được gợi ý chính xác. Có thể dùng Duyệt file .exe nếu hệ thống cho phép truy cập, tuy nhiên quyền truy cập thư mục `WindowsApps` có thể bị giới hạn bởi Windows.
-- CI kiểm chứng logic trạng thái bộ gõ trong game. Trải nghiệm thực tế trên từng game cụ thể thuộc phạm vi kiểm thử thủ công.
-- Một số game fullscreen exclusive, anti-cheat mức kernel hoặc cơ chế nhập liệu riêng có thể hành xử khác nhau.
-- Chế độ Game không đọc nội dung game, không can thiệp vào bộ nhớ tiến trình và không gửi dữ liệu ra ngoài.
+- Tối ưu cho bảng mã Unicode.
+- URL, tên miền và kebab-case (`read-only`, `end-to-end`) được xét theo từng đoạn.
+- Chuỗi rất dài không bảo đảm đúng mọi trường hợp; Esc trả lại phím gốc của từ hiện tại.
 
-### Bỏ qua ô mật khẩu (Browser & Win32)
+### Chế độ game
 
-Khi con trỏ nhập liệu đang ở trong một ô mật khẩu được xác định rõ ràng, EasyKey chuyển sang chế độ phím thô tuyệt đối.
+Mục tiêu: trong game, phím điều khiển (`W`, `A`, `S`, `D`, `Q`, `E`, `R`…) phải
+đi thẳng vào game, còn khung chat vẫn gõ được tiếng Việt.
 
-Mục tiêu là tránh việc các ký tự mật khẩu bị biến thành dấu tiếng Việt, gõ tắt, viết hoa tự động hoặc bị xử lý bởi chế độ Anh–Việt.
+**Nhận ra game.** Danh sách game lưu theo tên file exe (`gameApps`, không phân
+biệt hoa thường). Khi cửa sổ của game lên trước, EasyKey gắn trạng thái game
+vào đúng cửa sổ đó (cặp `HWND + PID`). Liên kết được giữ suốt đời cửa sổ và chỉ
+bị gỡ khi cửa sổ đóng (`IsWindow`), PID đổi, game bị xoá khỏi danh sách hoặc
+EasyKey gắn sang cửa sổ game khác. Alt+Tab quay lại thì hook gắn lại ngay ở phím
+đầu tiên mà không gọi API nặng; game tạo lại cửa sổ cũng được gắn lại. Cửa sổ
+launcher hay sảnh chờ có ô nhập liệu thật (Edit, ComboBox, nhân Chrome) không bị
+coi là game và gõ như ứng dụng thường.
 
-- Kiến trúc 3 tầng không khóa:
-  1. Win32 Fast Path (0 ms): Nhận diện tức thì qua `ES_PASSWORD` trên điều khiển `Edit` chuẩn.
-  2. Async Probe Worker (COM MTA): Thăm dò nền qua Windows UI Automation (`UIA_IsPasswordPropertyId`), tự động fallback MSAA (`STATE_SYSTEM_PROTECTED`). Không đọc nội dung, zero-telemetry.
-  3. Máy trạng thái nguyên tử 32-bit: `PW_NORMAL`, `PW_PASSWORD`, `PW_PENDING` (thời hạn 60 ms bảo vệ phím bấm đầu tiên khỏi bị dính dấu tiếng Việt). Monotonic generation barrier ngăn chặn stale probe.
-  4. Sticky Password: Giữ nguyên bypass khi người dùng bấm chuyển đổi Hiện/Ẩn mật khẩu (Show/Hide Password toggle) trên cùng focus key.
-  5. Bảo vệ gõ liên tục & Re-probe chuột: Chặn probe khi đang gõ liên tục `< 150 ms` (bảo vệ Omnibox / search box); tái thăm dò trên `WM_LBUTTONUP` trong vùng web với throttle 100 ms và debounce 40 ms.
-- Hook bàn phím và chuột chỉ đọc một cờ trạng thái đã được cache, với chi phí không đổi.
-- Trong ô mật khẩu, EasyKey tắt đánh dấu Telex/VNI, chế độ Anh–Việt, gõ tắt, Quick Telex, tự động viết hoa và các cơ chế khôi phục bộ đệm.
-- Phím Esc và Enter đi thẳng tới ứng dụng.
-- EasyKey không đọc nội dung ô nhập, không ghi nhật ký phím, không lưu trạng thái ô mật khẩu theo ứng dụng và không gửi dữ liệu ra ngoài.
-- Tính năng có thể bật/tắt trong Cài đặt › Nâng cao (`vPasswordFieldBypass` và `vPasswordFieldUIA`), mặc định được bật.
+**Trong trận.** Phím đi thẳng, phím tắt của EasyKey bị bỏ qua. Trạng thái phím
+bổ trợ vẫn được theo dõi và được làm sạch khi vào hoặc rời game, nên Alt+Enter
+hay Ctrl+Enter không mở nhầm chat.
+
+**Khung chat.** Enter mở chat; từ đó phím đi qua engine theo chế độ đang bật
+(Việt, Anh–Việt hoặc Anh). Enter cũng được đưa qua engine trước khi đóng chat để
+từ cuối được bỏ dấu đủ. Esc đóng chat và xoá bộ đệm; click chuột trái, phải hoặc
+giữa đưa phím về trận ngay (di chuột, lăn chuột, nút chuột phụ thì không). Lệnh
+bắt đầu bằng `/` giữ phím thô tới dấu cách hoặc Enter. Game bỏ qua phím giả lập
+(`SendInput`) thì người dùng chuyển sang Anh để chat.
+
+**Tách khỏi bộ nhớ theo ứng dụng.** Chế độ game không ghi gì vào `smartSwitchKey`:
+đổi chế độ trong chat không ghi đè lựa chọn đã nhớ của ứng dụng khác, và Alt+Tab
+ra Chrome hay Word vẫn đúng chế độ đã nhớ.
+
+**Gợi ý game** (`GameCandidateFinder.cpp`). Chỉ chạy khi người dùng mở menu khay
+hoặc Cài đặt, không bao giờ trong hook. Xếp hạng 3 cửa sổ: lên trước gần đây
+(+100), toàn màn hình (+30), loại tiến trình hệ thống và ứng dụng văn phòng. Chỉ
+lấy tiêu đề cho các ứng viên cuối, bằng `SendMessageTimeout` 50 ms với
+`SMTO_ABORTIFHUNG`, nên ứng dụng bị treo không làm treo menu. Tiêu đề chỉ nằm
+trong bộ nhớ, không ghi ra đĩa. Game chạy quyền Admin được đánh dấu `[Quyền Admin]`
+và EasyKey nhắc người dùng; EasyKey không tự nâng quyền. "Duyệt file .exe…" là
+đường dự phòng, kèm nhắc chọn file của trận chứ không phải launcher.
 
 Giới hạn đã biết:
-- Windows logon, UAC secure prompt và các màn hình credential chạy trên secure desktop có thể nằm ngoài phạm vi hỗ trợ.
-- Một số điều khiển tùy chỉnh đặc thù, shadow DOM phức tạp hoặc iframe khác nguồn (cross-origin) không được trình duyệt phơi bày thuộc tính mật khẩu qua UIA/MSAA có thể không được nhận diện.
-- EasyKey không phải trình quản lý mật khẩu và không can thiệp vào clipboard, autofill hay nội dung trang web.
+- Các game trùng tên file exe dùng chung một cài đặt.
+- Một số game Microsoft Store (chạy qua `ApplicationFrameHost.exe`) có thể không được gợi ý; thư mục `WindowsApps` có thể không cho duyệt.
+- Game có anti-cheat mức kernel, fullscreen exclusive hay cách nhận phím riêng có thể hành xử khác nhau. Test tự động chỉ kiểm logic trạng thái, còn từng game phải thử bằng tay.
 
-### Kiểm thử và dữ liệu mẫu
+### Ô mật khẩu
 
-Các kiểm thử engine được công khai để chứng minh hành vi bộ gõ, không phải để mô tả quy trình phát triển nội bộ.
+Khi con trỏ ở ô mật khẩu, EasyKey gõ phím thô: tắt bỏ dấu, Anh–Việt, gõ tắt, gõ
+nhanh, tự viết hoa và khôi phục bộ đệm. Esc và Enter đi thẳng tới ứng dụng.
 
-- Dữ liệu kiểm thử phải là chuỗi tổng hợp, cục bộ hoặc giả lập.
-- Kiểm thử engine không gọi mạng, không đọc registry thật, không ghi file ngoài thư mục tạm và không chứa dữ liệu người dùng thật.
-- `example.com` chỉ có thể xuất hiện như chuỗi minh họa trong tài liệu. Đây không phải một dịch vụ và không được dùng làm dependency cho kiểm thử hoặc giám sát.
+Cách nhận ra ô mật khẩu, không có bước nào chặn hook:
+
+1. **Win32**: ô `Edit` có `ES_PASSWORD` được nhận ra ngay.
+2. **Trình duyệt, Electron**: một luồng nền (COM MTA) hỏi UI Automation (`UIA_IsPasswordPropertyId`), không được thì hỏi MSAA (`STATE_SYSTEM_PROTECTED`).
+3. **Trạng thái nguyên tử** `_passwordStateWord`: `PW_NORMAL`, `PW_PASSWORD` hoặc `PW_PENDING`. Trong 60 ms chờ kết quả, phím đầu tiên được giữ thô. Bộ đếm thế hệ bỏ qua kết quả cũ khi focus đã đổi.
+4. **Giữ nguyên khi bấm Hiện/Ẩn mật khẩu** trên cùng một ô.
+5. **Không hỏi khi đang gõ dồn** (< 150 ms giữa hai phím, để ô tìm kiếm không bị chậm); hỏi lại khi nhả chuột trong vùng web (giới hạn 100 ms, chờ 40 ms).
+
+Hook bàn phím và chuột chỉ đọc cờ đã có sẵn. EasyKey không đọc nội dung ô,
+không ghi phím, không lưu trạng thái theo ứng dụng. Tắt được trong Cài đặt ›
+Nâng cao › Gõ (`vPasswordFieldBypass`); riêng phần trình duyệt tắt bằng registry
+`vPasswordFieldUIA = 0`.
+
+Giới hạn đã biết: màn hình đăng nhập Windows, hộp UAC và secure desktop nằm
+ngoài tầm; ô tự vẽ, shadow DOM phức tạp hay iframe khác nguồn không báo thuộc
+tính mật khẩu thì không nhận ra được.
+
+### Test
+
+- Test engine (`Sources/EasyKey/tests`) chỉ dùng dữ liệu tự tạo, không gọi mạng, không đọc registry thật và không ghi file ngoài thư mục tạm.
+- Khi sửa lỗi engine, thêm một ca test cho đúng lỗi đó.
 
 ## 8. Giao diện
 Giao diện không dùng hộp thoại Win32 cổ điển mà tự vẽ để giống Windows 11, mật độ hiển thị gọn (chiều cao tối thiểu 210px, các nút chế độ `V` · `EV` · `E` 1 dòng tự cân lại 2 nút khi bật `vTwoModesOnly`, thanh kiểu gõ dạng tab gạch chân 2px):
@@ -218,6 +240,7 @@ Cập nhật nằm trong `Updater.cpp`, chạy ở luồng riêng để không l
 - Dự án Visual Studio 2022 (toolset v143), chỉ cấu hình `Release|x64` được phát hành. Chi tiết ở [BUILD](BUILD.md).
 - CI (`.github/workflows/msbuild.yml`): chạy test engine trên Windows và Linux, build x64, tải exe lên mục Artifacts và tạo chứng thực nguồn gốc.
 - Phát hành: cập nhật `versionName` và `versionCode` trong `version.json` và thêm mục vào hai file CHANGELOG, merge vào `master`, rồi chạy tay workflow MSBuild (Actions › MSBuild › Run workflow). Workflow tạo tag trùng `versionName`, build, ký số Authenticode bằng ECDSA P-256 (`tools/signing/sign.ps1`) với timestamp RFC 3161, ghim thumbprint đối chiếu với `docs/signing/EasyKey-codesign.cer`, sinh `signature.json`, tính `EasyKey.exe.sha256` sau khi ký, đóng gói zip, chứng thực nguồn gốc và tạo trang phát hành.
+- Bản phát hành được đăng ở cả GitHub và GitLab (`gitlab.com/cino-group/easykey`). Trên GitLab, `.gitlab-ci.yml` chạy test và build trên runner Windows tự quản (tag `easykey-windows`); job `release` (bấm tay trên `master`, hoặc tự chạy khi push tag phiên bản) gọi `tools\release-gitlab.ps1` để build, ký bằng khoá trong biến CI protected, kiểm tra chữ ký như trình cập nhật, đóng gói và tạo Release. Chạy tay: `tools\release-gitlab.ps1 -FromGitHub` đăng đúng những file của bản GitHub lên GitLab, `-Ref <commit>` build và ký ngay trên máy; script đọc token GitLab từ `%LOCALAPPDATA%\EasyKey-signing\gitlab-token.clixml` hoặc hỏi khi chạy.
 - Bản đang chạy cũng đọc `version.json` trên `master`, nên chỉ đổi phiên bản trong file này khi bản phát hành tương ứng sắp có.
 
 ## 12. Bản đồ mã nguồn
@@ -246,5 +269,5 @@ Giấy phép: toàn bộ dự án là GPL-3.0. Các file giao diện viết mớ
 ## 13. Giới hạn đã biết
 - **Hook thay vì TSF.** Cách xoá rồi gửi lại có thể lộ ra với ứng dụng tự theo dõi từng phím (trang luyện gõ, một số game). Bù lại không có ô ENG/VIE trên thanh tác vụ. TSF được để dành cho một sản phẩm riêng sau này.
 - **Ứng dụng quyền Admin** chỉ gõ được khi EasyKey cũng chạy quyền Admin.
-- **Chứng chỉ ký số tự ký (self-signed).** Bản phát hành được ký Authenticode ECDSA nội bộ và ghim thumbprint để người dùng tự xác thực tính toàn vẹn. Vì chưa qua CA thương mại trong Microsoft Trusted Root Program, Windows SmartScreen vẫn có thể hiển thị cảnh báo 'Unknown publisher' cho đến khi chuyển đổi sang chứng chỉ thương mại/Azure Trusted Signing trong tương lai.
+- **Chứng chỉ ký số tự cấp.** Bản phát hành được ký bằng chứng chỉ của dự án và trình cập nhật ghim đúng chứng chỉ đó. Vì chưa phải chứng chỉ thương mại, SmartScreen vẫn có thể báo "Unknown publisher". Chứng chỉ hết hạn ngày 02/11/2028; trước đó cần một bản chấp nhận cả chứng chỉ cũ lẫn mới.
 - **Chỉ Windows x64.** Không có bản x86, ARM64, macOS hay Linux.

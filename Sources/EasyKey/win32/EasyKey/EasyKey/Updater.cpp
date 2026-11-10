@@ -27,9 +27,33 @@ the MIT license, see LICENSES/MIT.txt.
 #pragma comment(lib, "winhttp.lib")
 #pragma comment(lib, "bcrypt.lib")
 
-#define VERSION_URL L"https://raw.githubusercontent.com/iamcino/EasyKey/master/version.json"
-#define RELEASE_URL L"https://github.com/iamcino/EasyKey/releases/download/"
-#define RELEASES_PAGE L"https://github.com/iamcino/EasyKey/releases/latest"
+//every release is published on GitHub and on GitLab with the same signed files. Hosts are tried
+//in order and the one that answered last is tried first, so an outage on one does not stop
+//updates; the SHA-256 and the pinned signature check make the host itself untrusted
+struct ReleaseHost {
+	const wchar_t* versionUrl;
+	const wchar_t* downloadPrefix; //+ version + downloadMiddle + file name
+	const wchar_t* downloadMiddle;
+	const wchar_t* notesPrefix;    //+ version
+	const wchar_t* page;
+};
+static const ReleaseHost hosts[] = {
+	{ L"https://raw.githubusercontent.com/iamcino/EasyKey/master/version.json",
+	  L"https://github.com/iamcino/EasyKey/releases/download/", L"/",
+	  L"https://github.com/iamcino/EasyKey/releases/tag/",
+	  L"https://github.com/iamcino/EasyKey/releases/latest" },
+	{ L"https://gitlab.com/cino-group/easykey/-/raw/master/version.json",
+	  L"https://gitlab.com/cino-group/easykey/-/releases/", L"/downloads/",
+	  L"https://gitlab.com/cino-group/easykey/-/releases/",
+	  L"https://gitlab.com/cino-group/easykey/-/releases" },
+};
+static const LONG hostCount = (LONG)(sizeof(hosts) / sizeof(hosts[0]));
+//written by the worker thread, read by the main thread
+static volatile LONG workingHost = 0;
+
+static const ReleaseHost& hostByTry(LONG attempt) {
+	return hosts[(InterlockedCompareExchange(&workingHost, 0, 0) + attempt) % hostCount];
+}
 #define MAX_DOWNLOAD (32 * 1024 * 1024)
 #define UPDATED_ARGUMENT L"--updated"
 
@@ -100,15 +124,26 @@ static string sha256Hex(const string& data) {
 bool Updater::check(string& newVersion, bool& failed) {
 	string data;
 	failed = true;
-	if (!httpGet(VERSION_URL, data))
-		return false;
-	if (!parseLatestVersionName(data, newVersion))
+	LONG first = InterlockedCompareExchange(&workingHost, 0, 0);
+	bool found = false;
+	for (LONG attempt = 0; attempt < hostCount && !found; attempt++) {
+		LONG index = (first + attempt) % hostCount;
+		if (httpGet(hosts[index].versionUrl, data) && parseLatestVersionName(data, newVersion)) {
+			InterlockedExchange(&workingHost, index);
+			found = true;
+		}
+	}
+	if (!found)
 		return false;
 	failed = false;
 
 	DWORD current = EasyKeyHelper::getVersionNumber(); //major | minor << 8 | patch << 16
 	DWORD currentNumber = ((current & 0xFF) << 16) | (current & 0xFF00) | ((current >> 16) & 0xFF);
 	return versionNumber(newVersion) > currentNumber;
+}
+
+wstring Updater::releaseNotesUrl(const wstring& version) {
+	return hostByTry(0).notesPrefix + version;
 }
 
 static wstring folderOf(const wstring& path) {
@@ -118,7 +153,7 @@ static wstring folderOf(const wstring& path) {
 static void showError(const HWND& owner, LPCTSTR message) {
 	if (MessageWindow::ask(owner, TR("Chưa cập nhật được", "The update did not finish"), message,
 			TR("Mở trang tải về", "Open download page"), TR("Đóng", "Close")))
-		ShellExecute(NULL, L"open", RELEASES_PAGE, NULL, NULL, SW_SHOWNORMAL);
+		ShellExecute(NULL, L"open", hostByTry(0).page, NULL, NULL, SW_SHOWNORMAL);
 }
 
 //checking, downloading and swapping the exe run on a worker thread: the keyboard and mouse
@@ -204,8 +239,17 @@ static int install(const string& exe, wstring& path) {
 static void download(Job* job) {
 	wstring wideVersion = utf8ToWideString(job->version);
 	string checksum;
-	if (!httpGet(RELEASE_URL + wideVersion + L"/EasyKey.exe", job->exe) ||
-		!httpGet(RELEASE_URL + wideVersion + L"/EasyKey.exe.sha256", checksum)) {
+	LONG first = InterlockedCompareExchange(&workingHost, 0, 0);
+	bool fetched = false;
+	for (LONG attempt = 0; attempt < hostCount && !fetched; attempt++) {
+		LONG index = (first + attempt) % hostCount;
+		wstring base = hosts[index].downloadPrefix + wideVersion + hosts[index].downloadMiddle;
+		if (httpGet(base + L"EasyKey.exe", job->exe) && httpGet(base + L"EasyKey.exe.sha256", checksum)) {
+			InterlockedExchange(&workingHost, index);
+			fetched = true;
+		}
+	}
+	if (!fetched) {
 		job->result = DOWNLOAD_FAILED;
 		return;
 	}
@@ -272,7 +316,7 @@ static void finishJob(Job* job) {
 			busy = false;
 			if (!job->silent && job->failed)
 				AppDelegate::getInstance()->showNotice(TR("Chưa kiểm tra được bản mới", "Could not check for updates"),
-					TR("Kiểm tra kết nối mạng rồi thử lại", "Check the network connection and try again"));
+					TR("Kiểm tra mạng, hoặc cho phép EasyKey trong phần mềm diệt virus", "Check the network, or allow EasyKey in your antivirus"));
 			else if (!job->silent)
 				AppDelegate::getInstance()->showNotice(TR("EasyKey đã là bản mới nhất", "EasyKey is up to date"),
 					TR("Phiên bản ", "Version ") + EasyKeyHelper::getVersionString());
@@ -285,7 +329,7 @@ static void finishJob(Job* job) {
 		options.text = TR("Cập nhật ngay? EasyKey sẽ tự tải về, thay file và khởi động lại.",
 			"Update now? EasyKey downloads it, replaces itself and restarts.");
 		options.link = TR("Xem có gì mới", "See what's new");
-		options.linkUrl = wstring(RELEASE_NOTES_URL) + version;
+		options.linkUrl = Updater::releaseNotesUrl(version);
 		options.buttons.push_back(TR("Cập nhật", "Update"));
 		options.buttons.push_back(TR("Để sau", "Later"));
 		if (MessageWindow::show(owner, options) == 0) {
