@@ -1661,6 +1661,16 @@ void vKeyHandleEvent(const vKeyEvent& event,
                capsStatus == 2); //caps lock
     if (data == KEY_ESC && state == KeyDown && vKeyActiveConfig().restoreOnEscape && !otherControlKey && restoreRawKeys())
         return;
+#if _WIN32
+    if (event == Keyboard && state == KeyDown && data == VK_CAPITAL) {
+        hCode = vDoNothing; hBPC = 0; hNCC = 0; hExt = 1;
+        if (_index > 0 || !_specialChar.empty()) {
+            _specialChar.clear(); _typingStates.clear(); hMacroKey.clear();
+            _spaceCount = 0; startNewSession();
+        }
+        return;
+    }
+#endif
     bool wordBreak = isWordBreak(event, state, data);
     bool numBreak = IS_NUMBER_KEY(data) && capsStatus == 1;
     if (vKeyActiveConfig().mixedEnglish && _index > 0) {
