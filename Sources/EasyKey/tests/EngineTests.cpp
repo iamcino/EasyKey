@@ -4132,6 +4132,196 @@ static void testLiteralK() {
     testCfg().quickEndConsonant = 0;
 }
 
+// ---- Part B (plan v2.2): CapsLock VK_CAPITAL session close ----
+// '^' in a key string is a CapsLock keydown, '#' a control-coded break
+// (otherControlKey). Both are nonprinting: they never add a glyph, and a
+// code-0 packet's counts are stale and authorize no deletion (the debate
+// applicator rule). statusMode 2 is the probe rule (uppercase letter ->
+// capsStatus 2, lowercase -> 0); statusMode 0 is the suite rule (uppercase
+// -> 1). The tuple of the event at captureIndex is kept in g_capTuple.
+static int g_capTuple[4];
+static bool g_capCaptured = false;
+
+static wstring typeCapsSeq(const string& keys, const vKeyConfig& config, int statusMode, int captureIndex = -1) {
+    startNewSession();
+    wstring text;
+    g_capCaptured = false;
+    int idx = 0;
+    for (char c : keys) {
+        if (c == '^' || c == '#') {
+#ifdef _WIN32
+            if (c == '^')
+                vKeyHandleEvent(vKeyEvent::Keyboard, vKeyEventState::KeyDown, (Uint16)VK_CAPITAL, config, 0, false);
+            else
+                vKeyHandleEvent(vKeyEvent::Keyboard, vKeyEventState::KeyDown, (Uint16)VK_CONTROL, config, 0, true);
+            if (idx == captureIndex) {
+                g_capTuple[0] = pData->code; g_capTuple[1] = pData->extCode;
+                g_capTuple[2] = pData->backspaceCount; g_capTuple[3] = pData->newCharCount;
+                g_capCaptured = true;
+            }
+#endif
+            idx++;
+            continue;
+        }
+        Uint16 keyCode = charToKeyCode(c);
+        bool isPunctuation = c == '.' || c == '?' || c == '!' || c == '@';
+        bool isUpper = (c >= 'A' && c <= 'Z') || c == '?' || c == '!' || c == '@' || c == '_' || c == ':';
+        int status = isUpper ? (statusMode == 2 ? 2 : 1) : 0;
+        vKeyHandleEvent(vKeyEvent::Keyboard, vKeyEventState::KeyDown, keyCode, config, status, false);
+        if (idx == captureIndex) {
+            g_capTuple[0] = pData->code; g_capTuple[1] = pData->extCode;
+            g_capTuple[2] = pData->backspaceCount; g_capTuple[3] = pData->newCharCount;
+            g_capCaptured = true;
+        }
+        if (pData->code == vDoNothing) {
+            if (keyCode == KEY_DELETE) {
+                if (!text.empty()) text.pop_back();
+            } else if (keyCode == KEY_ESC) {
+                text += L'|';
+            } else if (keyCodeToCharacter(keyCode | (isUpper ? CAPS_MASK : 0))) {
+                text += (wchar_t)keyCodeToCharacter(keyCode | (isUpper ? CAPS_MASK : 0));
+            } else if (isPunctuation) {
+                text += (wchar_t)c;
+            } else {
+                text += keyCodeToChar(keyCode | (isUpper ? CAPS_MASK : 0));
+            }
+        } else if (pData->code == vWillProcess || pData->code == vRestore || pData->code == vRestoreAndStartNewSession) {
+            for (int i = 0; i < pData->backspaceCount && !text.empty(); i++)
+                text.pop_back();
+            for (int i = pData->newCharCount - 1; i >= 0; i--)
+                sendKeyCode(text, pData->charData[i]);
+            if (pData->code == vRestore || pData->code == vRestoreAndStartNewSession)
+                sendKeyCode(text, keyCode | (isUpper ? CAPS_MASK : 0));
+            if (pData->code == vRestoreAndStartNewSession)
+                startNewSession();
+        }
+        idx++;
+    }
+    return text;
+}
+
+static void expectCaps(const char* inputName, const string& keys, const wstring& expected, int statusMode = 2) {
+    total++;
+    wstring actual = typeCapsSeq(keys, testCfg(), statusMode);
+    if (actual != expected) {
+        failures++;
+        printf("FAIL [%s] \"%s\": expected \"%s\", got \"%s\"\n", inputName, keys.c_str(),
+               toUtf8(expected).c_str(), toUtf8(actual).c_str());
+    }
+}
+
+static void expectCapsTuple(const char* inputName, const string& keys, int captureIndex,
+                            int code, int ext, int bs, int nc, int statusMode = 2) {
+    total++;
+    typeCapsSeq(keys, testCfg(), statusMode, captureIndex);
+    if (!g_capCaptured || g_capTuple[0] != code || g_capTuple[1] != ext || g_capTuple[2] != bs || g_capTuple[3] != nc) {
+        failures++;
+        printf("FAIL [%s] \"%s\" event %d: expected tuple (%d,%d,%d,%d), got (%d,%d,%d,%d) captured=%d\n",
+               inputName, keys.c_str(), captureIndex, code, ext, bs, nc,
+               g_capTuple[0], g_capTuple[1], g_capTuple[2], g_capTuple[3], (int)g_capCaptured);
+    }
+}
+
+static void testCapsLock() {
+    //defaults as in the debate corpus: Telex, spelling/restore on, macros
+    //off, Unicode. Expectations are the candidate outcomes verified in
+    //zed-check.md (39-cell corpus) and zed-micro.md; on the baseline engine
+    //the toggle cells fail in the recorded ways (phantom unit, raw
+    //restoration, one-word shadow).
+    testCfg().inputType = vTelex;
+    testCfg().mixedEnglish = 0;
+    //P1-P4: no CapsLock event; the fix must not change these
+    expectCaps("CapsLock", "VIEvieejt tieengs ", L"VIEvieejt tiếng ");
+    expectCaps("CapsLock", "VIETvieejt tieengs ", L"VIETvieejt tiếng ");
+    expectCaps("CapsLock", "vievieejt tieengs ", L"vievieejt tiếng ");
+    expectCaps("CapsLock", "VIETs", L"VIÉT");
+    //ordinary delete and the hyphen break keep their pre-guard behavior
+    expectCaps("CapsLock", "vieet<", L"viê");
+    expectCaps("CapsLock", "vieetj-", L"việt-");
+    expectCapsTuple("CapsLock", "vieetj-", 6, vDoNothing, 3, 0, 0);
+#ifdef _WIN32
+    //P5: the screen is VIETs on both engines; after the fix the CapsLock
+    //event itself is the session-closing tuple, not a phantom insertion
+    expectCaps("CapsLock", "VIET^s", L"VIETs");
+    expectCapsTuple("CapsLock", "VIET^s", 4, vDoNothing, 1, 0, 0);
+    //A0-A6: the accented caps word and its toggles, both toggle directions
+    expectCaps("CapsLock", "VIEETJ", L"VIỆT");
+    expectCaps("CapsLock", "^VIEETJ", L"VIỆT");
+    expectCaps("CapsLock", "VIEETJ^<vieejt tieengs ", L"VIỆviệt tiếng ");
+    expectCaps("CapsLock", "^VIEETJ^<vieejt tieengs ", L"VIỆviệt tiếng ");
+    expectCaps("CapsLock", "^#VIEETJ#^<vieejt tieengs ", L"VIỆviệt tiếng ");
+    expectCaps("CapsLock", "^VIEETJ^<<<vieejt tieengs ", L"Vviệt tiếng ");
+    expectCaps("CapsLock", "VIEETJ^<<<vieejt tieengs ", L"Vviệt tiếng ");
+    //V-series: deletes past an empty editor, space-closed word, AB shapes
+    expectCaps("CapsLock", "^VIET^<<<<vieejt tieengs ", L"việt tiếng ");
+    expectCaps("CapsLock", "VIET^<<<<vieejt tieengs ", L"việt tiếng ");
+    expectCaps("CapsLock", "VIET ^<vieejt tieengs ", L"VIETviệt tiếng ");
+    expectCaps("CapsLock", "AB^<<<vieejt tieengs ", L"việt tiếng ");
+    expectCaps("CapsLock", "^AB^<<<vieejt tieengs ", L"việt tiếng ");
+    //micro cell 2: the toggle closes the open word as a boundary
+    expectCaps("CapsLock", "vie^etj", L"vieẹt");
+    //micro cell 1: the toggle tuple at capsStatus 0, 1 and 2, mid-word and
+    //between words; the session closes in every row
+    for (int st = 0; st <= 2; st++) {
+        total++;
+        typeCapsSeq("VIE", testCfg(), 2);
+        vKeyHandleEvent(vKeyEvent::Keyboard, vKeyEventState::KeyDown, (Uint16)VK_CAPITAL, testCfg(), st, false);
+        if (!(pData->code == vDoNothing && pData->extCode == 1 && pData->backspaceCount == 0 && pData->newCharCount == 0)) {
+            failures++;
+            printf("FAIL [CapsLock] capsStatus %d after VIE: expected tuple (0,1,0,0), got (%d,%d,%d,%d)\n",
+                   st, (int)pData->code, (int)pData->extCode, (int)pData->backspaceCount, (int)pData->newCharCount);
+        }
+        total++;
+        typeCapsSeq("VIE ", testCfg(), 2);
+        vKeyHandleEvent(vKeyEvent::Keyboard, vKeyEventState::KeyDown, (Uint16)VK_CAPITAL, testCfg(), st, false);
+        if (!(pData->code == vDoNothing && pData->extCode == 1 && pData->backspaceCount == 0 && pData->newCharCount == 0)) {
+            failures++;
+            printf("FAIL [CapsLock] capsStatus %d after VIE+Space: expected tuple (0,1,0,0), got (%d,%d,%d,%d)\n",
+                   st, (int)pData->code, (int)pData->extCode, (int)pData->backspaceCount, (int)pData->newCharCount);
+        }
+    }
+#endif
+    //the same cells in EV
+    testCfg().mixedEnglish = 1;
+    expectCaps("CapsLock-EV", "VIEvieejt tieengs ", L"VIEvieejt tiếng ");
+#ifdef _WIN32
+    expectCaps("CapsLock-EV", "VIEETJ", L"VIỆT");
+    expectCaps("CapsLock-EV", "^VIEETJ", L"VIỆT");
+    expectCaps("CapsLock-EV", "VIEETJ^<vieejt tieengs ", L"VIỆviệt tiếng ");
+    expectCaps("CapsLock-EV", "^VIEETJ^<vieejt tieengs ", L"VIỆviệt tiếng ");
+    expectCaps("CapsLock-EV", "^VIEETJ^<<<vieejt tieengs ", L"Vviệt tiếng ");
+    expectCaps("CapsLock-EV", "VIEETJ^<<<vieejt tieengs ", L"Vviệt tiếng ");
+    expectCaps("CapsLock-EV", "^VIET^<<<<vieejt tieengs ", L"việt tiếng ");
+    expectCaps("CapsLock-EV", "VIET ^<vieejt tieengs ", L"VIETviệt tiếng ");
+    expectCaps("CapsLock-EV", "AB^<<<vieejt tieengs ", L"việt tiếng ");
+    expectCaps("CapsLock-EV", "^AB^<<<vieejt tieengs ", L"việt tiếng ");
+    expectCaps("CapsLock-EV", "vie^etj", L"vieẹt");
+    //between-word toggles (suite status rule, as the anchor tests use)
+    testCfg().mixedFixLast = 0;
+    expectCaps("CapsLock-EV", "There ^ are ", L"Thể  are ", 0);
+    testCfg().mixedFixLast = 1;
+    expectCaps("CapsLock-EV", "There ^are ", L"There are ", 0);
+    testCfg().mixedFixLast = 0;
+    //mixed context survives toggles in both directions: the ambiguous word
+    //after the toggles types exactly as it does with no toggle
+    total++;
+    {
+        wstring control = typeCapsSeq("hello as ", testCfg(), 0);
+        wstring toggled = typeCapsSeq("hello ^^as ", testCfg(), 0);
+        if (control != toggled) {
+            failures++;
+            printf("FAIL [CapsLock-EV] mixed context: control \"%s\", toggled \"%s\"\n",
+                   toUtf8(control).c_str(), toUtf8(toggled).c_str());
+        }
+    }
+#endif
+    //the underscore in Mixed is a normal key (ext 3), never the CapsLock
+    //early return; on Windows KEY_MINUS is 189, not 0x14
+    expectCaps("CapsLock-EV", "user_id ", L"user_id ", 0);
+    expectCapsTuple("CapsLock-EV", "user_id ", 4, vDoNothing, 3, 3, 3, 0);
+    testCfg().mixedEnglish = 0;
+}
+
 int main(int argc, char** argv) {
     pData = (vKeyHookState*)vKeyInit();
     if (argc > 1 && strcmp(argv[1], "--render") == 0)
@@ -4150,6 +4340,7 @@ int main(int argc, char** argv) {
     testParserTruncation();
     testQuickEndConsonant();
     testLiteralK();
+    testCapsLock();
     testCodeTableInvariants();
     testMixedWordsParser();
     testSaveDataLimits();
