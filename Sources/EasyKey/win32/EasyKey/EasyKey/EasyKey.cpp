@@ -1409,8 +1409,33 @@ static void assertCombineKeyThread() {
 static void logCombineKey(const char* phase, UINT requested, UINT returned, DWORD err) {
 	if (!vDebugKeyLog)
 		return;
-	char buf[192];
-	sprintf_s(buf, "combinekey %s req=%u ret=%u err=%lu slots=%s%s", phase, requested, returned, err,
+	char buf[256];
+	char slots[96] = "";
+	if (s_owedKey2Up) {
+		char part[48];
+		sprintf_s(part, "key2(vk=%u,flag=%lu) ", s_owedKey2, s_owedKey2Flag);
+		strcat_s(slots, part);
+	}
+	if (s_owedShiftUp) {
+		char part[48];
+		sprintf_s(part, "shift(vk=%u,flag=%lu)", s_owedShift, s_owedShiftFlag);
+		strcat_s(slots, part);
+	}
+	sprintf_s(buf, "combinekey %s req=%u ret=%u err=%lu slots=%s", phase, requested, returned, err, slots);
+	writeDebugLine(buf);
+}
+
+//failure record for a primary batch or its in-call cleanup: the phase,
+//this call's requested/returned counts and GetLastError, the primary's
+//sent/n, ownership and diagnostic samples, and the slots remaining after
+//the call's cleanup outcome is known
+static void logCombineKeyPrimary(const char* phase, UINT requested, UINT returned, DWORD err,
+                                 UINT sent, UINT n, bool owned, bool shiftSample, bool key2Sample) {
+	if (!vDebugKeyLog)
+		return;
+	char buf[256];
+	sprintf_s(buf, "combinekey %s req=%u ret=%u err=%lu sent=%u n=%u owned=%d shiftSample=%d key2Sample=%d slots=%s%s",
+		phase, requested, returned, err, sent, n, owned ? 1 : 0, shiftSample ? 1 : 0, key2Sample ? 1 : 0,
 		s_owedKey2Up ? "key2 " : "", s_owedShiftUp ? "shift" : "");
 	writeDebugLine(buf);
 }
@@ -1519,24 +1544,12 @@ static void SendCombineKey(const Uint16& key1, const Uint16& key2, const DWORD& 
 	if (sent > n) {
 		//out-of-range primary return: a failure with no guessed cleanup and
 		//no new debt; this branch alone carries the primary-oor tag
-		if (vDebugKeyLog) {
-			char buf[224];
-			sprintf_s(buf, "primary-oor req=%u ret=%u err=%lu sent=%u n=%u owned=%d shiftSample=%d key2Sample=%d slots=%s%s",
-				n, sent, err, sent, n, sampled ? 0 : 1, sampled ? 1 : 0, key2Sample ? 1 : 0,
-				s_owedKey2Up ? "key2 " : "", s_owedShiftUp ? "shift" : "");
-			writeDebugLine(buf);
-		}
+		logCombineKeyPrimary("primary-oor", n, sent, err, sent, n, !sampled, sampled, key2Sample);
 		return;
 	}
 	if (sent == 0) {
 		//nothing was delivered: no cleanup, no new debt
-		if (vDebugKeyLog) {
-			char buf[224];
-			sprintf_s(buf, "combinekey primary req=%u ret=%u err=%lu sent=%u n=%u owned=%d shiftSample=%d key2Sample=%d slots=%s%s",
-				n, sent, err, sent, n, sampled ? 0 : 1, sampled ? 1 : 0, key2Sample ? 1 : 0,
-				s_owedKey2Up ? "key2 " : "", s_owedShiftUp ? "shift" : "");
-			writeDebugLine(buf);
-		}
+		logCombineKeyPrimary("primary", n, sent, err, sent, n, !sampled, sampled, key2Sample);
 		return;
 	}
 	//0 < sent < n: clean up only the unpaired injected downs, once, in this
@@ -1569,13 +1582,8 @@ static void SendCombineKey(const Uint16& key1, const Uint16& key2, const DWORD& 
 			if (cleanIsKey2[j]) { s_owedKey2Up = true; s_owedKey2 = key2; s_owedKey2Flag = flagKey2; }
 			else { s_owedShiftUp = true; s_owedShift = key1; s_owedShiftFlag = flagKey1; }
 		}
-		if (vDebugKeyLog) {
-			char buf[224];
-			sprintf_s(buf, "combinekey cleanup-oor req=%u ret=%u err=%lu sent=%u n=%u owned=%d shiftSample=%d key2Sample=%d slots=%s%s",
-				m, c, cerr, sent, n, sampled ? 0 : 1, sampled ? 1 : 0, key2Sample ? 1 : 0,
-				s_owedKey2Up ? "key2 " : "", s_owedShiftUp ? "shift" : "");
-			writeDebugLine(buf);
-		}
+		logCombineKeyPrimary("cleanup-oor", m, c, cerr, sent, n, !sampled, sampled, key2Sample);
+		logCombineKeyPrimary("primary", n, sent, err, sent, n, !sampled, sampled, key2Sample);
 		return;
 	}
 	//the first c cleanup ups landed; the unpaid suffix stays owed
@@ -1583,15 +1591,13 @@ static void SendCombineKey(const Uint16& key1, const Uint16& key2, const DWORD& 
 		if (cleanIsKey2[j]) { s_owedKey2Up = true; s_owedKey2 = key2; s_owedKey2Flag = flagKey2; }
 		else { s_owedShiftUp = true; s_owedShift = key1; s_owedShiftFlag = flagKey1; }
 	}
-	if (c < m) {
-		if (vDebugKeyLog) {
-			char buf[224];
-			sprintf_s(buf, "combinekey cleanup req=%u ret=%u err=%lu sent=%u n=%u owned=%d shiftSample=%d key2Sample=%d slots=%s%s",
-				m, c, cerr, sent, n, sampled ? 0 : 1, sampled ? 1 : 0, key2Sample ? 1 : 0,
-				s_owedKey2Up ? "key2 " : "", s_owedShiftUp ? "shift" : "");
-			writeDebugLine(buf);
-		}
-	}
+	if (c < m)
+		logCombineKeyPrimary("cleanup", m, c, cerr, sent, n, !sampled, sampled, key2Sample);
+	//every in-range short primary is a failure record, even when its
+	//cleanup fully landed: a successful release does not mean the missing
+	//chord completed. The line is written last so its slots describe the
+	//residue this call actually leaves behind.
+	logCombineKeyPrimary("primary", n, sent, err, sent, n, !sampled, sampled, key2Sample);
 }
 
 static void SendKeyCode(Uint32 data) {
