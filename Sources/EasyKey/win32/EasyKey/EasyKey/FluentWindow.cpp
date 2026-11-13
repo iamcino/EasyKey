@@ -83,6 +83,10 @@ void FluentWindow::create(const wstring& title, const int& widthDips, const HWND
 	relayout();
 	fit();
 	relayout();
+	//the first fit sized the window from a layout made at the 200x200 placeholder
+	//width, where wrapped text is far taller; fit again now that the layout
+	//matches the real width, so fixed-size windows keep their content height
+	fit();
 	ShowWindow(hWnd, SW_SHOWNORMAL);
 	SetForegroundWindow(hWnd);
 }
