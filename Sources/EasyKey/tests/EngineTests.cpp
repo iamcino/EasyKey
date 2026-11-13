@@ -3986,6 +3986,152 @@ static void testAppProfileState() {
     }
 }
 
+static void testLiteralK() {
+    //Part C (plan v2.2): a preserved literal k after exactly one supported
+    //vowel unit. Before the fix, two gates refused every tone key there, so
+    //place names like Dak Lak could not be typed. Expectations below are the
+    //plan's acceptance matrix; on the baseline engine the name cells fail
+    //and the negative controls pass. Defaults: spelling/restore on, modern
+    //orthography, freeMark=0, mixedFixLast=0, quick flags off.
+    testCfg().inputType = vTelex;
+    testCfg().mixedEnglish = 0;
+    //Names, Telex
+    expectTyping("LiteralK", "DDawks ", L"Đắk ");
+    expectTyping("LiteralK", "DDawsk ", L"Đắk ");
+    expectTyping("LiteralK", "Lawks ", L"Lắk ");
+    expectTyping("LiteralK", "Lawsk ", L"Lắk ");
+    expectTyping("LiteralK", "DDawk ", L"Đăk ");
+    expectTyping("LiteralK", "DDak ", L"Đak ");
+    expectTyping("LiteralK", "DDawks Lawks ", L"Đắk Lắk ");
+    expectTyping("LiteralK", "DDawk Haf ", L"Đăk Hà ");
+    expectTyping("LiteralK", "DDawk Too ", L"Đăk Tô ");
+    expectTyping("LiteralK", "DDawk Glei ", L"Đăk Glei ");
+    expectTyping("LiteralK", "DDawks Sawks ", L"Đắk Sắk ");
+    expectTyping("LiteralK", "DDak Pow ", L"Đak Pơ ");
+    expectTyping("LiteralK", "Ea Rooks ", L"Ea Rốk ");
+    expectTyping("LiteralK", "Ea Roosk ", L"Ea Rốk ");
+    expectTyping("LiteralK", "Buks ", L"Búk ");
+    expectTyping("LiteralK", "Busk ", L"Búk ");
+    expectTyping("LiteralK", "Peks ", L"Pék ");
+    expectTyping("LiteralK", "Pesk ", L"Pék ");
+    expectTyping("LiteralK", "DDawk Peks ", L"Đăk Pék ");
+    expectTyping("LiteralK", "DDawk Pesk ", L"Đăk Pék ");
+    expectTyping("LiteralK", "DDawk Peks,", L"Đăk Pék,");
+    expectTyping("LiteralK", "ddawks ", L"đắk ");
+    expectTyping("LiteralK", "Ddawks ", L"Đắk ");
+    expectTyping("LiteralK", "DDAWKS ", L"ĐẮK ");
+    expectTyping("LiteralK", "lawks ", L"lắk ");
+    expectTyping("LiteralK", "LAWKS ", L"LẮK ");
+    expectTyping("LiteralK", "DDawks,", L"Đắk,");
+    expectTyping("LiteralK", "DDawks.", L"Đắk.");
+    expectTyping("LiteralK", "DDawkj ", L"Đặk ");
+    expectTyping("LiteralK", "DDawjk ", L"Đặk ");
+    expectTyping("LiteralK", "Pejk ", L"Pẹk ");
+    expectTyping("LiteralK", "Pekj ", L"Pẹk ");
+    //refused tones on a preserved literal k stay raw, both orders
+    expectTyping("LiteralK", "DDawfk ", L"DDawfk ");
+    expectTyping("LiteralK", "DDawkf ", L"DDawkf ");
+    expectTyping("LiteralK", "DDawrk ", L"DDawrk ");
+    expectTyping("LiteralK", "DDawkr ", L"DDawkr ");
+    expectTyping("LiteralK", "DDawxk ", L"DDawxk ");
+    expectTyping("LiteralK", "DDawkx ", L"DDawkx ");
+    expectTyping("LiteralK", "Pefk ", L"Pefk ");
+    expectTyping("LiteralK", "Pekf ", L"Pekf ");
+    expectTyping("LiteralK", "Perk ", L"Perk ");
+    expectTyping("LiteralK", "Pekr ", L"Pekr ");
+    expectTyping("LiteralK", "Pexk ", L"Pexk ");
+    expectTyping("LiteralK", "Pekx ", L"Pekx ");
+    //ek with a circumflex is refused: the typed keys come back
+    expectTyping("LiteralK", "eek ", L"eek ");
+    expectTyping("LiteralK", "peek ", L"peek ");
+    expectTyping("LiteralK", "week ", L"week ");
+    //editing across the boundary
+    expectTyping("LiteralK", "DDawks< ", L"Đắ ");
+    expectTyping("LiteralK", "DDawks < ", L"Đắk ");
+    expectTyping("LiteralK", "DDawks <k ", L"DDawksk ");
+    expectTyping("LiteralK", "DDawks <<s ", L"DDawk ");
+    expectTyping("LiteralK", "DDawksz ", L"Đăk ");
+    expectTyping("LiteralK", "Rooksz ", L"Rooksz ");
+    expectTyping("LiteralK", "Buksz ", L"Buk ");
+    expectTyping("LiteralK", "Peksz ", L"Pek ");
+    //converted-but-invalid stems with no vowel mark do not restore and do
+    //not latch: the next word types normally
+    expectTyping("LiteralK", "DDuk ", L"Đuk ");
+    expectTyping("LiteralK", "DDuskz ", L"Đuk ");
+    expectTyping("LiteralK", "DDuk vieejt tieengs ", L"Đuk việt tiếng ");
+    //Names, VNI
+    testCfg().inputType = vVNI;
+    expectTyping("LiteralK-VNI", "d9a81k ", L"đắk ");
+    expectTyping("LiteralK-VNI", "d9a8k1 ", L"đắk ");
+    expectTyping("LiteralK-VNI", "da81k ", L"dắk ");
+    expectTyping("LiteralK-VNI", "da8k1 ", L"dắk ");
+    expectTyping("LiteralK-VNI", "la81k ", L"lắk ");
+    expectTyping("LiteralK-VNI", "la8k1 ", L"lắk ");
+    expectTyping("LiteralK-VNI", "ro61k ", L"rốk ");
+    expectTyping("LiteralK-VNI", "ro6k1 ", L"rốk ");
+    expectTyping("LiteralK-VNI", "bu1k ", L"búk ");
+    expectTyping("LiteralK-VNI", "buk1 ", L"búk ");
+    expectTyping("LiteralK-VNI", "d9ak ", L"đak ");
+    expectTyping("LiteralK-VNI", "pe1k ", L"pék ");
+    expectTyping("LiteralK-VNI", "pek1 ", L"pék ");
+    expectTyping("LiteralK-VNI", "d9a8k pe1k ", L"đăk pék ");
+    expectTyping("LiteralK-VNI", "d9a8k pek1 ", L"đăk pék ");
+    expectTyping("LiteralK-VNI", "pe5k ", L"pẹk ");
+    expectTyping("LiteralK-VNI", "pek5 ", L"pẹk ");
+    expectTyping("LiteralK-VNI", "pe2k ", L"pe2k ");
+    expectTyping("LiteralK-VNI", "pek2 ", L"pek2 ");
+    expectTyping("LiteralK-VNI", "desk ", L"desk ");
+    //EV: the same names under mixed English
+    testCfg().inputType = vTelex;
+    testCfg().mixedEnglish = 1;
+    expectTyping("LiteralK-EV", "DDawks Lawks ", L"Đắk Lắk ");
+    expectTyping("LiteralK-EV", "DDawk Haf ", L"Đăk Hà ");
+    expectTyping("LiteralK-EV", "Ea Rooks ", L"Ea Rốk ");
+    expectTyping("LiteralK-EV", "DDawk Peks ", L"Đăk Pék ");
+    expectTyping("LiteralK-EV", "ask ", L"ask ");
+    expectTyping("LiteralK-EV", "book ", L"book ");
+    expectTyping("LiteralK-EV", "look ", L"look ");
+    expectTyping("LiteralK-EV", "hawk ", L"hăk ");
+    expectTyping("LiteralK-EV", "awk ", L"ăk ");
+    expectTyping("LiteralK-EV", "trek ", L"trek ");
+    expectTyping("LiteralK-EV", "lek ", L"lek ");
+    expectTyping("LiteralK-EV", "desk ", L"dék ");
+    expectTyping("LiteralK-EV", "treks ", L"trék ");
+    expectTyping("LiteralK-EV", "tresk ", L"trék ");
+    testCfg().mixedEnglish = 0;
+    //Negative controls, Telex defaults
+    expectTyping("LiteralK", "attack ", L"attack ");
+    expectTyping("LiteralK", "app ", L"app ");
+    expectTyping("LiteralK", "egg ", L"egg ");
+    expectTyping("LiteralK", "user ", L"user ");
+    expectTyping("LiteralK", "www.", L"www.");
+    expectTyping("LiteralK", "ddk ", L"đk ");
+    expectTyping("LiteralK", "qwen ", L"qwen ");
+    expectTyping("LiteralK", "check ", L"check ");
+    expectTyping("LiteralK", "speak ", L"speak ");
+    expectTyping("LiteralK", "break ", L"break ");
+    expectTyping("LiteralK", "aak ", L"aak ");
+    expectTyping("LiteralK", "DDaks ", L"Đaks ");
+    expectTyping("LiteralK", "DDask ", L"DDask ");
+    expectTyping("LiteralK", "ok ", L"ok ");
+    expectTyping("LiteralK", "oks", L"oks");
+    expectTyping("LiteralK", "owk ", L"owk ");
+    expectTyping("LiteralK", "DDawks~", L"DDawks");
+    //quick Telex controls (the rebuttal corpus flags these QT)
+    testCfg().quickTelex = 1;
+    expectTyping("LiteralK", "thicc", L"thich");
+    expectTyping("LiteralK", "attack ", L"attack ");
+    testCfg().quickTelex = 0;
+    //quick end consonant on: the masked shorthand wins over the literal k
+    testCfg().quickEndConsonant = 1;
+    expectTyping("LiteralK-QuickEnd", "ak ", L"ach ");
+    expectTyping("LiteralK-QuickEnd", "ek ", L"ech ");
+    expectTyping("LiteralK-QuickEnd", "ekf ", L"èch ");
+    expectTyping("LiteralK-QuickEnd", "ukf ", L"ukf ");
+    expectTyping("LiteralK-QuickEnd", "DDawks ", L"Đắch ");
+    testCfg().quickEndConsonant = 0;
+}
+
 int main(int argc, char** argv) {
     pData = (vKeyHookState*)vKeyInit();
     if (argc > 1 && strcmp(argv[1], "--render") == 0)
@@ -4003,6 +4149,7 @@ int main(int argc, char** argv) {
     testParserRobustness();
     testParserTruncation();
     testQuickEndConsonant();
+    testLiteralK();
     testCodeTableInvariants();
     testMixedWordsParser();
     testSaveDataLimits();
