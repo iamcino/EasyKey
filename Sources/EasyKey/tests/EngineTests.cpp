@@ -3995,141 +3995,742 @@ static void testLiteralK() {
     //orthography, freeMark=0, mixedFixLast=0, quick flags off.
     testCfg().inputType = vTelex;
     testCfg().mixedEnglish = 0;
+    //every row is isolated with a non-character mouse break first, like
+    //the debate probes: startNewSession alone retains session residue
+    auto expectIso = [](const char* name, const string& keys, const wstring& want) {
+        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg(), 0, false);
+        expectTyping(name, keys, want);
+    };
     //Names, Telex
-    expectTyping("LiteralK", "DDawks ", L"Đắk ");
-    expectTyping("LiteralK", "DDawsk ", L"Đắk ");
-    expectTyping("LiteralK", "Lawks ", L"Lắk ");
-    expectTyping("LiteralK", "Lawsk ", L"Lắk ");
-    expectTyping("LiteralK", "DDawk ", L"Đăk ");
-    expectTyping("LiteralK", "DDak ", L"Đak ");
-    expectTyping("LiteralK", "DDawks Lawks ", L"Đắk Lắk ");
-    expectTyping("LiteralK", "DDawk Haf ", L"Đăk Hà ");
-    expectTyping("LiteralK", "DDawk Too ", L"Đăk Tô ");
-    expectTyping("LiteralK", "DDawk Glei ", L"Đăk Glei ");
-    expectTyping("LiteralK", "DDawks Sawks ", L"Đắk Sắk ");
-    expectTyping("LiteralK", "DDak Pow ", L"Đak Pơ ");
-    expectTyping("LiteralK", "Ea Rooks ", L"Ea Rốk ");
-    expectTyping("LiteralK", "Ea Roosk ", L"Ea Rốk ");
-    expectTyping("LiteralK", "Buks ", L"Búk ");
-    expectTyping("LiteralK", "Busk ", L"Búk ");
-    expectTyping("LiteralK", "Peks ", L"Pék ");
-    expectTyping("LiteralK", "Pesk ", L"Pék ");
-    expectTyping("LiteralK", "DDawk Peks ", L"Đăk Pék ");
-    expectTyping("LiteralK", "DDawk Pesk ", L"Đăk Pék ");
-    expectTyping("LiteralK", "DDawk Peks,", L"Đăk Pék,");
-    expectTyping("LiteralK", "ddawks ", L"đắk ");
-    expectTyping("LiteralK", "Ddawks ", L"Đắk ");
-    expectTyping("LiteralK", "DDAWKS ", L"ĐẮK ");
-    expectTyping("LiteralK", "lawks ", L"lắk ");
-    expectTyping("LiteralK", "LAWKS ", L"LẮK ");
-    expectTyping("LiteralK", "DDawks,", L"Đắk,");
-    expectTyping("LiteralK", "DDawks.", L"Đắk.");
-    expectTyping("LiteralK", "DDawkj ", L"Đặk ");
-    expectTyping("LiteralK", "DDawjk ", L"Đặk ");
-    expectTyping("LiteralK", "Pejk ", L"Pẹk ");
-    expectTyping("LiteralK", "Pekj ", L"Pẹk ");
+    expectIso("LiteralK", "DDawks ", L"Đắk ");
+    expectIso("LiteralK", "DDawsk ", L"Đắk ");
+    expectIso("LiteralK", "Lawks ", L"Lắk ");
+    expectIso("LiteralK", "Lawsk ", L"Lắk ");
+    expectIso("LiteralK", "DDawk ", L"Đăk ");
+    expectIso("LiteralK", "DDak ", L"Đak ");
+    expectIso("LiteralK", "DDawks Lawks ", L"Đắk Lắk ");
+    expectIso("LiteralK", "DDawk Haf ", L"Đăk Hà ");
+    expectIso("LiteralK", "DDawk Too ", L"Đăk Tô ");
+    expectIso("LiteralK", "DDawk Glei ", L"Đăk Glei ");
+    expectIso("LiteralK", "DDawks Sawks ", L"Đắk Sắk ");
+    expectIso("LiteralK", "DDak Pow ", L"Đak Pơ ");
+    expectIso("LiteralK", "Ea Rooks ", L"Ea Rốk ");
+    expectIso("LiteralK", "Ea Roosk ", L"Ea Rốk ");
+    expectIso("LiteralK", "Buks ", L"Búk ");
+    expectIso("LiteralK", "Busk ", L"Búk ");
+    expectIso("LiteralK", "Peks ", L"Pék ");
+    expectIso("LiteralK", "Pesk ", L"Pék ");
+    expectIso("LiteralK", "DDawk Peks ", L"Đăk Pék ");
+    expectIso("LiteralK", "DDawk Pesk ", L"Đăk Pék ");
+    expectIso("LiteralK", "DDawk Peks,", L"Đăk Pék,");
+    expectIso("LiteralK", "ddawks ", L"đắk ");
+    expectIso("LiteralK", "Ddawks ", L"Đắk ");
+    expectIso("LiteralK", "DDAWKS ", L"ĐẮK ");
+    expectIso("LiteralK", "lawks ", L"lắk ");
+    expectIso("LiteralK", "LAWKS ", L"LẮK ");
+    expectIso("LiteralK", "DDawks,", L"Đắk,");
+    expectIso("LiteralK", "DDawks.", L"Đắk.");
+    expectIso("LiteralK", "DDawkj ", L"Đặk ");
+    expectIso("LiteralK", "DDawjk ", L"Đặk ");
+    expectIso("LiteralK", "Pejk ", L"Pẹk ");
+    expectIso("LiteralK", "Pekj ", L"Pẹk ");
     //refused tones on a preserved literal k stay raw, both orders
-    expectTyping("LiteralK", "DDawfk ", L"DDawfk ");
-    expectTyping("LiteralK", "DDawkf ", L"DDawkf ");
-    expectTyping("LiteralK", "DDawrk ", L"DDawrk ");
-    expectTyping("LiteralK", "DDawkr ", L"DDawkr ");
-    expectTyping("LiteralK", "DDawxk ", L"DDawxk ");
-    expectTyping("LiteralK", "DDawkx ", L"DDawkx ");
-    expectTyping("LiteralK", "Pefk ", L"Pefk ");
-    expectTyping("LiteralK", "Pekf ", L"Pekf ");
-    expectTyping("LiteralK", "Perk ", L"Perk ");
-    expectTyping("LiteralK", "Pekr ", L"Pekr ");
-    expectTyping("LiteralK", "Pexk ", L"Pexk ");
-    expectTyping("LiteralK", "Pekx ", L"Pekx ");
+    expectIso("LiteralK", "DDawfk ", L"DDawfk ");
+    expectIso("LiteralK", "DDawkf ", L"DDawkf ");
+    expectIso("LiteralK", "DDawrk ", L"DDawrk ");
+    expectIso("LiteralK", "DDawkr ", L"DDawkr ");
+    expectIso("LiteralK", "DDawxk ", L"DDawxk ");
+    expectIso("LiteralK", "DDawkx ", L"DDawkx ");
+    expectIso("LiteralK", "Pefk ", L"Pefk ");
+    expectIso("LiteralK", "Pekf ", L"Pekf ");
+    expectIso("LiteralK", "Perk ", L"Perk ");
+    expectIso("LiteralK", "Pekr ", L"Pekr ");
+    expectIso("LiteralK", "Pexk ", L"Pexk ");
+    expectIso("LiteralK", "Pekx ", L"Pekx ");
     //ek with a circumflex is refused: the typed keys come back
-    expectTyping("LiteralK", "eek ", L"eek ");
-    expectTyping("LiteralK", "peek ", L"peek ");
-    expectTyping("LiteralK", "week ", L"week ");
+    expectIso("LiteralK", "eek ", L"eek ");
+    expectIso("LiteralK", "peek ", L"peek ");
+    expectIso("LiteralK", "week ", L"week ");
     //editing across the boundary
-    expectTyping("LiteralK", "DDawks< ", L"Đắ ");
-    expectTyping("LiteralK", "DDawks < ", L"Đắk ");
-    expectTyping("LiteralK", "DDawks <k ", L"DDawksk ");
-    expectTyping("LiteralK", "DDawks <<s ", L"DDawk ");
-    expectTyping("LiteralK", "DDawksz ", L"Đăk ");
-    expectTyping("LiteralK", "Rooksz ", L"Rooksz ");
-    expectTyping("LiteralK", "Buksz ", L"Buk ");
-    expectTyping("LiteralK", "Peksz ", L"Pek ");
+    expectIso("LiteralK", "DDawks< ", L"Đắ ");
+    expectIso("LiteralK", "DDawks < ", L"Đắk ");
+    expectIso("LiteralK", "DDawks <k ", L"DDawksk ");
+    expectIso("LiteralK", "DDawks <<s ", L"DDawk ");
+    expectIso("LiteralK", "DDawksz ", L"Đăk ");
+    expectIso("LiteralK", "Rooksz ", L"Rooksz ");
+    expectIso("LiteralK", "Buksz ", L"Buk ");
+    expectIso("LiteralK", "Peksz ", L"Pek ");
     //converted-but-invalid stems with no vowel mark do not restore and do
     //not latch: the next word types normally
-    expectTyping("LiteralK", "DDuk ", L"Đuk ");
-    expectTyping("LiteralK", "DDuskz ", L"Đuk ");
-    expectTyping("LiteralK", "DDuk vieejt tieengs ", L"Đuk việt tiếng ");
+    expectIso("LiteralK", "DDuk ", L"Đuk ");
+    expectIso("LiteralK", "DDuskz ", L"Đuk ");
+    expectIso("LiteralK", "DDuk vieejt tieengs ", L"Đuk việt tiếng ");
     //Names, VNI
     testCfg().inputType = vVNI;
-    expectTyping("LiteralK-VNI", "d9a81k ", L"đắk ");
-    expectTyping("LiteralK-VNI", "d9a8k1 ", L"đắk ");
-    expectTyping("LiteralK-VNI", "da81k ", L"dắk ");
-    expectTyping("LiteralK-VNI", "da8k1 ", L"dắk ");
-    expectTyping("LiteralK-VNI", "la81k ", L"lắk ");
-    expectTyping("LiteralK-VNI", "la8k1 ", L"lắk ");
-    expectTyping("LiteralK-VNI", "ro61k ", L"rốk ");
-    expectTyping("LiteralK-VNI", "ro6k1 ", L"rốk ");
-    expectTyping("LiteralK-VNI", "bu1k ", L"búk ");
-    expectTyping("LiteralK-VNI", "buk1 ", L"búk ");
-    expectTyping("LiteralK-VNI", "d9ak ", L"đak ");
-    expectTyping("LiteralK-VNI", "pe1k ", L"pék ");
-    expectTyping("LiteralK-VNI", "pek1 ", L"pék ");
-    expectTyping("LiteralK-VNI", "d9a8k pe1k ", L"đăk pék ");
-    expectTyping("LiteralK-VNI", "d9a8k pek1 ", L"đăk pék ");
-    expectTyping("LiteralK-VNI", "pe5k ", L"pẹk ");
-    expectTyping("LiteralK-VNI", "pek5 ", L"pẹk ");
-    expectTyping("LiteralK-VNI", "pe2k ", L"pe2k ");
-    expectTyping("LiteralK-VNI", "pek2 ", L"pek2 ");
-    expectTyping("LiteralK-VNI", "desk ", L"desk ");
+    expectIso("LiteralK-VNI", "d9a81k ", L"đắk ");
+    expectIso("LiteralK-VNI", "d9a8k1 ", L"đắk ");
+    expectIso("LiteralK-VNI", "da81k ", L"dắk ");
+    expectIso("LiteralK-VNI", "da8k1 ", L"dắk ");
+    expectIso("LiteralK-VNI", "la81k ", L"lắk ");
+    expectIso("LiteralK-VNI", "la8k1 ", L"lắk ");
+    expectIso("LiteralK-VNI", "ro61k ", L"rốk ");
+    expectIso("LiteralK-VNI", "ro6k1 ", L"rốk ");
+    expectIso("LiteralK-VNI", "bu1k ", L"búk ");
+    expectIso("LiteralK-VNI", "buk1 ", L"búk ");
+    expectIso("LiteralK-VNI", "d9ak ", L"đak ");
+    expectIso("LiteralK-VNI", "pe1k ", L"pék ");
+    expectIso("LiteralK-VNI", "pek1 ", L"pék ");
+    expectIso("LiteralK-VNI", "d9a8k pe1k ", L"đăk pék ");
+    expectIso("LiteralK-VNI", "d9a8k pek1 ", L"đăk pék ");
+    expectIso("LiteralK-VNI", "pe5k ", L"pẹk ");
+    expectIso("LiteralK-VNI", "pek5 ", L"pẹk ");
+    expectIso("LiteralK-VNI", "pe2k ", L"pe2k ");
+    expectIso("LiteralK-VNI", "pek2 ", L"pek2 ");
+    expectIso("LiteralK-VNI", "desk ", L"desk ");
     //EV: the same names under mixed English
     testCfg().inputType = vTelex;
     testCfg().mixedEnglish = 1;
-    expectTyping("LiteralK-EV", "DDawks Lawks ", L"Đắk Lắk ");
-    expectTyping("LiteralK-EV", "DDawk Haf ", L"Đăk Hà ");
-    expectTyping("LiteralK-EV", "Ea Rooks ", L"Ea Rốk ");
-    expectTyping("LiteralK-EV", "DDawk Peks ", L"Đăk Pék ");
-    expectTyping("LiteralK-EV", "ask ", L"ask ");
-    expectTyping("LiteralK-EV", "book ", L"book ");
-    expectTyping("LiteralK-EV", "look ", L"look ");
-    expectTyping("LiteralK-EV", "hawk ", L"hăk ");
-    expectTyping("LiteralK-EV", "awk ", L"ăk ");
-    expectTyping("LiteralK-EV", "trek ", L"trek ");
-    expectTyping("LiteralK-EV", "lek ", L"lek ");
-    expectTyping("LiteralK-EV", "desk ", L"dék ");
-    expectTyping("LiteralK-EV", "treks ", L"trék ");
-    expectTyping("LiteralK-EV", "tresk ", L"trék ");
+    expectIso("LiteralK-EV", "DDawks Lawks ", L"Đắk Lắk ");
+    expectIso("LiteralK-EV", "DDawk Haf ", L"Đăk Hà ");
+    expectIso("LiteralK-EV", "Ea Rooks ", L"Ea Rốk ");
+    expectIso("LiteralK-EV", "DDawk Peks ", L"Đăk Pék ");
+    expectIso("LiteralK-EV", "ask ", L"ask ");
+    expectIso("LiteralK-EV", "book ", L"book ");
+    expectIso("LiteralK-EV", "look ", L"look ");
+    expectIso("LiteralK-EV", "hawk ", L"hăk ");
+    expectIso("LiteralK-EV", "awk ", L"ăk ");
+    expectIso("LiteralK-EV", "trek ", L"trek ");
+    expectIso("LiteralK-EV", "lek ", L"lek ");
+    expectIso("LiteralK-EV", "desk ", L"dék ");
+    expectIso("LiteralK-EV", "treks ", L"trék ");
+    expectIso("LiteralK-EV", "tresk ", L"trék ");
     testCfg().mixedEnglish = 0;
     //Negative controls, Telex defaults
-    expectTyping("LiteralK", "attack ", L"attack ");
-    expectTyping("LiteralK", "app ", L"app ");
-    expectTyping("LiteralK", "egg ", L"egg ");
-    expectTyping("LiteralK", "user ", L"user ");
-    expectTyping("LiteralK", "www.", L"www.");
-    expectTyping("LiteralK", "ddk ", L"đk ");
-    expectTyping("LiteralK", "qwen ", L"qwen ");
-    expectTyping("LiteralK", "check ", L"check ");
-    expectTyping("LiteralK", "speak ", L"speak ");
-    expectTyping("LiteralK", "break ", L"break ");
-    expectTyping("LiteralK", "aak ", L"aak ");
-    expectTyping("LiteralK", "DDaks ", L"Đaks ");
-    expectTyping("LiteralK", "DDask ", L"DDask ");
-    expectTyping("LiteralK", "ok ", L"ok ");
-    expectTyping("LiteralK", "oks", L"oks");
-    expectTyping("LiteralK", "owk ", L"owk ");
-    expectTyping("LiteralK", "DDawks~", L"DDawks");
+    expectIso("LiteralK", "attack ", L"attack ");
+    expectIso("LiteralK", "app ", L"app ");
+    expectIso("LiteralK", "egg ", L"egg ");
+    expectIso("LiteralK", "user ", L"user ");
+    expectIso("LiteralK", "www.", L"www.");
+    expectIso("LiteralK", "ddk ", L"đk ");
+    expectIso("LiteralK", "qwen ", L"qwen ");
+    expectIso("LiteralK", "check ", L"check ");
+    expectIso("LiteralK", "speak ", L"speak ");
+    expectIso("LiteralK", "break ", L"break ");
+    expectIso("LiteralK", "aak ", L"aak ");
+    expectIso("LiteralK", "DDaks ", L"Đaks ");
+    expectIso("LiteralK", "DDask ", L"DDask ");
+    expectIso("LiteralK", "ok ", L"ok ");
+    expectIso("LiteralK", "oks", L"oks");
+    expectIso("LiteralK", "owk ", L"owk ");
+    expectIso("LiteralK", "DDawks~", L"DDawks");
     //quick Telex controls (the rebuttal corpus flags these QT)
     testCfg().quickTelex = 1;
-    expectTyping("LiteralK", "thicc", L"thich");
-    expectTyping("LiteralK", "attack ", L"attack ");
+    expectIso("LiteralK", "thicc", L"thich");
+    expectIso("LiteralK", "attack ", L"attack ");
     testCfg().quickTelex = 0;
     //quick end consonant on: the masked shorthand wins over the literal k
     testCfg().quickEndConsonant = 1;
-    expectTyping("LiteralK-QuickEnd", "ak ", L"ach ");
-    expectTyping("LiteralK-QuickEnd", "ek ", L"ech ");
-    expectTyping("LiteralK-QuickEnd", "ekf ", L"èch ");
-    expectTyping("LiteralK-QuickEnd", "ukf ", L"ukf ");
-    expectTyping("LiteralK-QuickEnd", "DDawks ", L"Đắch ");
+    expectIso("LiteralK-QuickEnd", "ak ", L"ach ");
+    expectIso("LiteralK-QuickEnd", "ek ", L"ech ");
+    expectIso("LiteralK-QuickEnd", "ekf ", L"èch ");
+    expectIso("LiteralK-QuickEnd", "ukf ", L"ukf ");
+    expectIso("LiteralK-QuickEnd", "DDawks ", L"Đắch ");
     testCfg().quickEndConsonant = 0;
+    //The full verified corpus: Viktor's acceptance matrix and the
+    //E-family amendment, as screened by Zed's probes on the candidate
+    //engine (the 484-cell regression and the 212 amendment cells). The
+    //rows not already asserted above are transcribed mechanically from
+    //the probe data (zed-fidelity-v22-coverage.json enumerates them).
+    //flags: 1 = VNI, 2 = quickTelex, 4 = quickEndConsonant, 8 = spelling
+    //gate off. The eight deliberately mistyped VNI name rows of the
+    //amendment corpus are negative evidence in the probe record; they
+    //are not reintroduced (the corrected d9a8k rows are asserted above).
+    struct CorpusRow { const char* keys; const wchar_t* want; int mixed; int flags; const char* id; };
+    static const CorpusRow corpus[] = {
+        { "DDawks<k ", L"Đắk ", 0, 0, "C026" },
+        { "app ", L"app ", 0, 2, "C057" },
+        { "egg ", L"egg ", 0, 2, "C058" },
+        { "ak ", L"ach ", 0, 12, "C059" },
+        { "ag ", L"ang ", 0, 12, "C060" },
+        { "ah ", L"anh ", 0, 12, "C061" },
+        { "tesst ", L"test ", 0, 0, "C064" },
+        { "vieetj", L"việt", 0, 0, "C068" },
+        { "VIEETJ", L"VIỆT", 0, 0, "C069" },
+        { "ask ", L"ask ", 0, 0, "C070" },
+        { "desk ", L"dék ", 0, 0, "C071" },
+        { "DDakw ", L"Đăk ", 0, 0, "C074" },
+        { "Rook ", L"Rook ", 0, 0, "C079" },
+        { "Buk ", L"Buk ", 0, 0, "C080" },
+        { "Rooks ", L"Rốk ", 0, 0, "C081" },
+        { "Roosk ", L"Rốk ", 0, 0, "C082" },
+        { "Rooksz,", L"Rooksz,", 0, 0, "C087" },
+        { "Buksz,", L"Buk,", 0, 0, "C088" },
+        { "Rooksz vieejt tieengs ", L"Rooksz việt tiếng ", 0, 0, "C089" },
+        { "Buksz vieejt tieengs ", L"Buk việt tiếng ", 0, 0, "C090" },
+        { "DDawkss ", L"DDawks ", 0, 0, "C091" },
+        { "DDawks Lawks <<k ", L"Đắk Lắk ", 0, 0, "C096" },
+        { "rookw ", L"rookw ", 0, 0, "C097" },
+        { "busk ", L"búk ", 0, 0, "C098" },
+        { "dusk ", L"dúk ", 0, 0, "C099" },
+        { "tusk ", L"túk ", 0, 0, "C100" },
+        { "musk ", L"múk ", 0, 0, "C101" },
+        { "husk ", L"húk ", 0, 0, "C102" },
+        { "Drawsk ", L"Drawsk ", 0, 0, "C103" },
+        { "DDawks^<vieejt tieengs ", L"DDawksvieejt tiếng ", 0, 0, "C106" },
+        { "Rook ", L"Rook ", 1, 0, "C107" },
+        { "Buk ", L"Buk ", 1, 0, "C108" },
+        { "Rooks ", L"Rốk ", 1, 0, "C109" },
+        { "Roosk ", L"Rốk ", 1, 0, "C110" },
+        { "Buks ", L"Búk ", 1, 0, "C111" },
+        { "Busk ", L"Búk ", 1, 0, "C112" },
+        { "Rooksz ", L"Rooksz ", 1, 0, "C113" },
+        { "Buksz ", L"Buk ", 1, 0, "C114" },
+        { "Rooksz,", L"Rooksz,", 1, 0, "C115" },
+        { "Buksz,", L"Buk,", 1, 0, "C116" },
+        { "Rooksz vieejt tieengs ", L"Rooksz việt tiếng ", 1, 0, "C117" },
+        { "Buksz vieejt tieengs ", L"Buk việt tiếng ", 1, 0, "C118" },
+        { "DDawkss ", L"DDawks ", 1, 0, "C119" },
+        { "DDawks~", L"DDawks", 1, 0, "C120" },
+        { "DDawks < ", L"Đắk ", 1, 0, "C121" },
+        { "DDawks <k ", L"DDawksk ", 1, 0, "C122" },
+        { "DDawks <<s ", L"DDawk ", 1, 0, "C123" },
+        { "DDawks Lawks <<k ", L"Đắk Lắk ", 1, 0, "C124" },
+        { "rookw ", L"rookw ", 1, 0, "C125" },
+        { "busk ", L"búk ", 1, 0, "C126" },
+        { "dusk ", L"dúk ", 1, 0, "C127" },
+        { "tusk ", L"túk ", 1, 0, "C128" },
+        { "musk ", L"múk ", 1, 0, "C129" },
+        { "husk ", L"húk ", 1, 0, "C130" },
+        { "Drawsk ", L"Drawsk ", 1, 0, "C131" },
+        { "DDask ", L"DDask ", 1, 0, "C132" },
+        { "DDaks ", L"Đaks ", 1, 0, "C133" },
+        { "DDawks^<vieejt tieengs ", L"DDawksvieejt tiếng ", 1, 0, "C134" },
+        { "ro6k ", L"ro6k ", 0, 1, "C135" },
+        { "buk ", L"buk ", 0, 1, "C136" },
+        { "ro6k10 ", L"ro6k10 ", 0, 1, "C141" },
+        { "buk10 ", L"buk ", 0, 1, "C142" },
+        { "d9ak8 ", L"đăk ", 0, 1, "C143" },
+        { "d9a8k2 ", L"d9a8k2 ", 0, 1, "C144" },
+        { "d9a8k3 ", L"d9a8k3 ", 0, 1, "C145" },
+        { "d9a8k4 ", L"d9a8k4 ", 0, 1, "C146" },
+        { "d9a8k5 ", L"đặk ", 0, 1, "C147" },
+        { "akf ", L"àch ", 0, 4, "C148" },
+        { "aks ", L"ách ", 0, 4, "C149" },
+        { "DDawkf ", L"Đằch ", 0, 4, "C151" },
+        { "DDawfk ", L"Đằch ", 0, 4, "C152" },
+        { "ak ", L"ak ", 0, 0, "C155" },
+        { "ak,", L"ak,", 0, 0, "C156" },
+        { "aks ", L"aks ", 0, 0, "C157" },
+        { "ask ", L"ask ", 0, 0, "C158" },
+        { "aks,", L"aks,", 0, 0, "C159" },
+        { "ask,", L"ask,", 0, 0, "C160" },
+        { "akf ", L"akf ", 0, 0, "C161" },
+        { "afk ", L"afk ", 0, 0, "C162" },
+        { "akf,", L"akf,", 0, 0, "C163" },
+        { "afk,", L"afk,", 0, 0, "C164" },
+        { "akr ", L"akr ", 0, 0, "C165" },
+        { "ark ", L"ark ", 0, 0, "C166" },
+        { "akr,", L"akr,", 0, 0, "C167" },
+        { "ark,", L"ark,", 0, 0, "C168" },
+        { "akx ", L"akx ", 0, 0, "C169" },
+        { "axk ", L"axk ", 0, 0, "C170" },
+        { "akx,", L"akx,", 0, 0, "C171" },
+        { "axk,", L"axk,", 0, 0, "C172" },
+        { "akj ", L"akj ", 0, 0, "C173" },
+        { "ajk ", L"ajk ", 0, 0, "C174" },
+        { "akj,", L"akj,", 0, 0, "C175" },
+        { "ajk,", L"ajk,", 0, 0, "C176" },
+        { "awk ", L"ăk ", 0, 0, "C177" },
+        { "awk,", L"ăk,", 0, 0, "C178" },
+        { "awks ", L"ắk ", 0, 0, "C179" },
+        { "awsk ", L"ắk ", 0, 0, "C180" },
+        { "awks,", L"ắk,", 0, 0, "C181" },
+        { "awsk,", L"ắk,", 0, 0, "C182" },
+        { "awkf ", L"awkf ", 0, 0, "C183" },
+        { "awfk ", L"awfk ", 0, 0, "C184" },
+        { "awkf,", L"awkf,", 0, 0, "C185" },
+        { "awfk,", L"awfk,", 0, 0, "C186" },
+        { "awkr ", L"awkr ", 0, 0, "C187" },
+        { "awrk ", L"awrk ", 0, 0, "C188" },
+        { "awkr,", L"awkr,", 0, 0, "C189" },
+        { "awrk,", L"awrk,", 0, 0, "C190" },
+        { "awkx ", L"awkx ", 0, 0, "C191" },
+        { "awxk ", L"awxk ", 0, 0, "C192" },
+        { "awkx,", L"awkx,", 0, 0, "C193" },
+        { "awxk,", L"awxk,", 0, 0, "C194" },
+        { "awkj ", L"ặk ", 0, 0, "C195" },
+        { "awjk ", L"ặk ", 0, 0, "C196" },
+        { "awkj,", L"ặk,", 0, 0, "C197" },
+        { "awjk,", L"ặk,", 0, 0, "C198" },
+        { "aak,", L"aak,", 0, 0, "C200" },
+        { "aaks ", L"aaks ", 0, 0, "C201" },
+        { "aask ", L"aask ", 0, 0, "C202" },
+        { "aaks,", L"aaks,", 0, 0, "C203" },
+        { "aask,", L"aask,", 0, 0, "C204" },
+        { "aakf ", L"aakf ", 0, 0, "C205" },
+        { "aafk ", L"aafk ", 0, 0, "C206" },
+        { "aakf,", L"aakf,", 0, 0, "C207" },
+        { "aafk,", L"aafk,", 0, 0, "C208" },
+        { "aakr ", L"aakr ", 0, 0, "C209" },
+        { "aark ", L"aark ", 0, 0, "C210" },
+        { "aakr,", L"aakr,", 0, 0, "C211" },
+        { "aark,", L"aark,", 0, 0, "C212" },
+        { "aakx ", L"aakx ", 0, 0, "C213" },
+        { "aaxk ", L"aaxk ", 0, 0, "C214" },
+        { "aakx,", L"aakx,", 0, 0, "C215" },
+        { "aaxk,", L"aaxk,", 0, 0, "C216" },
+        { "aakj ", L"aakj ", 0, 0, "C217" },
+        { "aajk ", L"aajk ", 0, 0, "C218" },
+        { "aakj,", L"aakj,", 0, 0, "C219" },
+        { "aajk,", L"aajk,", 0, 0, "C220" },
+        { "ok,", L"ok,", 0, 0, "C222" },
+        { "oks ", L"oks ", 0, 0, "C223" },
+        { "osk ", L"osk ", 0, 0, "C224" },
+        { "oks,", L"oks,", 0, 0, "C225" },
+        { "osk,", L"osk,", 0, 0, "C226" },
+        { "okf ", L"okf ", 0, 0, "C227" },
+        { "ofk ", L"ofk ", 0, 0, "C228" },
+        { "okf,", L"okf,", 0, 0, "C229" },
+        { "ofk,", L"ofk,", 0, 0, "C230" },
+        { "okr ", L"okr ", 0, 0, "C231" },
+        { "ork ", L"ork ", 0, 0, "C232" },
+        { "okr,", L"okr,", 0, 0, "C233" },
+        { "ork,", L"ork,", 0, 0, "C234" },
+        { "okx ", L"okx ", 0, 0, "C235" },
+        { "oxk ", L"oxk ", 0, 0, "C236" },
+        { "okx,", L"okx,", 0, 0, "C237" },
+        { "oxk,", L"oxk,", 0, 0, "C238" },
+        { "okj ", L"okj ", 0, 0, "C239" },
+        { "ojk ", L"ojk ", 0, 0, "C240" },
+        { "okj,", L"okj,", 0, 0, "C241" },
+        { "ojk,", L"ojk,", 0, 0, "C242" },
+        { "ook ", L"ook ", 0, 0, "C243" },
+        { "ook,", L"ook,", 0, 0, "C244" },
+        { "ooks ", L"ốk ", 0, 0, "C245" },
+        { "oosk ", L"ốk ", 0, 0, "C246" },
+        { "ooks,", L"ốk,", 0, 0, "C247" },
+        { "oosk,", L"ốk,", 0, 0, "C248" },
+        { "ookf ", L"ookf ", 0, 0, "C249" },
+        { "oofk ", L"oofk ", 0, 0, "C250" },
+        { "ookf,", L"ookf,", 0, 0, "C251" },
+        { "oofk,", L"oofk,", 0, 0, "C252" },
+        { "ookr ", L"ookr ", 0, 0, "C253" },
+        { "oork ", L"oork ", 0, 0, "C254" },
+        { "ookr,", L"ookr,", 0, 0, "C255" },
+        { "oork,", L"oork,", 0, 0, "C256" },
+        { "ookx ", L"ookx ", 0, 0, "C257" },
+        { "ooxk ", L"ooxk ", 0, 0, "C258" },
+        { "ookx,", L"ookx,", 0, 0, "C259" },
+        { "ooxk,", L"ooxk,", 0, 0, "C260" },
+        { "ookj ", L"ộk ", 0, 0, "C261" },
+        { "oojk ", L"ộk ", 0, 0, "C262" },
+        { "ookj,", L"ộk,", 0, 0, "C263" },
+        { "oojk,", L"ộk,", 0, 0, "C264" },
+        { "owk,", L"owk,", 0, 0, "C266" },
+        { "owks ", L"owks ", 0, 0, "C267" },
+        { "owsk ", L"owsk ", 0, 0, "C268" },
+        { "owks,", L"owks,", 0, 0, "C269" },
+        { "owsk,", L"owsk,", 0, 0, "C270" },
+        { "owkf ", L"owkf ", 0, 0, "C271" },
+        { "owfk ", L"owfk ", 0, 0, "C272" },
+        { "owkf,", L"owkf,", 0, 0, "C273" },
+        { "owfk,", L"owfk,", 0, 0, "C274" },
+        { "owkr ", L"owkr ", 0, 0, "C275" },
+        { "owrk ", L"owrk ", 0, 0, "C276" },
+        { "owkr,", L"owkr,", 0, 0, "C277" },
+        { "owrk,", L"owrk,", 0, 0, "C278" },
+        { "owkx ", L"owkx ", 0, 0, "C279" },
+        { "owxk ", L"owxk ", 0, 0, "C280" },
+        { "owkx,", L"owkx,", 0, 0, "C281" },
+        { "owxk,", L"owxk,", 0, 0, "C282" },
+        { "owkj ", L"owkj ", 0, 0, "C283" },
+        { "owjk ", L"owjk ", 0, 0, "C284" },
+        { "owkj,", L"owkj,", 0, 0, "C285" },
+        { "owjk,", L"owjk,", 0, 0, "C286" },
+        { "uk ", L"uk ", 0, 0, "C287" },
+        { "uk,", L"uk,", 0, 0, "C288" },
+        { "uks ", L"úk ", 0, 0, "C289" },
+        { "usk ", L"úk ", 0, 0, "C290" },
+        { "uks,", L"úk,", 0, 0, "C291" },
+        { "usk,", L"úk,", 0, 0, "C292" },
+        { "ukf ", L"ukf ", 0, 0, "C293" },
+        { "ufk ", L"ufk ", 0, 0, "C294" },
+        { "ukf,", L"ukf,", 0, 0, "C295" },
+        { "ufk,", L"ufk,", 0, 0, "C296" },
+        { "ukr ", L"ukr ", 0, 0, "C297" },
+        { "urk ", L"urk ", 0, 0, "C298" },
+        { "ukr,", L"ukr,", 0, 0, "C299" },
+        { "urk,", L"urk,", 0, 0, "C300" },
+        { "ukx ", L"ukx ", 0, 0, "C301" },
+        { "uxk ", L"uxk ", 0, 0, "C302" },
+        { "ukx,", L"ukx,", 0, 0, "C303" },
+        { "uxk,", L"uxk,", 0, 0, "C304" },
+        { "ukj ", L"ụk ", 0, 0, "C305" },
+        { "ujk ", L"ụk ", 0, 0, "C306" },
+        { "ukj,", L"ụk,", 0, 0, "C307" },
+        { "ujk,", L"ụk,", 0, 0, "C308" },
+        { "uwk ", L"uwk ", 0, 0, "C309" },
+        { "uwk,", L"uwk,", 0, 0, "C310" },
+        { "uwks ", L"uwks ", 0, 0, "C311" },
+        { "uwsk ", L"uwsk ", 0, 0, "C312" },
+        { "uwks,", L"uwks,", 0, 0, "C313" },
+        { "uwsk,", L"uwsk,", 0, 0, "C314" },
+        { "uwkf ", L"uwkf ", 0, 0, "C315" },
+        { "uwfk ", L"uwfk ", 0, 0, "C316" },
+        { "uwkf,", L"uwkf,", 0, 0, "C317" },
+        { "uwfk,", L"uwfk,", 0, 0, "C318" },
+        { "uwkr ", L"uwkr ", 0, 0, "C319" },
+        { "uwrk ", L"uwrk ", 0, 0, "C320" },
+        { "uwkr,", L"uwkr,", 0, 0, "C321" },
+        { "uwrk,", L"uwrk,", 0, 0, "C322" },
+        { "uwkx ", L"uwkx ", 0, 0, "C323" },
+        { "uwxk ", L"uwxk ", 0, 0, "C324" },
+        { "uwkx,", L"uwkx,", 0, 0, "C325" },
+        { "uwxk,", L"uwxk,", 0, 0, "C326" },
+        { "uwkj ", L"uwkj ", 0, 0, "C327" },
+        { "uwjk ", L"uwjk ", 0, 0, "C328" },
+        { "uwkj,", L"uwkj,", 0, 0, "C329" },
+        { "uwjk,", L"uwjk,", 0, 0, "C330" },
+        { "ek ", L"ek ", 0, 0, "C331" },
+        { "ek,", L"ek,", 0, 0, "C332" },
+        { "eks ", L"ék ", 0, 0, "C333" },
+        { "esk ", L"ék ", 0, 0, "C334" },
+        { "eks,", L"ék,", 0, 0, "C335" },
+        { "esk,", L"ék,", 0, 0, "C336" },
+        { "ekf ", L"ekf ", 0, 0, "C337" },
+        { "efk ", L"efk ", 0, 0, "C338" },
+        { "ekf,", L"ekf,", 0, 0, "C339" },
+        { "efk,", L"efk,", 0, 0, "C340" },
+        { "ekr ", L"ekr ", 0, 0, "C341" },
+        { "erk ", L"erk ", 0, 0, "C342" },
+        { "ekr,", L"ekr,", 0, 0, "C343" },
+        { "erk,", L"erk,", 0, 0, "C344" },
+        { "ekx ", L"ekx ", 0, 0, "C345" },
+        { "exk ", L"exk ", 0, 0, "C346" },
+        { "ekx,", L"ekx,", 0, 0, "C347" },
+        { "exk,", L"exk,", 0, 0, "C348" },
+        { "ekj ", L"ẹk ", 0, 0, "C349" },
+        { "ejk ", L"ẹk ", 0, 0, "C350" },
+        { "ekj,", L"ẹk,", 0, 0, "C351" },
+        { "ejk,", L"ẹk,", 0, 0, "C352" },
+        { "eek,", L"eek,", 0, 0, "C354" },
+        { "eeks ", L"eeks ", 0, 0, "C355" },
+        { "eesk ", L"eesk ", 0, 0, "C356" },
+        { "eeks,", L"eeks,", 0, 0, "C357" },
+        { "eesk,", L"eesk,", 0, 0, "C358" },
+        { "eekf ", L"eekf ", 0, 0, "C359" },
+        { "eefk ", L"eefk ", 0, 0, "C360" },
+        { "eekf,", L"eekf,", 0, 0, "C361" },
+        { "eefk,", L"eefk,", 0, 0, "C362" },
+        { "eekr ", L"eekr ", 0, 0, "C363" },
+        { "eerk ", L"eerk ", 0, 0, "C364" },
+        { "eekr,", L"eekr,", 0, 0, "C365" },
+        { "eerk,", L"eerk,", 0, 0, "C366" },
+        { "eekx ", L"eekx ", 0, 0, "C367" },
+        { "eexk ", L"eexk ", 0, 0, "C368" },
+        { "eekx,", L"eekx,", 0, 0, "C369" },
+        { "eexk,", L"eexk,", 0, 0, "C370" },
+        { "eekj ", L"eekj ", 0, 0, "C371" },
+        { "eejk ", L"eejk ", 0, 0, "C372" },
+        { "eekj,", L"eekj,", 0, 0, "C373" },
+        { "eejk,", L"eejk,", 0, 0, "C374" },
+        { "ik ", L"ik ", 0, 0, "C375" },
+        { "ik,", L"ik,", 0, 0, "C376" },
+        { "iks ", L"iks ", 0, 0, "C377" },
+        { "isk ", L"isk ", 0, 0, "C378" },
+        { "iks,", L"iks,", 0, 0, "C379" },
+        { "isk,", L"isk,", 0, 0, "C380" },
+        { "ikf ", L"ikf ", 0, 0, "C381" },
+        { "ifk ", L"ifk ", 0, 0, "C382" },
+        { "ikf,", L"ikf,", 0, 0, "C383" },
+        { "ifk,", L"ifk,", 0, 0, "C384" },
+        { "ikr ", L"ikr ", 0, 0, "C385" },
+        { "irk ", L"irk ", 0, 0, "C386" },
+        { "ikr,", L"ikr,", 0, 0, "C387" },
+        { "irk,", L"irk,", 0, 0, "C388" },
+        { "ikx ", L"ikx ", 0, 0, "C389" },
+        { "ixk ", L"ixk ", 0, 0, "C390" },
+        { "ikx,", L"ikx,", 0, 0, "C391" },
+        { "ixk,", L"ixk,", 0, 0, "C392" },
+        { "ikj ", L"ikj ", 0, 0, "C393" },
+        { "ijk ", L"ijk ", 0, 0, "C394" },
+        { "ikj,", L"ikj,", 0, 0, "C395" },
+        { "ijk,", L"ijk,", 0, 0, "C396" },
+        { "yk ", L"yk ", 0, 0, "C397" },
+        { "yk,", L"yk,", 0, 0, "C398" },
+        { "yks ", L"yks ", 0, 0, "C399" },
+        { "ysk ", L"ysk ", 0, 0, "C400" },
+        { "yks,", L"yks,", 0, 0, "C401" },
+        { "ysk,", L"ysk,", 0, 0, "C402" },
+        { "ykf ", L"ykf ", 0, 0, "C403" },
+        { "yfk ", L"yfk ", 0, 0, "C404" },
+        { "ykf,", L"ykf,", 0, 0, "C405" },
+        { "yfk,", L"yfk,", 0, 0, "C406" },
+        { "ykr ", L"ykr ", 0, 0, "C407" },
+        { "yrk ", L"yrk ", 0, 0, "C408" },
+        { "ykr,", L"ykr,", 0, 0, "C409" },
+        { "yrk,", L"yrk,", 0, 0, "C410" },
+        { "ykx ", L"ykx ", 0, 0, "C411" },
+        { "yxk ", L"yxk ", 0, 0, "C412" },
+        { "ykx,", L"ykx,", 0, 0, "C413" },
+        { "yxk,", L"yxk,", 0, 0, "C414" },
+        { "ykj ", L"ykj ", 0, 0, "C415" },
+        { "yjk ", L"yjk ", 0, 0, "C416" },
+        { "ykj,", L"ykj,", 0, 0, "C417" },
+        { "yjk,", L"yjk,", 0, 0, "C418" },
+        { "DDuk,", L"Đuk,", 0, 0, "C420" },
+        { "DDuks ", L"Đúk ", 0, 0, "C421" },
+        { "DDusk ", L"Đúk ", 0, 0, "C422" },
+        { "DDuks,", L"Đúk,", 0, 0, "C423" },
+        { "DDusk,", L"Đúk,", 0, 0, "C424" },
+        { "DDukf ", L"Đukf ", 0, 0, "C425" },
+        { "DDufk ", L"DDufk ", 0, 0, "C426" },
+        { "DDukf,", L"Đukf,", 0, 0, "C427" },
+        { "DDufk,", L"DDufk,", 0, 0, "C428" },
+        { "DDukr ", L"Đukr ", 0, 0, "C429" },
+        { "DDurk ", L"DDurk ", 0, 0, "C430" },
+        { "DDukr,", L"Đukr,", 0, 0, "C431" },
+        { "DDurk,", L"DDurk,", 0, 0, "C432" },
+        { "DDukx ", L"Đukx ", 0, 0, "C433" },
+        { "DDuxk ", L"DDuxk ", 0, 0, "C434" },
+        { "DDukx,", L"Đukx,", 0, 0, "C435" },
+        { "DDuxk,", L"DDuxk,", 0, 0, "C436" },
+        { "DDukj ", L"Đụk ", 0, 0, "C437" },
+        { "DDujk ", L"Đụk ", 0, 0, "C438" },
+        { "DDukj,", L"Đụk,", 0, 0, "C439" },
+        { "DDujk,", L"Đụk,", 0, 0, "C440" },
+        { "DDak,", L"Đak,", 0, 0, "C442" },
+        { "DDaks,", L"Đaks,", 0, 0, "C445" },
+        { "DDask,", L"DDask,", 0, 0, "C446" },
+        { "DDakf ", L"Đakf ", 0, 0, "C447" },
+        { "DDafk ", L"DDafk ", 0, 0, "C448" },
+        { "DDakf,", L"Đakf,", 0, 0, "C449" },
+        { "DDafk,", L"DDafk,", 0, 0, "C450" },
+        { "DDakr ", L"Đakr ", 0, 0, "C451" },
+        { "DDark ", L"DDark ", 0, 0, "C452" },
+        { "DDakr,", L"Đakr,", 0, 0, "C453" },
+        { "DDark,", L"DDark,", 0, 0, "C454" },
+        { "DDakx ", L"Đakx ", 0, 0, "C455" },
+        { "DDaxk ", L"DDaxk ", 0, 0, "C456" },
+        { "DDakx,", L"Đakx,", 0, 0, "C457" },
+        { "DDaxk,", L"DDaxk,", 0, 0, "C458" },
+        { "DDakj ", L"Đakj ", 0, 0, "C459" },
+        { "DDajk ", L"DDajk ", 0, 0, "C460" },
+        { "DDakj,", L"Đakj,", 0, 0, "C461" },
+        { "DDajk,", L"DDajk,", 0, 0, "C462" },
+        { "DDook ", L"DDook ", 0, 0, "C463" },
+        { "DDook,", L"DDook,", 0, 0, "C464" },
+        { "DDooks ", L"Đốk ", 0, 0, "C465" },
+        { "DDoosk ", L"Đốk ", 0, 0, "C466" },
+        { "DDooks,", L"Đốk,", 0, 0, "C467" },
+        { "DDoosk,", L"Đốk,", 0, 0, "C468" },
+        { "DDookf ", L"DDookf ", 0, 0, "C469" },
+        { "DDoofk ", L"DDoofk ", 0, 0, "C470" },
+        { "DDookf,", L"DDookf,", 0, 0, "C471" },
+        { "DDoofk,", L"DDoofk,", 0, 0, "C472" },
+        { "DDookr ", L"DDookr ", 0, 0, "C473" },
+        { "DDoork ", L"DDoork ", 0, 0, "C474" },
+        { "DDookr,", L"DDookr,", 0, 0, "C475" },
+        { "DDoork,", L"DDoork,", 0, 0, "C476" },
+        { "DDookx ", L"DDookx ", 0, 0, "C477" },
+        { "DDooxk ", L"DDooxk ", 0, 0, "C478" },
+        { "DDookx,", L"DDookx,", 0, 0, "C479" },
+        { "DDooxk,", L"DDooxk,", 0, 0, "C480" },
+        { "DDookj ", L"Độk ", 0, 0, "C481" },
+        { "DDoojk ", L"Độk ", 0, 0, "C482" },
+        { "DDookj,", L"Độk,", 0, 0, "C483" },
+        { "DDoojk,", L"Độk,", 0, 0, "C484" },
+        { "pesk ", L"pék ", 0, 0, "E001" },
+        { "peks ", L"pék ", 0, 0, "E002" },
+        { "pejk ", L"pẹk ", 0, 0, "E003" },
+        { "pekj ", L"pẹk ", 0, 0, "E004" },
+        { "PESK ", L"PÉK ", 0, 0, "E009" },
+        { "PEKS ", L"PÉK ", 0, 0, "E010" },
+        { "PEJK ", L"PẸK ", 0, 0, "E011" },
+        { "PEKJ ", L"PẸK ", 0, 0, "E012" },
+        { "pe6k ", L"pe6k ", 0, 1, "E027" },
+        { "pe1k0 ", L"pek ", 0, 1, "E028" },
+        { "ask ", L"ask ", 0, 0, "E039" },
+        { "trek ", L"trek ", 0, 0, "E041" },
+        { "lek ", L"lek ", 0, 0, "E042" },
+        { "treks ", L"trék ", 0, 0, "E043" },
+        { "tresk ", L"trék ", 0, 0, "E044" },
+        { "desk ", L"dék ", 0, 0, "E045" },
+        { "tre1k ", L"trék ", 0, 1, "E047" },
+        { "trek1 ", L"trék ", 0, 1, "E048" },
+        { "de1k ", L"dék ", 0, 1, "E049" },
+        { "dek1 ", L"dék ", 0, 1, "E050" },
+        { "pesk,", L"pék,", 0, 0, "E051" },
+        { "peks,", L"pék,", 0, 0, "E052" },
+        { "pejk,", L"pẹk,", 0, 0, "E053" },
+        { "pekj,", L"pẹk,", 0, 0, "E054" },
+        { "Pesk,", L"Pék,", 0, 0, "E055" },
+        { "Peks,", L"Pék,", 0, 0, "E056" },
+        { "Pejk,", L"Pẹk,", 0, 0, "E057" },
+        { "Pekj,", L"Pẹk,", 0, 0, "E058" },
+        { "PESK,", L"PÉK,", 0, 0, "E059" },
+        { "PEKS,", L"PÉK,", 0, 0, "E060" },
+        { "PEJK,", L"PẸK,", 0, 0, "E061" },
+        { "PEKJ,", L"PẸK,", 0, 0, "E062" },
+        { "Pefk,", L"Pefk,", 0, 0, "E063" },
+        { "Pekf,", L"Pekf,", 0, 0, "E064" },
+        { "Perk,", L"Perk,", 0, 0, "E065" },
+        { "Pekr,", L"Pekr,", 0, 0, "E066" },
+        { "Pexk,", L"Pexk,", 0, 0, "E067" },
+        { "Pekx,", L"Pekx,", 0, 0, "E068" },
+        { "DDawk Pesk,", L"Đăk Pék,", 0, 0, "E070" },
+        { "pe1k,", L"pék,", 0, 1, "E071" },
+        { "pek1,", L"pék,", 0, 1, "E072" },
+        { "pe5k,", L"pẹk,", 0, 1, "E073" },
+        { "pek5,", L"pẹk,", 0, 1, "E074" },
+        { "pe2k,", L"pe2k,", 0, 1, "E075" },
+        { "pek2,", L"pek2,", 0, 1, "E076" },
+        { "pe6k,", L"pe6k,", 0, 1, "E077" },
+        { "pe1k0,", L"pek,", 0, 1, "E078" },
+        { "d9a8k pe1k,", L"đăk pék,", 0, 1, "E081" },
+        { "d9a8k pek1,", L"đăk pék,", 0, 1, "E082" },
+        { "eek,", L"eek,", 0, 0, "E083" },
+        { "peek,", L"peek,", 0, 0, "E084" },
+        { "week,", L"week,", 0, 0, "E085" },
+        { "check,", L"check,", 0, 0, "E086" },
+        { "speak,", L"speak,", 0, 0, "E087" },
+        { "break,", L"break,", 0, 0, "E088" },
+        { "ask,", L"ask,", 0, 0, "E089" },
+        { "Peksz,", L"Pek,", 0, 0, "E090" },
+        { "trek,", L"trek,", 0, 0, "E091" },
+        { "lek,", L"lek,", 0, 0, "E092" },
+        { "treks,", L"trék,", 0, 0, "E093" },
+        { "tresk,", L"trék,", 0, 0, "E094" },
+        { "desk,", L"dék,", 0, 0, "E095" },
+        { "desk,", L"desk,", 0, 1, "E096" },
+        { "tre1k,", L"trék,", 0, 1, "E097" },
+        { "trek1,", L"trék,", 0, 1, "E098" },
+        { "de1k,", L"dék,", 0, 1, "E099" },
+        { "dek1,", L"dék,", 0, 1, "E100" },
+        { "eke ", L"eke ", 0, 0, "E103" },
+        { "Pekw ", L"Pekw ", 0, 0, "E104" },
+        { "Ea Bhooks ", L"Ea Bhooks ", 0, 0, "E105" },
+        { "Adowk ", L"Adowk ", 0, 0, "E106" },
+        { "pesk ", L"pék ", 1, 0, "E107" },
+        { "peks ", L"pék ", 1, 0, "E108" },
+        { "pejk ", L"pẹk ", 1, 0, "E109" },
+        { "pekj ", L"pẹk ", 1, 0, "E110" },
+        { "Pesk ", L"Pék ", 1, 0, "E111" },
+        { "Peks ", L"Pék ", 1, 0, "E112" },
+        { "Pejk ", L"Pẹk ", 1, 0, "E113" },
+        { "Pekj ", L"Pẹk ", 1, 0, "E114" },
+        { "PESK ", L"PÉK ", 1, 0, "E115" },
+        { "PEKS ", L"PÉK ", 1, 0, "E116" },
+        { "PEJK ", L"PẸK ", 1, 0, "E117" },
+        { "PEKJ ", L"PẸK ", 1, 0, "E118" },
+        { "Pefk ", L"Pefk ", 1, 0, "E119" },
+        { "Pekf ", L"Pekf ", 1, 0, "E120" },
+        { "Perk ", L"Perk ", 1, 0, "E121" },
+        { "Pekr ", L"Pekr ", 1, 0, "E122" },
+        { "Pexk ", L"Pexk ", 1, 0, "E123" },
+        { "Pekx ", L"Pekx ", 1, 0, "E124" },
+        { "DDawk Pesk ", L"Đăk Pék ", 1, 0, "E126" },
+        { "pe1k ", L"pék ", 1, 1, "E127" },
+        { "pek1 ", L"pék ", 1, 1, "E128" },
+        { "pe5k ", L"pẹk ", 1, 1, "E129" },
+        { "pek5 ", L"pẹk ", 1, 1, "E130" },
+        { "pe2k ", L"pe2k ", 1, 1, "E131" },
+        { "pek2 ", L"pek2 ", 1, 1, "E132" },
+        { "pe6k ", L"pe6k ", 1, 1, "E133" },
+        { "pe1k0 ", L"pek ", 1, 1, "E134" },
+        { "d9a8k pe1k ", L"đăk pék ", 1, 1, "E137" },
+        { "d9a8k pek1 ", L"đăk pék ", 1, 1, "E138" },
+        { "eek ", L"eek ", 1, 0, "E139" },
+        { "peek ", L"peek ", 1, 0, "E140" },
+        { "week ", L"week ", 1, 0, "E141" },
+        { "check ", L"check ", 1, 0, "E142" },
+        { "speak ", L"speak ", 1, 0, "E143" },
+        { "break ", L"break ", 1, 0, "E144" },
+        { "Peksz ", L"Pek ", 1, 0, "E146" },
+        { "desk ", L"desk ", 1, 1, "E152" },
+        { "tre1k ", L"trék ", 1, 1, "E153" },
+        { "trek1 ", L"trék ", 1, 1, "E154" },
+        { "de1k ", L"dék ", 1, 1, "E155" },
+        { "dek1 ", L"dék ", 1, 1, "E156" },
+        { "pesk,", L"pék,", 1, 0, "E157" },
+        { "peks,", L"pék,", 1, 0, "E158" },
+        { "pejk,", L"pẹk,", 1, 0, "E159" },
+        { "pekj,", L"pẹk,", 1, 0, "E160" },
+        { "Pesk,", L"Pék,", 1, 0, "E161" },
+        { "Peks,", L"Pék,", 1, 0, "E162" },
+        { "Pejk,", L"Pẹk,", 1, 0, "E163" },
+        { "Pekj,", L"Pẹk,", 1, 0, "E164" },
+        { "PESK,", L"PÉK,", 1, 0, "E165" },
+        { "PEKS,", L"PÉK,", 1, 0, "E166" },
+        { "PEJK,", L"PẸK,", 1, 0, "E167" },
+        { "PEKJ,", L"PẸK,", 1, 0, "E168" },
+        { "Pefk,", L"Pefk,", 1, 0, "E169" },
+        { "Pekf,", L"Pekf,", 1, 0, "E170" },
+        { "Perk,", L"Perk,", 1, 0, "E171" },
+        { "Pekr,", L"Pekr,", 1, 0, "E172" },
+        { "Pexk,", L"Pexk,", 1, 0, "E173" },
+        { "Pekx,", L"Pekx,", 1, 0, "E174" },
+        { "DDawk Peks,", L"Đăk Pék,", 1, 0, "E175" },
+        { "DDawk Pesk,", L"Đăk Pék,", 1, 0, "E176" },
+        { "pe1k,", L"pék,", 1, 1, "E177" },
+        { "pek1,", L"pék,", 1, 1, "E178" },
+        { "pe5k,", L"pẹk,", 1, 1, "E179" },
+        { "pek5,", L"pẹk,", 1, 1, "E180" },
+        { "pe2k,", L"pe2k,", 1, 1, "E181" },
+        { "pek2,", L"pek2,", 1, 1, "E182" },
+        { "pe6k,", L"pe6k,", 1, 1, "E183" },
+        { "pe1k0,", L"pek,", 1, 1, "E184" },
+        { "d9a8k pe1k,", L"đăk pék,", 1, 1, "E187" },
+        { "d9a8k pek1,", L"đăk pék,", 1, 1, "E188" },
+        { "eek,", L"eek,", 1, 0, "E189" },
+        { "peek,", L"peek,", 1, 0, "E190" },
+        { "week,", L"week,", 1, 0, "E191" },
+        { "check,", L"check,", 1, 0, "E192" },
+        { "speak,", L"speak,", 1, 0, "E193" },
+        { "break,", L"break,", 1, 0, "E194" },
+        { "ask,", L"ask,", 1, 0, "E195" },
+        { "Peksz,", L"Pek,", 1, 0, "E196" },
+        { "trek,", L"trek,", 1, 0, "E197" },
+        { "lek,", L"lek,", 1, 0, "E198" },
+        { "treks,", L"trék,", 1, 0, "E199" },
+        { "tresk,", L"trék,", 1, 0, "E200" },
+        { "desk,", L"dék,", 1, 0, "E201" },
+        { "desk,", L"desk,", 1, 1, "E202" },
+        { "tre1k,", L"trék,", 1, 1, "E203" },
+        { "trek1,", L"trék,", 1, 1, "E204" },
+        { "de1k,", L"dék,", 1, 1, "E205" },
+        { "dek1,", L"dék,", 1, 1, "E206" },
+        { "ek ", L"ech ", 1, 4, "E207" },
+        { "ekf ", L"èch ", 1, 4, "E208" },
+        { "eke ", L"eke ", 1, 0, "E209" },
+        { "Pekw ", L"Pekw ", 1, 0, "E210" },
+        { "Ea Bhooks ", L"Ea Bhooks ", 1, 0, "E211" },
+        { "Adowk ", L"Adowk ", 1, 0, "E212" },
+    };
+    for (const auto& row : corpus) {
+        vKeyConfig c = testCfg();
+        c.mixedEnglish = row.mixed;
+        c.mixedFixLast = 0;
+        c.inputType = (row.flags & 1) ? vVNI : vTelex;
+        c.quickTelex = (row.flags & 2) ? 1 : 0;
+        c.quickEndConsonant = (row.flags & 4) ? 1 : 0;
+        if (row.flags & 8)
+            c.checkSpelling = 0;
+        vKeySetConfig(c);
+        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, c, 0, false);
+        wstring got = typeKeysWith(row.keys, c);
+        total++;
+        if (got != row.want) {
+            failures++;
+            printf("FAIL [LiteralK corpus %s] \"%s\": expected \"%s\", got \"%s\"\n", row.id, row.keys,
+                   toUtf8(wstring(row.want)).c_str(), toUtf8(got).c_str());
+        }
+    }
+    testCfg().inputType = vTelex;
+    testCfg().mixedEnglish = 0;
+    testCfg().quickTelex = 0;
+    testCfg().quickEndConsonant = 0;
+    testCfg().checkSpelling = 1;
 }
 
 // ---- Part B (plan v2.2): CapsLock VK_CAPITAL session close ----
@@ -4143,6 +4744,10 @@ static int g_capTuple[4];
 static bool g_capCaptured = false;
 
 static wstring typeCapsSeq(const string& keys, const vKeyConfig& config, int statusMode, int captureIndex = -1) {
+    //isolate the row the way the debate probes do: a non-character mouse
+    //break first (startNewSession alone retains _specialChar, _typingStates,
+    //_spaceCount and _mixedContext from the previous row)
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, config, 0, false);
     startNewSession();
     wstring text;
     g_capCaptured = false;
@@ -4194,6 +4799,11 @@ static wstring typeCapsSeq(const string& keys, const vKeyConfig& config, int sta
                 sendKeyCode(text, keyCode | (isUpper ? CAPS_MASK : 0));
             if (pData->code == vRestoreAndStartNewSession)
                 startNewSession();
+        } else if (pData->code == vReplaceMaro) {
+            for (int i = 0; i < pData->backspaceCount && !text.empty(); i++)
+                text.pop_back();
+            for (size_t i = 0; i < pData->macroData.size(); i++)
+                sendKeyCode(text, pData->macroData[i]);
         }
         idx++;
     }
@@ -4231,9 +4841,9 @@ static void testCapsLock() {
     testCfg().inputType = vTelex;
     testCfg().mixedEnglish = 0;
     //P1-P4: no CapsLock event; the fix must not change these
-    expectCaps("CapsLock", "VIEvieejt tieengs ", L"VIEvieejt tiếng ");
+    expectCaps("CapsLock", "VIET<vieejt tieengs ", L"VIEvieejt tiếng ");
     expectCaps("CapsLock", "VIETvieejt tieengs ", L"VIETvieejt tiếng ");
-    expectCaps("CapsLock", "vievieejt tieengs ", L"vievieejt tiếng ");
+    expectCaps("CapsLock", "viet<vieejt tieengs ", L"vievieejt tiếng ");
     expectCaps("CapsLock", "VIETs", L"VIÉT");
     //ordinary delete and the hyphen break keep their pre-guard behavior
     expectCaps("CapsLock", "vieet<", L"viê");
@@ -4244,10 +4854,29 @@ static void testCapsLock() {
     //event itself is the session-closing tuple, not a phantom insertion
     expectCaps("CapsLock", "VIET^s", L"VIETs");
     expectCapsTuple("CapsLock", "VIET^s", 4, vDoNothing, 1, 0, 0);
+    //P5 closed-state probe: a fresh word after the toggle converts; on
+    //the baseline the phantom makes it restore raw instead
+    expectCaps("CapsLock", "VIET^vieejt ", L"VIETviệt ");
+    //P2-phantom: the toggle after a completed caps word leaves no phantom
+    expectCaps("CapsLock", "VIET^vieejt tieengs ", L"VIETviệt tiếng ");
     //A0-A6: the accented caps word and its toggles, both toggle directions
     expectCaps("CapsLock", "VIEETJ", L"VIỆT");
     expectCaps("CapsLock", "^VIEETJ", L"VIỆT");
     expectCaps("CapsLock", "VIEETJ^<vieejt tieengs ", L"VIỆviệt tiếng ");
+    //A2 intermediate: the transformed screen before the closing space,
+    //and that space publishes the same packet as the standalone word
+    expectCaps("CapsLock", "VIEETJ^<vieejt", L"VIỆviệt");
+    total++;
+    {
+        typeCapsSeq("VIEETJ^<vieejt tieengs ", testCfg(), 2, 14);
+        int a2[4] = { g_capTuple[0], g_capTuple[1], g_capTuple[2], g_capTuple[3] };
+        typeCapsSeq("vieejt ", testCfg(), 2, 6);
+        if (a2[0] != g_capTuple[0] || a2[1] != g_capTuple[1] || a2[2] != g_capTuple[2] || a2[3] != g_capTuple[3]) {
+            failures++;
+            printf("FAIL [CapsLock] A2 space packet (%d,%d,%d,%d) != standalone vieejt space packet (%d,%d,%d,%d)\n",
+                   a2[0], a2[1], a2[2], a2[3], g_capTuple[0], g_capTuple[1], g_capTuple[2], g_capTuple[3]);
+        }
+    }
     expectCaps("CapsLock", "^VIEETJ^<vieejt tieengs ", L"VIỆviệt tiếng ");
     expectCaps("CapsLock", "^#VIEETJ#^<vieejt tieengs ", L"VIỆviệt tiếng ");
     expectCaps("CapsLock", "^VIEETJ^<<<vieejt tieengs ", L"Vviệt tiếng ");
@@ -4256,6 +4885,13 @@ static void testCapsLock() {
     expectCaps("CapsLock", "^VIET^<<<<vieejt tieengs ", L"việt tiếng ");
     expectCaps("CapsLock", "VIET^<<<<vieejt tieengs ", L"việt tiếng ");
     expectCaps("CapsLock", "VIET ^<vieejt tieengs ", L"VIETviệt tiếng ");
+    expectCaps("CapsLock", "^VIET ^<vieejt tieengs ", L"VIETviệt tiếng ");
+    expectCaps("CapsLock", "^VIET^<vieejt tieengs ", L"VIEviệt tiếng ");
+    //the V6 history finals follow Zed's candidate.tsv traces (the check
+    //memo's prose spacing was loose): the deletes cross the space, and in
+    //the Vietnamese run the stranded tone of "this" lands on its vowel
+    expectCaps("CapsLock", "this ^AB^<<<vieejt tieengs ", L"thíviệt tiếng ");
+    expectCaps("CapsLock", "viet ^AB^<<<vieejt tieengs ", L"vietviệt tiếng ");
     expectCaps("CapsLock", "AB^<<<vieejt tieengs ", L"việt tiếng ");
     expectCaps("CapsLock", "^AB^<<<vieejt tieengs ", L"việt tiếng ");
     //micro cell 2: the toggle closes the open word as a boundary
@@ -4283,7 +4919,8 @@ static void testCapsLock() {
 #endif
     //the same cells in EV
     testCfg().mixedEnglish = 1;
-    expectCaps("CapsLock-EV", "VIEvieejt tieengs ", L"VIEvieejt tiếng ");
+    expectCaps("CapsLock-EV", "VIET<vieejt tieengs ", L"VIEvieejt tiếng ");
+    expectCaps("CapsLock-EV", "vieet<", L"viê");
 #ifdef _WIN32
     expectCaps("CapsLock-EV", "VIEETJ", L"VIỆT");
     expectCaps("CapsLock-EV", "^VIEETJ", L"VIỆT");
@@ -4293,14 +4930,44 @@ static void testCapsLock() {
     expectCaps("CapsLock-EV", "VIEETJ^<<<vieejt tieengs ", L"Vviệt tiếng ");
     expectCaps("CapsLock-EV", "^VIET^<<<<vieejt tieengs ", L"việt tiếng ");
     expectCaps("CapsLock-EV", "VIET ^<vieejt tieengs ", L"VIETviệt tiếng ");
+    expectCaps("CapsLock-EV", "^VIET ^<vieejt tieengs ", L"VIETviệt tiếng ");
+    expectCaps("CapsLock-EV", "^VIET^<vieejt tieengs ", L"VIEviệt tiếng ");
+    expectCaps("CapsLock-EV", "this ^AB^<<<vieejt tieengs ", L"thisviệt tiếng ");
+    expectCaps("CapsLock-EV", "viet ^AB^<<<vieejt tieengs ", L"vietviệt tiếng ");
+    expectCaps("CapsLock-EV", "VIET^<<<<vieejt tieengs ", L"việt tiếng ");
+    //micro cell 1 in EV: the toggle tuple at capsStatus 0, 1 and 2
+    for (int st = 0; st <= 2; st++) {
+        total++;
+        typeCapsSeq("VIE", testCfg(), 2);
+        vKeyHandleEvent(vKeyEvent::Keyboard, vKeyEventState::KeyDown, (Uint16)VK_CAPITAL, testCfg(), st, false);
+        if (!(pData->code == vDoNothing && pData->extCode == 1 && pData->backspaceCount == 0 && pData->newCharCount == 0)) {
+            failures++;
+            printf("FAIL [CapsLock-EV] capsStatus %d after VIE: expected tuple (0,1,0,0), got (%d,%d,%d,%d)\n",
+                   st, (int)pData->code, (int)pData->extCode, (int)pData->backspaceCount, (int)pData->newCharCount);
+        }
+        total++;
+        typeCapsSeq("VIE ", testCfg(), 2);
+        vKeyHandleEvent(vKeyEvent::Keyboard, vKeyEventState::KeyDown, (Uint16)VK_CAPITAL, testCfg(), st, false);
+        if (!(pData->code == vDoNothing && pData->extCode == 1 && pData->backspaceCount == 0 && pData->newCharCount == 0)) {
+            failures++;
+            printf("FAIL [CapsLock-EV] capsStatus %d after VIE+Space: expected tuple (0,1,0,0), got (%d,%d,%d,%d)\n",
+                   st, (int)pData->code, (int)pData->extCode, (int)pData->backspaceCount, (int)pData->newCharCount);
+        }
+    }
     expectCaps("CapsLock-EV", "AB^<<<vieejt tieengs ", L"việt tiếng ");
     expectCaps("CapsLock-EV", "^AB^<<<vieejt tieengs ", L"việt tiếng ");
     expectCaps("CapsLock-EV", "vie^etj", L"vieẹt");
     //between-word toggles (suite status rule, as the anchor tests use)
     testCfg().mixedFixLast = 0;
     expectCaps("CapsLock-EV", "There ^ are ", L"Thể  are ", 0);
+    expectCaps("CapsLock-EV", "There ^are ", L"Thể are ", 0);
+    //the CapsLock packet and the closed session are asserted separately
+    //from the final text on every between-word row
+    expectCapsTuple("CapsLock-EV", "There ^ are ", 6, vDoNothing, 1, 0, 0, 0);
+    expectCapsTuple("CapsLock-EV", "There ^are ", 6, vDoNothing, 1, 0, 0, 0);
     testCfg().mixedFixLast = 1;
     expectCaps("CapsLock-EV", "There ^are ", L"There are ", 0);
+    expectCapsTuple("CapsLock-EV", "There ^are ", 6, vDoNothing, 1, 0, 0, 0);
     testCfg().mixedFixLast = 0;
     //mixed context survives toggles in both directions: the ambiguous word
     //after the toggles types exactly as it does with no toggle
@@ -4308,7 +4975,8 @@ static void testCapsLock() {
     {
         wstring control = typeCapsSeq("hello as ", testCfg(), 0);
         wstring toggled = typeCapsSeq("hello ^^as ", testCfg(), 0);
-        if (control != toggled) {
+        wstring single = typeCapsSeq("hello ^as ", testCfg(), 0);
+        if (control != toggled || control != single) {
             failures++;
             printf("FAIL [CapsLock-EV] mixed context: control \"%s\", toggled \"%s\"\n",
                    toUtf8(control).c_str(), toUtf8(toggled).c_str());
@@ -4319,7 +4987,24 @@ static void testCapsLock() {
     //early return; on Windows KEY_MINUS is 189, not 0x14
     expectCaps("CapsLock-EV", "user_id ", L"user_id ", 0);
     expectCapsTuple("CapsLock-EV", "user_id ", 4, vDoNothing, 3, 3, 3, 0);
+    //the session continued across the underscore: Escape restores the
+    //whole raw word, which needs its full key history
+    expectCaps("CapsLock-EV", "user_id~", L"user_id", 0);
     testCfg().mixedEnglish = 0;
+    //macro-enabled toggles: a defined macro expands on the plain word
+    //and must not expand across a CapsLock toggle (the toggle closes
+    //the word, so the lookup only sees the post-toggle segment)
+    initMacroMap(nullptr, 0);
+    addMacro("tm", "TestMacro");
+    testCfg().useMacro = 1;
+    //the macro packet consumes the break key in production (the hook
+    //returns -1 after handleMacro), so no trailing space appears
+    expectCaps("CapsLock-Macro", "tm ", L"TestMacro");
+#ifdef _WIN32
+    expectCaps("CapsLock-Macro", "t^m ", L"tm ");
+#endif
+    testCfg().useMacro = 0;
+    initMacroMap(nullptr, 0);
 }
 
 int main(int argc, char** argv) {
