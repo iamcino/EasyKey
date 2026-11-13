@@ -28,8 +28,32 @@ elseif(UNIX AND NOT APPLE)
     target_compile_definitions(EngineTests PRIVATE LINUX)
 endif()
 
+#State characterization for plan v2.2 Part B: includes Engine.cpp in its
+#own translation unit (probe-style) to assert engine session state at
+#event boundaries; Windows-only cells, a no-op elsewhere. Engine.cpp is
+#deliberately not a separate source here -- the driver includes it.
+add_executable(EngineStateTests
+    EngineStateTests.cpp
+    ${APP_CORE_DIR}/VersionInfo.cpp
+    ${APP_CORE_DIR}/GameModeState.cpp
+    ${APP_CORE_DIR}/PasswordState.cpp
+    ${APP_CORE_DIR}/AppProfileState.cpp
+    ${ENGINE_DIR}/ConvertTool.cpp
+    ${ENGINE_DIR}/Macro.cpp
+    ${ENGINE_DIR}/MixedWords.cpp
+    ${ENGINE_DIR}/SmartSwitchKey.cpp
+    ${ENGINE_DIR}/Vietnamese.cpp
+)
+if(MSVC)
+    target_compile_options(EngineStateTests PRIVATE /utf-8)
+    target_compile_definitions(EngineStateTests PRIVATE _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING)
+elseif(UNIX AND NOT APPLE)
+    target_compile_definitions(EngineStateTests PRIVATE LINUX)
+endif()
+
 enable_testing()
 add_test(NAME EngineTests COMMAND EngineTests)
+add_test(NAME EngineStateTests COMMAND EngineStateTests)
 
 #Windows-only: deleting EasyKey.old.exe after an update (locked, read-only, directory),
 #and the updater's Authenticode check against the pinned EasyKey certificate

@@ -4926,6 +4926,7 @@ static void testCapsLock() {
     expectCaps("CapsLock-EV", "^VIEETJ", L"VIỆT");
     expectCaps("CapsLock-EV", "VIEETJ^<vieejt tieengs ", L"VIỆviệt tiếng ");
     expectCaps("CapsLock-EV", "^VIEETJ^<vieejt tieengs ", L"VIỆviệt tiếng ");
+    expectCaps("CapsLock-EV", "^#VIEETJ#^<vieejt tieengs ", L"VIỆviệt tiếng ");
     expectCaps("CapsLock-EV", "^VIEETJ^<<<vieejt tieengs ", L"Vviệt tiếng ");
     expectCaps("CapsLock-EV", "VIEETJ^<<<vieejt tieengs ", L"Vviệt tiếng ");
     expectCaps("CapsLock-EV", "^VIET^<<<<vieejt tieengs ", L"việt tiếng ");
