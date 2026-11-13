@@ -2,6 +2,12 @@
 
 **Tiếng Việt** · [English](CHANGELOG.en.md)
 
+## 1.1.3 - 2026-11-14
+
+### Fixed
+
+- **Cửa sổ thông báo**: các cửa sổ như "Có gì mới" không còn mở cao quá nội dung (trên màn hình độ phân giải cao có thể kéo dài hết màn hình).
+
 ## 1.1.2 - 2026-11-14
 
 ### Fixed

@@ -2,6 +2,12 @@
 
 [Tiếng Việt](CHANGELOG.md) · **English**
 
+## 1.1.3 - 2026-11-14
+
+### Fixed
+
+- **Message windows**: dialogs such as "What's new" no longer open much taller than their content (on high-resolution displays they could stretch to the full screen height).
+
 ## 1.1.2 - 2026-11-14
 
 ### Fixed
