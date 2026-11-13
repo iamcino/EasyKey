@@ -360,6 +360,19 @@ void checkSpelling(const bool& forceCheckVowel=false) {
                     _spellingOK = false;
                 }
             }
+            // Part C: preserved literal k, two existing call levels.
+            if (!_spellingOK && CHR(k) == KEY_K && k + 1 == _spellingEndIndex && k == VSI + 1) {
+                const Uint32 unit = TypingWord[VSI];
+                const Uint32 tone = unit & MARK_MASK;
+                const bool stop = !tone || tone == MARK1_MASK || tone == MARK5_MASK;
+                const bool breve = CHR(VSI) == KEY_A && (unit & TONEW_MASK) && !(unit & TONE_MASK);
+                const bool plainA = CHR(VSI) == KEY_A && !(unit & (TONE_MASK | TONEW_MASK));
+                const bool circumO = CHR(VSI) == KEY_O && (unit & TONE_MASK) && !(unit & TONEW_MASK);
+                const bool plainU = CHR(VSI) == KEY_U && !(unit & (TONE_MASK | TONEW_MASK));
+                const bool plainE = CHR(VSI) == KEY_E && !(unit & TONE_MASK);
+                if ((breve && stop) || (plainA && !tone) || ((circumO || plainU || plainE) && stop && (!forceCheckVowel || tone)))
+                    _spellingOK = true;
+            }
         }
     } else {
         _spellingOK = true;
@@ -583,13 +596,16 @@ void checkCorrectVowel(vector<vector<Uint16>>& charset, int& i, int& k, const Ui
     
     //limit mark for end consonant: "C", "T"
     if (isCorect && charset[i].size() > 1 && (IS_KEY_F(markKey) || IS_KEY_X(markKey) || IS_KEY_R(markKey))) {
-        if (charset[i][1] == KEY_C || charset[i][1] == KEY_T) {
+        if (charset[i][1] == KEY_C || charset[i][1] == KEY_T || charset[i][1] == KEY_K) {
             isCorect = false;
         } else if (charset[i].size() > 2 && (charset[i][2] == KEY_T)) {
             isCorect = false;
         }
     }
     
+    if (isCorect && charset[i].size() == 2 && charset[i][1] == KEY_K && IS_MARK_KEY(markKey) && CHR(k+1) == KEY_A && !(TypingWord[k+1] & TONEW_MASK))
+        isCorect = false;
+
     if (isCorect && k >= 0) {
         if (CHR(k) == CHR(k+1)) {
             isCorect = false;
@@ -1645,6 +1661,16 @@ void vKeyHandleEvent(const vKeyEvent& event,
                capsStatus == 2); //caps lock
     if (data == KEY_ESC && state == KeyDown && vKeyActiveConfig().restoreOnEscape && !otherControlKey && restoreRawKeys())
         return;
+#if _WIN32
+    if (event == Keyboard && state == KeyDown && data == VK_CAPITAL) {
+        hCode = vDoNothing; hBPC = 0; hNCC = 0; hExt = 1;
+        if (_index > 0 || !_specialChar.empty()) {
+            _specialChar.clear(); _typingStates.clear(); hMacroKey.clear();
+            _spaceCount = 0; startNewSession();
+        }
+        return;
+    }
+#endif
     bool wordBreak = isWordBreak(event, state, data);
     bool numBreak = IS_NUMBER_KEY(data) && capsStatus == 1;
     if (vKeyActiveConfig().mixedEnglish && _index > 0) {

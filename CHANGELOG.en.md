@@ -2,6 +2,13 @@
 
 [Tiếng Việt](CHANGELOG.md) · **English**
 
+## Unreleased
+
+### Fixed
+- **Typing in Chromium/Electron apps**: holding Shift no longer drops the capitals after the first character (typing AAA no longer comes out as Aaa).
+- **Caps Lock**: typing accents with Caps Lock on, then turning Caps Lock off and deleting, no longer corrupts the word being typed or the one after it.
+- **Place names**: Vietnamese place names such as Đắk Lắk, Đak Pơ, Ea Rốk, Krông Búk and Đăk Pék can now be typed — tone marks after a final k were refused before.
+
 ## 1.1.1 - 2026-11-09
 
 ### Changed

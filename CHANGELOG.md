@@ -2,6 +2,13 @@
 
 **Tiếng Việt** · [English](CHANGELOG.en.md)
 
+## Unreleased
+
+### Fixed
+- **Gõ trong ứng dụng Chromium/Electron**: giữ Shift gõ liên tiếp không còn bị mất chữ hoa ở các ký tự sau (ví dụ gõ AAA không còn thành Aaa).
+- **Caps Lock**: gõ có dấu với Caps Lock, rồi tắt Caps Lock và xóa, không còn làm hỏng từ đang gõ và từ ngay sau đó.
+- **Tên địa danh**: gõ được các tên như Đắk Lắk, Đak Pơ, Ea Rốk, Krông Búk, Đăk Pék — trước đây không đặt được dấu sau chữ k.
+
 ## 1.1.1 - 2026-11-09
 
 ### Changed
