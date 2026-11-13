@@ -30,7 +30,7 @@ public:
 	static void checkQuietly();
 	//the newer version a check found, empty while EasyKey is up to date
 	static const string& availableVersion();
-	//release notes of a version, on the host that answered last
+	//release notes of a version, on the host that answered the check
 	static wstring releaseNotesUrl(const wstring& version);
 	//on start, after an update: wait for the previous EasyKey to exit
 	static void finishPreviousUpdate();

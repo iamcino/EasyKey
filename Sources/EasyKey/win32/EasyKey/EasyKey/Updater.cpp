@@ -17,6 +17,7 @@ the MIT license, see LICENSES/MIT.txt.
 #include <memory>
 #include <vector>
 #include "Updater.h"
+#include "HttpBody.h"
 #include "UpdateCleanup.h"
 #include "UpdateSignature.h"
 #include "../../../app-core/VersionInfo.h"
@@ -27,9 +28,10 @@ the MIT license, see LICENSES/MIT.txt.
 #pragma comment(lib, "winhttp.lib")
 #pragma comment(lib, "bcrypt.lib")
 
-//every release is published on GitHub and on GitLab with the same signed files. Hosts are tried
-//in order and the one that answered last is tried first, so an outage on one does not stop
-//updates; the SHA-256 and the pinned signature check make the host itself untrusted
+//every release is published on GitHub and on GitLab with the same signed files. Every check
+//tries GitHub first, then GitLab; the download and the release-notes link start from the
+//host that answered the check, so an outage on one does not stop updates; the SHA-256 and
+//the pinned signature check make the host itself untrusted
 struct ReleaseHost {
 	const wchar_t* versionUrl;
 	const wchar_t* downloadPrefix; //+ version + downloadMiddle + file name
@@ -70,6 +72,12 @@ static bool httpGet(const wstring& url, string& body) {
 
 	bool ok = false;
 	HINTERNET session = WinHttpOpen(L"EasyKey", WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+	//bound every phase: the defaults leave name resolution unbounded and a dead
+	//host would hold the one update worker (and the fallback to the other host)
+	if (session && !WinHttpSetTimeouts(session, 15000, 20000, 30000, 30000)) {
+		WinHttpCloseHandle(session);
+		session = NULL;
+	}
 	HINTERNET connection = session ? WinHttpConnect(session, host, parts.nPort, 0) : NULL;
 	HINTERNET request = connection ? WinHttpOpenRequest(connection, L"GET", path, NULL, WINHTTP_NO_REFERER,
 		WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE) : NULL;
@@ -79,17 +87,10 @@ static bool httpGet(const wstring& url, string& body) {
 		WinHttpQueryHeaders(request, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER, WINHTTP_HEADER_NAME_BY_INDEX,
 			&status, &size, WINHTTP_NO_HEADER_INDEX);
 		if (status == 200) {
-			body.clear();
-			char buffer[16384];
-			DWORD read = 0;
-			ok = true;
-			while (WinHttpReadData(request, buffer, sizeof(buffer), &read) && read > 0) {
-				body.append(buffer, read);
-				if (body.size() > MAX_DOWNLOAD) {
-					ok = false;
-					break;
-				}
-			}
+			DWORD contentLength = 0, contentLengthSize = sizeof(contentLength);
+			bool haveLength = WinHttpQueryHeaders(request, WINHTTP_QUERY_CONTENT_LENGTH | WINHTTP_QUERY_FLAG_NUMBER, WINHTTP_HEADER_NAME_BY_INDEX,
+				&contentLength, &contentLengthSize, WINHTTP_NO_HEADER_INDEX) != FALSE;
+			ok = readHttpBody(request, &WinHttpReadData, MAX_DOWNLOAD, haveLength, contentLength, body);
 		}
 	}
 	if (request) WinHttpCloseHandle(request);
@@ -124,10 +125,8 @@ static string sha256Hex(const string& data) {
 bool Updater::check(string& newVersion, bool& failed) {
 	string data;
 	failed = true;
-	LONG first = InterlockedCompareExchange(&workingHost, 0, 0);
 	bool found = false;
-	for (LONG attempt = 0; attempt < hostCount && !found; attempt++) {
-		LONG index = (first + attempt) % hostCount;
+	for (LONG index = 0; index < hostCount && !found; index++) {
 		if (httpGet(hosts[index].versionUrl, data) && parseLatestVersionName(data, newVersion)) {
 			InterlockedExchange(&workingHost, index);
 			found = true;
