@@ -78,4 +78,9 @@ if(WIN32)
         ../win32/EasyKey/EasyKey/UpdateCleanup.cpp)
     target_compile_options(UpdateCleanupTests PRIVATE /utf-8)
     add_test(NAME UpdateCleanupTests COMMAND UpdateCleanupTests)
+
+    add_executable(HttpBodyTests HttpBodyTests.cpp
+        ../win32/EasyKey/EasyKey/HttpBody.cpp)
+    target_compile_options(HttpBodyTests PRIVATE /utf-8)
+    add_test(NAME HttpBodyTests COMMAND HttpBodyTests)
 endif()
