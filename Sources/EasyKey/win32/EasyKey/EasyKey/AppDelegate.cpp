@@ -29,8 +29,10 @@ See LICENSE and NOTICE.
 #pragma comment(lib, "comctl32.lib")
 
 //shown once after updating to this version; change it with each release
-#define WHATS_NEW_VI L"• Cửa sổ thông báo (như cửa sổ này) nay mở đúng chiều cao nội dung, không còn kéo dài quá mức trên màn hình độ phân giải cao."
-#define WHATS_NEW_EN L"• Message windows such as this one now open at their proper height instead of stretching too tall on high-resolution displays."
+#define WHATS_NEW_VI L"• Tải bản cập nhật bị đứt đoạn giữa chừng không còn được chấp nhận: EasyKey kiểm tra độ dài dữ liệu và tự lấy từ máy chủ còn lại.\n" \
+	L"• Kiểm tra bản mới: luôn thử GitHub trước, rồi GitLab, và không còn treo lâu khi một máy chủ không trả lời."
+#define WHATS_NEW_EN L"• An update download cut off mid-transfer is no longer accepted: EasyKey verifies the received length and fetches it from the other host.\n" \
+	L"• Update checks: GitHub is always tried first, then GitLab, and a host that does not answer no longer stalls the check."
 
 //6 hours
 #define UPDATE_CHECK_INTERVAL (6 * 60 * 60 * 1000)

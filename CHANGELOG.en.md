@@ -2,6 +2,13 @@
 
 [Tiếng Việt](CHANGELOG.md) · **English**
 
+## 1.1.4 - 2026-11-14
+
+### Fixed
+
+- **Update downloads**: a file cut off mid-transfer is no longer accepted — EasyKey checks the received length against the server's, and fetches from the other host when it does not match.
+- **Update checks**: GitHub is always tried first, then GitLab, and every step now has a time limit, so a host that does not answer no longer stalls the check.
+
 ## 1.1.3 - 2026-11-14
 
 ### Fixed
