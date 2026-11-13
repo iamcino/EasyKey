@@ -29,10 +29,12 @@ See LICENSE and NOTICE.
 #pragma comment(lib, "comctl32.lib")
 
 //shown once after updating to this version; change it with each release
-#define WHATS_NEW_VI L"• Cập nhật tự chuyển sang GitLab khi GitHub không vào được.\n" \
-	L"• Cửa sổ Giới thiệu có logo EasyKey và đường dẫn tới GitHub lẫn GitLab."
-#define WHATS_NEW_EN L"• Updates switch to GitLab automatically when GitHub cannot be reached.\n" \
-	L"• The About window shows the EasyKey logo and links to both GitHub and GitLab."
+#define WHATS_NEW_VI L"• Gõ trong ứng dụng Chromium/Electron: giữ Shift gõ liên tiếp không còn mất chữ hoa ở các ký tự sau (gõ AAA không còn thành Aaa).\n" \
+	L"• Caps Lock: gõ có dấu với Caps Lock, rồi tắt Caps Lock và xóa, không còn làm hỏng từ đang gõ và từ ngay sau.\n" \
+	L"• Tên địa danh: gõ được các tên như Đắk Lắk, Đak Pơ, Ea Rốk, Krông Búk, Đăk Pék — dấu sau chữ k cuối từ nay được chấp nhận."
+#define WHATS_NEW_EN L"• Typing in Chromium/Electron apps: holding Shift no longer drops the capitals after the first character (typing AAA no longer comes out as Aaa).\n" \
+	L"• Caps Lock: typing accents with Caps Lock on, then turning Caps Lock off and deleting, no longer corrupts the word being typed or the one after it.\n" \
+	L"• Place names: names such as Đắk Lắk, Đak Pơ, Ea Rốk, Krông Búk and Đăk Pék can now be typed — tone marks after a final k are accepted."
 
 //6 hours
 #define UPDATE_CHECK_INTERVAL (6 * 60 * 60 * 1000)

@@ -2,7 +2,7 @@
 
 [Tiếng Việt](CHANGELOG.md) · **English**
 
-## Unreleased
+## 1.1.2 - 2026-11-14
 
 ### Fixed
 - **Typing in Chromium/Electron apps**: holding Shift no longer drops the capitals after the first character (typing AAA no longer comes out as Aaa).

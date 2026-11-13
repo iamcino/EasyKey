@@ -2,7 +2,7 @@
 
 **Tiếng Việt** · [English](CHANGELOG.en.md)
 
-## Unreleased
+## 1.1.2 - 2026-11-14
 
 ### Fixed
 - **Gõ trong ứng dụng Chromium/Electron**: giữ Shift gõ liên tiếp không còn bị mất chữ hoa ở các ký tự sau (ví dụ gõ AAA không còn thành Aaa).
