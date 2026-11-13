@@ -2,6 +2,13 @@
 
 **Tiếng Việt** · [English](CHANGELOG.en.md)
 
+## 1.1.4 - 2026-11-14
+
+### Fixed
+
+- **Tải bản cập nhật**: file tải về bị đứt đoạn giữa chừng không còn được chấp nhận — EasyKey đối chiếu độ dài dữ liệu với máy chủ, không khớp thì lấy từ máy chủ còn lại.
+- **Kiểm tra bản mới**: luôn thử GitHub trước rồi đến GitLab, và mỗi bước đều có giới hạn thời gian chờ nên không còn treo lâu khi một máy chủ không trả lời.
+
 ## 1.1.3 - 2026-11-14
 
 ### Fixed
