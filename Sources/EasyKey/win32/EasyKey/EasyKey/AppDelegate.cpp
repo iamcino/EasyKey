@@ -29,12 +29,8 @@ See LICENSE and NOTICE.
 #pragma comment(lib, "comctl32.lib")
 
 //shown once after updating to this version; change it with each release
-#define WHATS_NEW_VI L"• Gõ trong ứng dụng Chromium/Electron: giữ Shift gõ liên tiếp không còn mất chữ hoa ở các ký tự sau (gõ AAA không còn thành Aaa).\n" \
-	L"• Caps Lock: gõ có dấu với Caps Lock, rồi tắt Caps Lock và xóa, không còn làm hỏng từ đang gõ và từ ngay sau.\n" \
-	L"• Tên địa danh: gõ được các tên như Đắk Lắk, Đak Pơ, Ea Rốk, Krông Búk, Đăk Pék — dấu sau chữ k cuối từ nay được chấp nhận."
-#define WHATS_NEW_EN L"• Typing in Chromium/Electron apps: holding Shift no longer drops the capitals after the first character (typing AAA no longer comes out as Aaa).\n" \
-	L"• Caps Lock: typing accents with Caps Lock on, then turning Caps Lock off and deleting, no longer corrupts the word being typed or the one after it.\n" \
-	L"• Place names: names such as Đắk Lắk, Đak Pơ, Ea Rốk, Krông Búk and Đăk Pék can now be typed — tone marks after a final k are accepted."
+#define WHATS_NEW_VI L"• Cửa sổ thông báo (như cửa sổ này) nay mở đúng chiều cao nội dung, không còn kéo dài quá mức trên màn hình độ phân giải cao."
+#define WHATS_NEW_EN L"• Message windows such as this one now open at their proper height instead of stretching too tall on high-resolution displays."
 
 //6 hours
 #define UPDATE_CHECK_INTERVAL (6 * 60 * 60 * 1000)
