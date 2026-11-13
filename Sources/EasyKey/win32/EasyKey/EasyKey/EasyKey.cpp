@@ -334,6 +334,9 @@ static int _debugLogCount = 0;
 static bool openDebugLog();
 void writeDebugProfileSave(const string& exe, int8_t packed);
 void closeDebugLog();
+static void writeDebugLine(const char* text);
+static void payOwedShiftUp();
+static bool s_teardownPayConsumed = false; //Part A teardown pay runs once per process
 
 #define WM_DEFERRED_FOREGROUND (WM_USER + 2030)
 static HWND s_rawInputWindow = NULL;
@@ -358,6 +361,14 @@ void EasyKeyFree() {
 	UnhookWindowsHookEx(hKeyboardHook);
 	UnhookWinEvent(hSystemEvent);
 	UnhookWinEvent(hFocusEvent);
+	//Part A: settle a Shift release still owed by SendCombineKey, after every
+	//hook is down so no handler can observe it. Once per process: the updater
+	//restart path calls EasyKeyFree twice, and the second call must not send
+	//again even if the first pay fell short (the flag is set before the send).
+	if (!s_teardownPayConsumed) {
+		s_teardownPayConsumed = true;
+		payOwedShiftUp();
+	}
 }
 
 void EasyKeyInit() {
@@ -1361,16 +1372,98 @@ static inline void prepareUnicodeEvent(INPUT& input, const Uint16& unicode, cons
 	input.ki.dwExtraInfo = EASYKEY_EXTRA_INFO;
 }
 
+//Part A owed-up ledger for SendCombineKey: when a supplied Shift press is
+//delivered but its matching release is not, the release is still owed to the
+//system; until it is paid, the next fresh physical Shift press is reported as
+//a repeat and a no-Shift word can be capitalized. Exactly one slot. The debt
+//is paid at the next SendCombineKey entry (before its Shift state is sampled,
+//so the answer cannot include a Shift this code itself still owes) and from
+//EasyKeyFree. Recovery is bounded to that next need; there is no timer, no
+//worker and no retry of a failed chord. All events built here are tagged
+//EASYKEY_EXTRA_INFO by prepareKeyEvent, so the hook never sees its own sends.
+static bool s_shiftUpOwed = false;
+static Uint16 s_shiftUpOwedKey = 0;
+static DWORD s_shiftUpOwedFlag = 0;
+
+static void logOwedShift(const char* tag) {
+	if (vDebugKeyLog) {
+		char buf[96];
+		sprintf_s(buf, "%s owed=%d key=%u", tag, s_shiftUpOwed ? 1 : 0, (unsigned)s_shiftUpOwedKey);
+		writeDebugLine(buf);
+	}
+}
+
+//Bounded prefix cleanup: SendInput either inserts a prefix of the array in
+//order or fails as a whole, so the owed release is a one-event prefix test.
+static void payOwedShiftUp() {
+	if (!s_shiftUpOwed)
+		return;
+	INPUT up;
+	prepareKeyEvent(up, s_shiftUpOwedKey, false, s_shiftUpOwedFlag);
+	UINT sent = SendInput(1, &up, sizeof(INPUT));
+	if (sent == 1) {
+		s_shiftUpOwed = false;
+		s_shiftUpOwedKey = 0;
+		s_shiftUpOwedFlag = 0;
+		logOwedShift("owed-up paid");
+	} else {
+		//the release did not land (blocked or out-of-range result): the slot
+		//is kept so the next SendCombineKey entry or the teardown can pay it
+		if (sent > 1 && vDebugKeyLog)
+			writeDebugLine("owed-up oor");
+		logOwedShift("owed-up pay-failed");
+	}
+}
+
 static void SendCombineKey(const Uint16& key1, const Uint16& key2, const DWORD& flagKey1=0, const DWORD& flagKey2 = 0) {
-	prepareKeyEvent(keyEvent[0], key1, true, flagKey1);
-	SendInput(1, keyEvent, sizeof(INPUT));
-
-	prepareKeyEvent(keyEvent[0], key2, true, flagKey2);
-	prepareKeyEvent(keyEvent[1], key2, false, flagKey2);
-	SendInput(2, keyEvent, sizeof(INPUT));
-
-	prepareKeyEvent(keyEvent[0], key1, false, flagKey1);
-	SendInput(1, keyEvent, sizeof(INPUT));
+	//pay first: the Shift sample below must not include a Shift this function
+	//itself still owes a release for
+	payOwedShiftUp();
+	//entry latch: is a Shift physically down right now? The aggregate async
+	//state is the only honest source here; the per-thread queue state can be
+	//stale, and the engine packet carries no physical Shift state
+	bool sampled = false;
+	if (key1 == VK_SHIFT || key1 == VK_LSHIFT || key1 == VK_RSHIFT)
+		sampled = GetAsyncKeyState(VK_SHIFT) < 0;
+	//one batched send: borrow the held Shift (its own press and release stay
+	//the user's), or supply the full chord
+	INPUT out[4];
+	UINT n;
+	if (sampled) {
+		prepareKeyEvent(out[0], key2, true, flagKey2);
+		prepareKeyEvent(out[1], key2, false, flagKey2);
+		n = 2;
+	} else {
+		prepareKeyEvent(out[0], key1, true, flagKey1);
+		prepareKeyEvent(out[1], key2, true, flagKey2);
+		prepareKeyEvent(out[2], key2, false, flagKey2);
+		prepareKeyEvent(out[3], key1, false, flagKey1);
+		n = 4;
+	}
+	UINT sent = SendInput(n, out, sizeof(INPUT));
+	if (sent > n) {
+		//out-of-range result: treated as a full delivery for the ledger, and
+		//kept observable under its own tag
+		if (vDebugKeyLog)
+			writeDebugLine("primary-oor");
+		sent = n;
+	}
+	if (!sampled && sent >= 1 && sent < 4) {
+		//the supplied key1 press landed but its release (index 3) did not:
+		//the release is owed. A result of 0 delivered nothing, so nothing
+		//is owed; a full delivery owes nothing either.
+		bool changed = !s_shiftUpOwed || s_shiftUpOwedKey != key1 || s_shiftUpOwedFlag != flagKey1;
+		s_shiftUpOwed = true;
+		s_shiftUpOwedKey = key1;
+		s_shiftUpOwedFlag = flagKey1;
+		if (changed)
+			logOwedShift("owed-up set");
+	}
+	if (sent < n && vDebugKeyLog) {
+		char buf[64];
+		sprintf_s(buf, "combinekey short sent=%u of %u", sent, n);
+		writeDebugLine(buf);
+	}
 }
 
 static void SendKeyCode(Uint32 data) {
