@@ -21,6 +21,7 @@ See LICENSE and NOTICE.
 #include "../../../app-core/PasswordState.h"
 #include "../../../app-core/ExeName.h"
 #include "../../../app-core/AppProfileState.h"
+#include "../../../app-core/PacketDelivery.h"
 #include <algorithm>
 #include <atomic>
 #include <cassert>
@@ -1838,6 +1839,11 @@ static void SendPureCharacter(const Uint16& ch) {
 	}
 }
 
+//the modifiers as syncModifierMask read them at this key down, see app-core/PacketDelivery.h
+static bool packetMayBeInjected() {
+	return canInjectPacket((_flag & MASK_CONTROL) != 0, (_flag & MASK_ALT) != 0, (_flag & MASK_WIN) != 0);
+}
+
 static void handleMacro() {
 	//fix autocomplete
 	if (vFixRecommendBrowser) {
@@ -2470,7 +2476,7 @@ LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 				(_flag & MASK_SHIFT) || (_flag & MASK_CAPITAL),
 				OTHER_CONTROL_KEY);
 
-			if (pData->code == vReplaceMaro) { //handle macro in english mode
+			if (pData->code == vReplaceMaro && packetMayBeInjected()) { //handle macro in english mode
 				handleMacro();
 				return NULL;
 			}
@@ -2504,6 +2510,15 @@ LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 				}
 			}
 			return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
+		} else if (!packetMayBeInjected()) {
+			//Bug D: with Ctrl, Alt or Win down the packet's backspaces would reach the app as Ctrl+Backspace
+			//(a whole word each) or Alt+Backspace (undo), see app-core/PacketDelivery.h. Send nothing, let
+			//the user's own chord through and forget the word: the engine has already rewritten its buffer
+			//for a packet that never reached the screen
+			startNewSession();
+			if (IS_DOUBLE_CODE(vCodeTable))
+				_syncKey.clear();
+			return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
 		} else if (pData->code == vWillProcess || pData->code == vRestore || pData->code == vRestoreAndStartNewSession) { //handle result signal
 			_escapeRestored = _keycode == VK_ESCAPE;
 			//fix autocomplete
@@ -2514,7 +2529,8 @@ LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 					//(e.g. upper case first char) selecting would eat the character before the caret.
 					//Always send the backspaces: pages that track keys themselves (typing tests) ignore the
 					//selection, so typing over it would leave the old letter there ("so6" gave "soô")
-					if (pData->backspaceCount > 0)
+					//only when the backspaces below are really sent, or the selection would stay behind
+					if (canSelectForBackspaces(pData->backspaceCount, MAX_BUFF))
 						SendCombineKey(KEY_LEFT_SHIFT, KEY_LEFT, 0, KEYEVENTF_EXTENDEDKEY);
 				} else {
 					SendEmptyCharacter();
