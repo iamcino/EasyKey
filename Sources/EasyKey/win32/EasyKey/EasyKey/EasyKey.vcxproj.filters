@@ -45,6 +45,9 @@
     <ClInclude Include="..\..\..\app-core\ExeName.h">
       <Filter>app-core</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\app-core\PacketDelivery.h">
+      <Filter>app-core</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\..\app-core\AppProfileState.h">
       <Filter>app-core</Filter>
     </ClInclude>

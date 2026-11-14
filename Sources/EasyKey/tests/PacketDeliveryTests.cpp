@@ -12,11 +12,14 @@ side of that contract at the three places the hook depends on it:
  2. a word-break key pressed with Ctrl or Alt held still returns a restore
     packet whose backspace count is the whole word;
  3. a mouse click returns the same restore packet, which no one delivers, and
-    leaves the old word in the engine buffer.
+    leaves the old word in the engine buffer;
+ 4. the hook's own decision (app-core/PacketDelivery.h) not to inject a packet
+    while Ctrl, Alt or Win is down.
 -----------------------------------------------------------*/
 #include <cstdio>
 #include <string>
 #include "../engine/Engine.h"
+#include "../app-core/PacketDelivery.h"
 
 static int total = 0, failures = 0;
 static void check(bool ok, const char* label) {
@@ -123,6 +126,24 @@ int main() {
     keys("windows");
     click();
     check(hook->code == vRestoreAndStartNewSession && hook->backspaceCount == 7, "a click on a misspelled toned word returns an undelivered restore packet");
+
+    //4. the hook's decision (app-core/PacketDelivery.h): no packet is injected while
+    //Ctrl, Alt or Win is down, in any combination; Shift alone never blocks one
+    check(canInjectPacket(false, false, false), "no modifier: the packet is injected");
+    bool blockedAll = true;
+    for (int m = 1; m < 8; m++)
+        blockedAll = blockedAll && !canInjectPacket((m & 1) != 0, (m & 2) != 0, (m & 4) != 0);
+    check(blockedAll, "Ctrl, Alt or Win down, alone or together: nothing is injected");
+    //the packets of section 2 are exactly the ones the decision now stops
+    fresh();
+    keys("windows");
+    key(KEY_ENTER, true);
+    check(hook->code != vDoNothing && !canInjectPacket(true, false, false), "the Ctrl+Enter restore packet is not injected");
+
+    //the Chromium Shift+Left goes out only together with the backspaces that consume it
+    check(!canSelectForBackspaces(0, MAX_BUFF), "no backspace: no selection");
+    check(canSelectForBackspaces(1, MAX_BUFF) && canSelectForBackspaces(MAX_BUFF - 1, MAX_BUFF), "backspaces sent: selection allowed");
+    check(!canSelectForBackspaces(MAX_BUFF, MAX_BUFF) && !canSelectForBackspaces(255, MAX_BUFF), "backspaces not sent: no selection left behind");
 
     std::printf("%d/%d packet delivery tests passed\n", total - failures, total);
     return failures == 0 ? 0 : 1;
