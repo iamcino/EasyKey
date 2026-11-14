@@ -5014,6 +5014,8 @@ static void testCapsLock() {
     initMacroMap(nullptr, 0);
 }
 
+#include "BugC2Tests.inc"
+
 int main(int argc, char** argv) {
     pData = (vKeyHookState*)vKeyInit();
     if (argc > 1 && strcmp(argv[1], "--render") == 0)
@@ -5033,6 +5035,7 @@ int main(int argc, char** argv) {
     testQuickEndConsonant();
     testLiteralK();
     testCapsLock();
+    testBugC2();
     testCodeTableInvariants();
     testMixedWordsParser();
     testSaveDataLimits();
