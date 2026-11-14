@@ -155,6 +155,20 @@ static void runBugC2Macros(const char* section, const BugC2Macro* rows, int coun
     }
 }
 
+// The screen of a word typed into an empty buffer cannot tell an oversized
+// backspace count from the right one. These are the completing-key counts.
+static void expectBugC2Packet(const char* keys, unsigned mode, int bpc, int ncc) {
+    const char* modeName = mode == kC2T ? "T" : mode == kC2EV ? "EV" : "N";
+    vKeyConfig cfg = bugC2Config(mode, 0, 0);
+    typeBugC2(keys, cfg);
+    total++;
+    if ((int)pData->backspaceCount != bpc || (int)pData->newCharCount != ncc) {
+        failures++;
+        printf("FAIL [BugC2 packet %s] \"%s\": expected bpc/ncc %d/%d, got %d/%d\n",
+               modeName, keys, bpc, ncc, (int)pData->backspaceCount, (int)pData->newCharCount);
+    }
+}
+
 static void testBugC2() {
     initMacroMap(nullptr, 0);
 
@@ -491,6 +505,19 @@ static void testBugC2() {
         {"Kpaww", L"Kpaw", nullptr, kC2T | kC2EV, kC2AllEnds, 0},
     };
     runBugC2Rows("spell", spell, (int)(sizeof(spell) / sizeof(spell[0])));
+
+    // Gate 2's collapsed count, and the equal-length completing keys.
+    // Addrowng / Ad9ro7ng 7/6 and Kroong 5/5 are asserted with the macro rows.
+    expectBugC2Packet("Ddrowng", kC2T, 5, 5);
+    expectBugC2Packet("Ddrowng", kC2EV, 5, 5);
+    expectBugC2Packet("D9ro7ng", kC2N, 5, 5);
+    expectBugC2Packet("Drowng", kC2T, 5, 5);
+    expectBugC2Packet("Adrowng", kC2T, 6, 6);
+    expectBugC2Packet("Blowh", kC2T, 4, 4);
+    expectBugC2Packet("Kpaw", kC2T, 3, 3);
+    expectBugC2Packet("Adraang", kC2T, 6, 6);
+    expectBugC2Packet("Proong", kC2T, 5, 5);
+    expectBugC2Packet("Pawh", kC2T, 0, 0);
 
     testCfg().mixedEnglish = 0;
     testCfg().inputType = vTelex;
