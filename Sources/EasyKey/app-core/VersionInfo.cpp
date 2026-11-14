@@ -58,6 +58,10 @@ uint32_t versionNumber(const std::string& version) {
     return (major << 16) | (minor << 8) | patch;
 }
 
+bool meetsVersionFloor(const std::string& version) {
+    return versionNumber(version) >= versionNumber(MIN_ACCEPTED_VERSION);
+}
+
 bool parseLatestVersionName(const std::string& data, std::string& version) {
     //"latestWinVersion": { "versionName": "1.0.1", ... }
     size_t pos = data.find("\"latestWinVersion\"");
