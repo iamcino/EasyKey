@@ -51,9 +51,28 @@ elseif(UNIX AND NOT APPLE)
     target_compile_definitions(EngineStateTests PRIVATE LINUX)
 endif()
 
+#Bug D: the engine/hook packet contract (plain Backspace, modified word break,
+#mouse click) and the hook's decision whether a packet may be injected
+add_executable(PacketDeliveryTests
+    PacketDeliveryTests.cpp
+    ${ENGINE_DIR}/ConvertTool.cpp
+    ${ENGINE_DIR}/Engine.cpp
+    ${ENGINE_DIR}/Macro.cpp
+    ${ENGINE_DIR}/MixedWords.cpp
+    ${ENGINE_DIR}/SmartSwitchKey.cpp
+    ${ENGINE_DIR}/Vietnamese.cpp
+)
+if(MSVC)
+    target_compile_options(PacketDeliveryTests PRIVATE /utf-8)
+    target_compile_definitions(PacketDeliveryTests PRIVATE _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING)
+elseif(UNIX AND NOT APPLE)
+    target_compile_definitions(PacketDeliveryTests PRIVATE LINUX)
+endif()
+
 enable_testing()
 add_test(NAME EngineTests COMMAND EngineTests)
 add_test(NAME EngineStateTests COMMAND EngineStateTests)
+add_test(NAME PacketDeliveryTests COMMAND PacketDeliveryTests)
 
 #Windows-only: deleting EasyKey.old.exe after an update (locked, read-only, directory),
 #and the updater's Authenticode check against the pinned EasyKey certificate
