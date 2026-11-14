@@ -2,6 +2,12 @@
 
 [Tiếng Việt](CHANGELOG.md) · **English**
 
+## 1.1.5 - 2026-11-14
+
+### Security
+
+- **Rollback protection**: when updating, EasyKey no longer accepts any version older than 1.1.4 — an old release with known flaws cannot be pushed to users by a compromised or mistaken distribution host, even if it is properly signed.
+
 ## 1.1.4 - 2026-11-14
 
 ### Fixed

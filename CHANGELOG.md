@@ -2,6 +2,12 @@
 
 **Tiếng Việt** · [English](CHANGELOG.en.md)
 
+## 1.1.5 - 2026-11-14
+
+### Security
+
+- **Chống cài lại bản cũ**: khi cập nhật, EasyKey không còn chấp nhận bất kỳ bản nào cũ hơn 1.1.4 — một bản cũ có lỗi đã biết, dù được ký hợp lệ, cũng không thể bị máy chủ phân phối xâm nhập hoặc đăng nhầm đẩy xuống máy người dùng.
+
 ## 1.1.4 - 2026-11-14
 
 ### Fixed

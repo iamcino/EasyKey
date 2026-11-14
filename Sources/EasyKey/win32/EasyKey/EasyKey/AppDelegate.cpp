@@ -29,10 +29,8 @@ See LICENSE and NOTICE.
 #pragma comment(lib, "comctl32.lib")
 
 //shown once after updating to this version; change it with each release
-#define WHATS_NEW_VI L"• Tải bản cập nhật bị đứt đoạn giữa chừng không còn được chấp nhận: EasyKey kiểm tra độ dài dữ liệu và tự lấy từ máy chủ còn lại.\n" \
-	L"• Kiểm tra bản mới: luôn thử GitHub trước, rồi GitLab, và không còn treo lâu khi một máy chủ không trả lời."
-#define WHATS_NEW_EN L"• An update download cut off mid-transfer is no longer accepted: EasyKey verifies the received length and fetches it from the other host.\n" \
-	L"• Update checks: GitHub is always tried first, then GitLab, and a host that does not answer no longer stalls the check."
+#define WHATS_NEW_VI L"• EasyKey không còn chấp nhận các bản cũ hơn 1.1.4 khi cập nhật, kể cả khi máy chủ phân phối bị xâm nhập hoặc đăng nhầm một bản cũ."
+#define WHATS_NEW_EN L"• EasyKey no longer accepts versions older than 1.1.4 when updating, even if a distribution host is compromised or serves an old release by mistake."
 
 //6 hours
 #define UPDATE_CHECK_INTERVAL (6 * 60 * 60 * 1000)
