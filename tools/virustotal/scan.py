@@ -7,9 +7,9 @@ bounded by an overall deadline. Zero external dependencies (standard library onl
 
 import datetime
 import glob
+import hashlib
 import json
 import os
-import subprocess
 import time
 import urllib.error
 import urllib.request
@@ -110,7 +110,8 @@ def main():
 
     # Scope: binary executables (.exe) only
     for f in sorted(glob.glob("dl/*.exe")):
-        sha = subprocess.check_output(["sha256sum", f]).split()[0].decode()
+        with open(f, "rb") as fh:
+            sha = hashlib.sha256(fh.read()).hexdigest()
         link = f"https://www.virustotal.com/gui/file/{sha}"
         fname = os.path.basename(f)
 
