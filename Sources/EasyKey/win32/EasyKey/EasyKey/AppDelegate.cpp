@@ -29,8 +29,8 @@ See LICENSE and NOTICE.
 #pragma comment(lib, "comctl32.lib")
 
 //shown once after updating to this version; change it with each release
-#define WHATS_NEW_VI L"• EasyKey không còn chấp nhận các bản cũ hơn 1.1.4 khi cập nhật, kể cả khi máy chủ phân phối bị xâm nhập hoặc đăng nhầm một bản cũ."
-#define WHATS_NEW_EN L"• EasyKey no longer accepts versions older than 1.1.4 when updating, even if a distribution host is compromised or serves an old release by mistake."
+#define WHATS_NEW_VI L"• Nay đã gõ được tên riêng Tây Nguyên như Krông Bông, Adrơng, Blơh, Chư Prông, Chư Păh.\n• Sửa lỗi Backspace thỉnh thoảng xóa cả từ khi bấm cùng Ctrl, Alt hoặc Windows."
+#define WHATS_NEW_EN L"• Central Highlands names such as Krông Bông, Adrơng, Ađrơng, Blơh, Chư Prông and Chư Păh now type correctly.\n• Fixed Backspace occasionally deleting a whole word when pressed together with Ctrl, Alt or Windows."
 
 //6 hours
 #define UPDATE_CHECK_INTERVAL (6 * 60 * 60 * 1000)

@@ -2,6 +2,13 @@
 
 **Tiếng Việt** · [English](CHANGELOG.en.md)
 
+## 1.1.6 - 2026-11-14
+
+### Fixed
+
+- **Tên riêng Tây Nguyên gõ không được**: các tên như Krông Bông, Adrơng, Ađrơng, Blơh, Chư Prông, Chư Păh nay đã gõ đúng ở Telex, VNI và chế độ trộn tiếng Anh.
+- **Backspace thỉnh thoảng xóa nhiều chữ**: khi một phím ngắt từ được bấm cùng Ctrl, Alt hoặc Windows trong lúc từ đang gõ bị đánh dấu sai chính tả, EasyKey từng tự xóa cả từ và lan sang các từ trước (thấy rõ nhất trên Chromium); nay các tổ hợp phím đó được chuyển nguyên vẹn cho ứng dụng.
+
 ## 1.1.5 - 2026-11-14
 
 ### Security
