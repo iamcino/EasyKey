@@ -2,6 +2,13 @@
 
 [Tiếng Việt](CHANGELOG.md) · **English**
 
+## 1.1.6 - 2026-11-14
+
+### Fixed
+
+- **Central Highlands names could not be typed**: names such as Krông Bông, Adrơng, Ađrơng, Blơh, Chư Prông and Chư Păh now type correctly in Telex, VNI and mixed-English mode.
+- **Backspace occasionally deleted too much**: when a word-break key was pressed together with Ctrl, Alt or Windows while the word being typed was marked misspelled, EasyKey deleted the whole word and could keep eating earlier words (most visible in Chromium); those key chords are now passed through to the application untouched.
+
 ## 1.1.5 - 2026-11-14
 
 ### Security
