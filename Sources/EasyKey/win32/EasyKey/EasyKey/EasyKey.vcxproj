@@ -99,6 +99,7 @@
     <ClInclude Include="..\..\..\app-core\PasswordState.h" />
     <ClInclude Include="..\..\..\app-core\AppProfileState.h" />
     <ClInclude Include="..\..\..\app-core\ExeName.h" />
+    <ClInclude Include="..\..\..\app-core\PacketDelivery.h" />
     <ClInclude Include="..\..\..\engine\ConvertTool.h" />
     <ClInclude Include="..\..\..\engine\DataType.h" />
     <ClInclude Include="..\..\..\engine\Engine.h" />
