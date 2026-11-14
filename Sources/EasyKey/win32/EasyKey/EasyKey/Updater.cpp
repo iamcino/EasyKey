@@ -126,14 +126,23 @@ bool Updater::check(string& newVersion, bool& failed) {
 	string data;
 	failed = true;
 	bool found = false;
+	bool read = false;
 	for (LONG index = 0; index < hostCount && !found; index++) {
-		if (httpGet(hosts[index].versionUrl, data) && parseLatestVersionName(data, newVersion)) {
-			InterlockedExchange(&workingHost, index);
-			found = true;
+		string candidate;
+		if (httpGet(hosts[index].versionUrl, data) && parseLatestVersionName(data, candidate)) {
+			read = true;
+			//a host below the rollback floor does not end the search: the other host may be current
+			if (meetsVersionFloor(candidate)) {
+				newVersion = candidate;
+				InterlockedExchange(&workingHost, index);
+				found = true;
+			}
 		}
 	}
-	if (!found)
+	if (!found) {
+		failed = !read;
 		return false;
+	}
 	failed = false;
 
 	DWORD current = EasyKeyHelper::getVersionNumber(); //major | minor << 8 | patch << 16
@@ -236,6 +245,11 @@ static int install(const string& exe, wstring& path) {
 }
 
 static void download(Job* job) {
+	//defense in depth: check() applies the same floor before a version can reach this job
+	if (!meetsVersionFloor(job->version)) {
+		job->result = DOWNLOAD_FAILED;
+		return;
+	}
 	wstring wideVersion = utf8ToWideString(job->version);
 	string checksum;
 	LONG first = InterlockedCompareExchange(&workingHost, 0, 0);
