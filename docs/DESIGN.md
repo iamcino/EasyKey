@@ -2,7 +2,7 @@
 
 **Tiếng Việt** · [English](DESIGN.en.md)
 
-> Phiên bản 1.1.4 · Windows 11 x64 · C++ / Win32, Direct2D, DirectWrite
+> Phiên bản 1.1.5 · Windows 11 x64 · C++ / Win32, Direct2D, DirectWrite
 
 Tài liệu này giải thích EasyKey hoạt động thế nào và mã nguồn được tổ chức ra sao. Đối tượng là người muốn đọc, sửa hoặc đóng góp mã. Hướng dẫn dùng nằm ở [README](../README.md), cách build ở [BUILD](BUILD.md), quy tắc đóng góp ở [CONTRIBUTING](../CONTRIBUTING.md).
 
