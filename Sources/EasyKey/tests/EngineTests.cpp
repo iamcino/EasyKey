@@ -2908,6 +2908,12 @@ static void testVersionInfo() {
     expectVersion("1.9.9 packs below 2.0.0", versionNumber("1.9.9") < versionNumber("2.0.0"));
     expectVersion("1.0.21 packs as 0x010015", versionNumber("1.0.21") == 0x010015);
     expectVersion("invalid names pack as 0", versionNumber("1.0.256") == 0 && versionNumber("1.0") == 0);
+    //the rollback floor compiled into this build: an update host cannot offer anything older
+    expectVersion("rollback floor is 1.1.4", string(MIN_ACCEPTED_VERSION) == "1.1.4");
+    expectVersion("1.1.3 is below the rollback floor", !meetsVersionFloor("1.1.3"));
+    expectVersion("1.1.4 meets the rollback floor", meetsVersionFloor("1.1.4"));
+    expectVersion("1.1.5 is above the rollback floor", meetsVersionFloor("1.1.5"));
+    expectVersion("an invalid name is below the rollback floor", !meetsVersionFloor("not-a-version"));
     //the other packing in the app (EasyKeyHelper::getVersionNumber: major | minor << 8 | patch << 16)
     //must agree with versionNumber after the byte swap Updater::check applies
     {
