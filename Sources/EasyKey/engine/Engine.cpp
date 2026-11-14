@@ -252,6 +252,178 @@ bool _spellingFlag = false;
 bool _spellingVowelOK = false;
 Byte _spellingEndIndex = 0;
 
+// Bug C2: a Central Highlands name is one whole token of one fixed shape.
+// KR, DR, BL, PR, KP and STR stay out of the onset table. The latch stays
+// on for every proper prefix; the diacritic is applied on the completing
+// key, and only then does the latch clear. Caps are ignored. A mark is
+// allowed on the nucleus vowel only.
+static const int kBugC2Count = 10;
+static const int kBugC2Bloh = 5;
+static const int kBugC2Pah = 9;
+static const int kBugC2RewriteCount = 9;
+
+struct BugC2Form {
+    Uint32 cell[6];
+    Byte length;
+    Byte nucleus;
+};
+
+static const BugC2Form kBugC2Forms[kBugC2Count] = {
+    {{KEY_K, KEY_R, KEY_O | TONE_MASK, KEY_N, KEY_G}, 5, 2},             // Krông
+    {{KEY_D, KEY_R, KEY_O | TONEW_MASK, KEY_N, KEY_G}, 5, 2},            // Drơng
+    {{KEY_D | TONE_MASK, KEY_R, KEY_O | TONEW_MASK, KEY_N, KEY_G}, 5, 2}, // Đrơng
+    {{KEY_A, KEY_D, KEY_R, KEY_O | TONEW_MASK, KEY_N, KEY_G}, 6, 3},     // Adrơng
+    {{KEY_A, KEY_D | TONE_MASK, KEY_R, KEY_O | TONEW_MASK, KEY_N, KEY_G}, 6, 3}, // Ađrơng
+    {{KEY_B, KEY_L, KEY_O | TONEW_MASK, KEY_H}, 4, 2},                    // Blơh
+    {{KEY_K, KEY_P, KEY_A | TONEW_MASK}, 3, 2},                          // Kpă
+    {{KEY_A, KEY_D, KEY_R, KEY_A | TONE_MASK, KEY_N, KEY_G}, 6, 3},      // Adrâng
+    {{KEY_P, KEY_R, KEY_O | TONE_MASK, KEY_N, KEY_G}, 5, 2},             // Prông
+    {{KEY_P, KEY_A | TONEW_MASK, KEY_H}, 3, 1},                          // Păh
+};
+
+// Raw patterns, Telex (and Simple Telex) then VNI. Păh has no pattern:
+// aw is already ă, and admission is the buffer shape alone.
+static const Uint16 kBugC2Telex[kBugC2RewriteCount][8] = {
+    {KEY_K, KEY_R, KEY_O, KEY_O, KEY_N, KEY_G},
+    {KEY_D, KEY_R, KEY_O, KEY_W, KEY_N, KEY_G},
+    {KEY_D, KEY_D, KEY_R, KEY_O, KEY_W, KEY_N, KEY_G},
+    {KEY_A, KEY_D, KEY_R, KEY_O, KEY_W, KEY_N, KEY_G},
+    {KEY_A, KEY_D, KEY_D, KEY_R, KEY_O, KEY_W, KEY_N, KEY_G},
+    {KEY_B, KEY_L, KEY_O, KEY_W, KEY_H},
+    {KEY_K, KEY_P, KEY_A, KEY_W},
+    {KEY_A, KEY_D, KEY_R, KEY_A, KEY_A, KEY_N, KEY_G},
+    {KEY_P, KEY_R, KEY_O, KEY_O, KEY_N, KEY_G},
+};
+static const Uint16 kBugC2Vni[kBugC2RewriteCount][8] = {
+    {KEY_K, KEY_R, KEY_O, KEY_6, KEY_N, KEY_G},
+    {KEY_D, KEY_R, KEY_O, KEY_7, KEY_N, KEY_G},
+    {KEY_D, KEY_9, KEY_R, KEY_O, KEY_7, KEY_N, KEY_G},
+    {KEY_A, KEY_D, KEY_R, KEY_O, KEY_7, KEY_N, KEY_G},
+    {KEY_A, KEY_D, KEY_9, KEY_R, KEY_O, KEY_7, KEY_N, KEY_G},
+    {KEY_B, KEY_L, KEY_O, KEY_7, KEY_H},
+    {KEY_K, KEY_P, KEY_A, KEY_8},
+    {KEY_A, KEY_D, KEY_R, KEY_A, KEY_6, KEY_N, KEY_G},
+    {KEY_P, KEY_R, KEY_O, KEY_6, KEY_N, KEY_G},
+};
+static const Byte kBugC2PatLen[kBugC2RewriteCount] = {6, 6, 7, 7, 8, 5, 4, 7, 6};
+
+static int bugC2ConvertedShape() {
+    for (int f = 0; f < kBugC2Count; f++) {
+        if (_index != kBugC2Forms[f].length)
+            continue;
+        bool ok = true;
+        for (int n = 0; n < _index; n++) {
+            Uint32 v = TypingWord[n] & ~CAPS_MASK;
+            if (n == kBugC2Forms[f].nucleus)
+                v &= ~MARK_MASK;
+            if (v != kBugC2Forms[f].cell[n])
+                ok = false;
+        }
+        if (ok)
+            return f;
+    }
+    return -1;
+}
+
+static void admitBugC2Converted() {
+    if (bugC2ConvertedShape() >= 0) {
+        _spellingOK = true;
+        _spellingVowelOK = true;
+    }
+}
+
+// The cue is whatever unconverted modifier is still in the buffer.
+// Word-initial D9 has already collapsed, so Đrơng's cue is the 7 (or w).
+// Ađrơng still has both cues. A missing cue means the buffer is already
+// converted and the rewrite must not run again.
+static bool bugC2CuePresent(int family, bool vni) {
+    bool cue = false;
+    bool internalD = false;
+    for (int n = 0; n < _index; n++) {
+        Uint16 ch = CHR(n);
+        if (vni) {
+            Uint16 digit = KEY_7;
+            if (family == 6)
+                digit = KEY_8;
+            else if (family == 0 || family == 7 || family == 8)
+                digit = KEY_6;
+            if (ch == digit)
+                cue = true;
+            if (ch == KEY_9)
+                internalD = true;
+        } else if (family == 0 || family == 8) {
+            if (n > 0 && ch == KEY_O && CHR(n - 1) == KEY_O && !(TypingWord[n] & (TONE_MASK | TONEW_MASK)))
+                cue = true;
+        } else if (family == 7) {
+            if (n > 0 && ch == KEY_A && CHR(n - 1) == KEY_A && !(TypingWord[n] & (TONE_MASK | TONEW_MASK)))
+                cue = true;
+        } else if (ch == KEY_W) {
+            cue = true;
+        }
+        if (!vni && n > 0 && ch == KEY_D && CHR(n - 1) == KEY_D)
+            internalD = true;
+    }
+    if (!cue)
+        return false;
+    if (family == 4 && !internalD)
+        return false;
+    return true;
+}
+
+static void applyBugC2Rewrite() {
+    bool vni = vKeyActiveConfig().inputType == vVNI;
+    const Uint16 (*patterns)[8] = vni ? kBugC2Vni : kBugC2Telex;
+    for (int f = 0; f < kBugC2RewriteCount; f++) {
+        if (_stateIndex != kBugC2PatLen[f])
+            continue;
+        bool match = true;
+        for (int n = 0; n < kBugC2PatLen[f]; n++) {
+            if ((KeyStates[n] & CHAR_MASK) != patterns[f][n])
+                match = false;
+        }
+        if (!match)
+            continue;
+        if (!bugC2CuePresent(f, vni))
+            return;
+
+        int old = _index;
+        vector<Uint32> out;
+        for (int n = 0; n < kBugC2PatLen[f]; n++) {
+            Uint16 code = patterns[f][n];
+            if (code == KEY_W || code == KEY_6 || code == KEY_7 || code == KEY_8)
+                continue;
+            if (code == KEY_9 || (code == KEY_D && n > 0 && patterns[f][n - 1] == KEY_D)) {
+                out.back() |= TONE_MASK;
+                continue;
+            }
+            if ((code == KEY_O || code == KEY_A) && n > 0 && patterns[f][n - 1] == code)
+                continue;
+            Uint32 v = KeyStates[n];
+            if ((f == 0 || f == 8) && code == KEY_O)
+                v |= TONE_MASK;
+            if (f >= 1 && f <= 5 && code == KEY_O)
+                v |= TONEW_MASK;
+            if (f == 6 && code == KEY_A)
+                v |= TONEW_MASK;
+            if (f == 7 && n == 3)
+                v |= TONE_MASK;
+            out.push_back(v);
+        }
+        _index = (Byte)out.size();
+        for (int n = 0; n < _index; n++)
+            TypingWord[n] = out[n];
+        hCode = vWillProcess;
+        hBPC = (Byte)(old - 1);
+        hNCC = _index;
+        for (int n = 0; n < _index; n++)
+            hData[_index - 1 - n] = GET(TypingWord[n]);
+        _spellingOK = true;
+        _spellingVowelOK = true;
+        tempDisableKey = false;
+        return;
+    }
+}
+
 void checkSpelling(const bool& forceCheckVowel=false) {
     _spellingOK = false;
     _spellingVowelOK = true;
@@ -377,6 +549,7 @@ void checkSpelling(const bool& forceCheckVowel=false) {
     } else {
         _spellingOK = true;
     }
+    admitBugC2Converted();
     tempDisableKey = !(_spellingOK && _spellingVowelOK);
     
     //cout<<"spelling vowel: "<<(_spellingVowelOK ? "OK": "Err")<<endl;
@@ -460,6 +633,7 @@ void insertKey(const Uint16& keyCode, const bool& isCaps, const bool& isCheckSpe
     //allow d after consonant
     if (keyCode == KEY_D && _index - 2 >= 0 && IS_CONSONANT(CHR(_index - 2)))
         tempDisableKey = false;
+    applyBugC2Rewrite();
 }
 
 void insertState(const Uint16& keyCode, const bool& isCaps) {
@@ -1217,6 +1391,23 @@ void handleMainKey(const Uint16& data, const bool& isCaps) {
     
     //if is mark key
     if (IS_MARK_KEY(data)) {
+        // Blơh and Păh end in h, so no vowel-for-mark row matches them.
+        // The guard is the shape itself: a new A+H or O+H row would also
+        // tone pah and the other plain a+h words.
+        int bugC2 = bugC2ConvertedShape();
+        if (bugC2 == kBugC2Bloh || bugC2 == kBugC2Pah) {
+            Uint32 mark = MARK5_MASK;
+            if (IS_KEY_S(data))
+                mark = MARK1_MASK;
+            else if (IS_KEY_F(data))
+                mark = MARK2_MASK;
+            else if (IS_KEY_R(data))
+                mark = MARK3_MASK;
+            else if (IS_KEY_X(data))
+                mark = MARK4_MASK;
+            insertMark(mark);
+            return;
+        }
         for (auto& vowelEntry : _vowelForMark) {
             vector<vector<Uint16>>& charset = vowelEntry.second;
             isCorect = false;
@@ -1916,8 +2107,19 @@ void vKeyHandleEvent(const vKeyEvent& event,
                         hMacroKey.pop_back();
                     }
                 }
-                for (i = _index - hBPC; i < hNCC + (_index - hBPC); i++) {
-                    hMacroKey.push_back(TypingWord[i]);
+                // A whole-token rewrite that shortens the word (Ađrơng, 7 backspaces
+                // and 6 cells) would start this copy at -1. Read the displayed
+                // word from the front instead, and leave every non-negative
+                // start on the original loop.
+                int start = (int)_index - (int)hBPC;
+                if (start < 0) {
+                    for (i = 0; i < _index; i++) {
+                        hMacroKey.push_back(TypingWord[i]);
+                    }
+                } else {
+                    for (i = _index - hBPC; i < hNCC + (_index - hBPC); i++) {
+                        hMacroKey.push_back(TypingWord[i]);
+                    }
                 }
             }
         }
