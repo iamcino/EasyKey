@@ -2,6 +2,16 @@
 
 **Tiếng Việt** · [English](CHANGELOG.en.md)
 
+## 1.1.7 - 2026-11-20
+
+### Security
+
+- **Nâng sàn chống cài lại bản cũ lên 1.1.6**: khi cập nhật, EasyKey không còn chấp nhận bất kỳ bản nào cũ hơn 1.1.6 — 1.1.6 là bản đã sửa lỗi Backspace xóa cả từ, nên một máy chủ phân phối bị xâm nhập hoặc cấu hình sai không thể đẩy bản còn lỗi đó xuống người dùng, kể cả khi bản cũ được ký đúng. Hiệu lực của cơ chế này: sàn mới chỉ có trong các bản từ 1.1.7; các bản 1.1.5 và 1.1.6 vẫn giữ sàn cũ 1.1.4 cho tới khi cập nhật lên 1.1.7.
+
+### Changed
+
+- **Tái cấu trúc bên trong**: bộ quyết định của chế độ trộn tiếng Anh được tách thành một thành phần riêng để dễ bảo trì và kiểm thử; hành vi gõ không thay đổi.
+
 ## 1.1.6 - 2026-11-14
 
 ### Fixed
