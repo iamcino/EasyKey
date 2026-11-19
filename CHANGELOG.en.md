@@ -2,6 +2,16 @@
 
 [Tiếng Việt](CHANGELOG.md) · **English**
 
+## 1.1.7 - 2026-11-20
+
+### Security
+
+- **Rollback floor raised to 1.1.6**: when updating, EasyKey no longer accepts any version older than 1.1.6 — 1.1.6 is the release that fixed the Backspace whole-word deletion, so a compromised or mistaken distribution host cannot push a build carrying that flaw to users, even if the old build is properly signed. When this protection applies: the new floor ships in 1.1.7 and later; 1.1.5 and 1.1.6 keep the previous 1.1.4 floor until they update to 1.1.7.
+
+### Changed
+
+- **Internal restructuring**: the mixed English-mode decider is now a separate component, easier to maintain and test; typing behavior is unchanged.
+
 ## 1.1.6 - 2026-11-14
 
 ### Fixed

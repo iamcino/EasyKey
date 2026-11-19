@@ -29,8 +29,8 @@ See LICENSE and NOTICE.
 #pragma comment(lib, "comctl32.lib")
 
 //shown once after updating to this version; change it with each release
-#define WHATS_NEW_VI L"• Nay đã gõ được tên riêng Tây Nguyên như Krông Bông, Adrơng, Blơh, Chư Prông, Chư Păh.\n• Sửa lỗi Backspace thỉnh thoảng xóa cả từ khi bấm cùng Ctrl, Alt hoặc Windows."
-#define WHATS_NEW_EN L"• Central Highlands names such as Krông Bông, Adrơng, Ađrơng, Blơh, Chư Prông and Chư Păh now type correctly.\n• Fixed Backspace occasionally deleting a whole word when pressed together with Ctrl, Alt or Windows."
+#define WHATS_NEW_VI L"• Sàn chống cài lại bản cũ được nâng lên 1.1.6: trình cập nhật không còn chấp nhận các bản cũ hơn 1.1.6.\n• Tái cấu trúc bên trong bộ quyết định chế độ trộn tiếng Anh; hành vi gõ không thay đổi."
+#define WHATS_NEW_EN L"• The rollback floor is raised to 1.1.6: the updater no longer accepts versions older than 1.1.6.\n• Internal restructuring of the mixed English-mode decider; typing behavior is unchanged."
 
 //6 hours
 #define UPDATE_CHECK_INTERVAL (6 * 60 * 60 * 1000)
