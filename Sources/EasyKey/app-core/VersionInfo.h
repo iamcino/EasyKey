@@ -38,7 +38,7 @@ uint32_t versionNumber(const std::string& version);
  * Raise it only, and only to a release the project is willing to make the
  * permanent minimum.
  */
-const char* const MIN_ACCEPTED_VERSION = "1.1.4";
+const char* const MIN_ACCEPTED_VERSION = "1.1.6";
 
 //true when version is a valid version name at or above MIN_ACCEPTED_VERSION
 bool meetsVersionFloor(const std::string& version);
