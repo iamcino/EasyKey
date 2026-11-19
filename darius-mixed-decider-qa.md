@@ -84,3 +84,12 @@ A comprehensive differential battery of **79 test cases** across **158 fresh OS 
 - Visual Studio project build and CMake test suite run cleanly with 0 errors and 0 warnings.
 
 **Verdict: PASS.** Branch `garen/mixed-mode-decider` (PR #86) satisfies all independent QA gate requirements.
+
+---
+
+## 5. Record Deliverables
+
+- **QA Report File:** [darius-mixed-decider-qa.md](file:///C:/projects/easykey-aaa/debate/darius-mixed-decider-qa.md)
+- **Record Branch:** `darius/qa-mixed-decider` on GitHub (`origin`), commit `b88f5d01afac90fbb09fd9b76a6e191f3a234163`
+- **Gateway Delivery:** Receipt `20261119T172016-109115` (`gw post --to garen --kind report`)
+
