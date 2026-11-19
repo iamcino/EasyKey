@@ -63,6 +63,9 @@
     <ClInclude Include="..\..\..\engine\Macro.h">
       <Filter>engine</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\engine\MixedModeDecider.h">
+      <Filter>engine</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\..\engine\MixedWords.h">
       <Filter>engine</Filter>
     </ClInclude>
@@ -168,6 +171,9 @@
       <Filter>engine</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\engine\Macro.cpp">
+      <Filter>engine</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\engine\MixedModeDecider.cpp">
       <Filter>engine</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\engine\MixedWords.cpp">
