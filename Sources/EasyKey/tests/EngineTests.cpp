@@ -187,6 +187,80 @@ static void expectTyping(const char* inputName, const string& keys, const wstrin
     }
 }
 
+
+//Package 0 (MixedModeDecider characterization): drive a key string with an
+//explicit config and capture the hook packet published at one event index,
+//so a test can pin the exact boundary packet (code, backspaces, new chars),
+//not just the final screen text. The applicator mirrors typeKeysWith.
+static int g_pktTuple[4] = {0, 0, 0, 0};
+static bool g_pktCaptured = false;
+
+static wstring driveCapture(const string& keys, const vKeyConfig& config, int captureIndex) {
+    startNewSession();
+    wstring text;
+    g_pktCaptured = false;
+    int eventIndex = 0;
+    for (char c : keys) {
+        Uint16 keyCode = charToKeyCode(c);
+        bool isPunctuation = c == '.' || c == '?' || c == '!' || c == '@';
+        bool isCaps = (c >= 'A' && c <= 'Z') || c == '?' || c == '!' || c == '@' || c == '_' || c == ':';
+        vKeyHandleEvent(vKeyEvent::Keyboard, vKeyEventState::KeyDown, keyCode, config, isCaps ? 1 : 0, false);
+        if (eventIndex == captureIndex) {
+            g_pktTuple[0] = pData->code;
+            g_pktTuple[1] = pData->extCode;
+            g_pktTuple[2] = pData->backspaceCount;
+            g_pktTuple[3] = pData->newCharCount;
+            g_pktCaptured = true;
+        }
+        eventIndex++;
+        if (pData->code == vDoNothing) {
+            if (keyCode == KEY_DELETE) {
+                if (!text.empty()) text.pop_back();
+            } else if (keyCode == KEY_ESC) {
+                text += L'|';
+            } else if (keyCodeToCharacter(keyCode | (isCaps ? CAPS_MASK : 0))) {
+                text += (wchar_t)keyCodeToCharacter(keyCode | (isCaps ? CAPS_MASK : 0));
+            } else if (isPunctuation) {
+                text += (wchar_t)c;
+            } else {
+                text += keyCodeToChar(keyCode | (isCaps ? CAPS_MASK : 0));
+            }
+        } else if (pData->code == vWillProcess || pData->code == vRestore || pData->code == vRestoreAndStartNewSession) {
+            for (int i = 0; i < pData->backspaceCount && !text.empty(); i++)
+                text.pop_back();
+            for (int i = pData->newCharCount - 1; i >= 0; i--)
+                sendKeyCode(text, pData->charData[i]);
+            if (pData->code == vRestore || pData->code == vRestoreAndStartNewSession)
+                sendKeyCode(text, keyCode | (isCaps ? CAPS_MASK : 0));
+            if (pData->code == vRestoreAndStartNewSession)
+                startNewSession();
+        }
+    }
+    return text;
+}
+
+static void expectPacket(const char* name, const string& keys, const vKeyConfig& config, int captureIndex,
+                         int code, int bs, int nc) {
+    total++;
+    driveCapture(keys, config, captureIndex);
+    if (!g_pktCaptured || g_pktTuple[0] != code || g_pktTuple[2] != bs || g_pktTuple[3] != nc) {
+        failures++;
+        printf("FAIL [%s] \"%s\" event %d: expected packet (code %d, bs %d, nc %d), got (%d, %d, %d) captured=%d\n",
+               name, keys.c_str(), captureIndex, code, bs, nc,
+               g_pktTuple[0], g_pktTuple[2], g_pktTuple[3], (int)g_pktCaptured);
+    }
+}
+
+static void expectPacketCode(const char* name, const string& keys, const vKeyConfig& config, int captureIndex, int code) {
+    total++;
+    driveCapture(keys, config, captureIndex);
+    if (!g_pktCaptured || g_pktTuple[0] != code) {
+        failures++;
+        printf("FAIL [%s] \"%s\" event %d: expected packet code %d, got %d captured=%d\n",
+               name, keys.c_str(), captureIndex, code, g_pktTuple[0], (int)g_pktCaptured);
+    }
+}
+
 static void testTelex() {
     testCfg().inputType = vTelex;
     //marks
@@ -317,6 +391,17 @@ static void testTelex() {
     expectTyping("Quick Telex triple p", "ppp ", L"pp ");
     expectTyping("Quick Telex triple c", "ccc ", L"cc ");
     testCfg().quickTelex = 0;
+    //Package 0, known-bug controls (MixedModeDecider plan v2 section 4c): in
+    //pure Vietnamese mode "doo" converts correctly for every tone; the
+    //failure lives only in the mixed-mode boundary decision (see testMixed).
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
+    expectTyping("Telex doo control", "doo ", L"d\u00f4 ");
+    expectTyping("Telex doo control", "doos ", L"d\u1ed1 ");
+    expectTyping("Telex doo control", "doof ", L"d\u1ed3 ");
+    expectTyping("Telex doo control", "door ", L"d\u1ed5 ");
+    expectTyping("Telex doo control", "doox ", L"d\u1ed7 ");
+    expectTyping("Telex doo control", "dooj ", L"d\u1ed9 ");
+    expectTyping("Telex doo control", "Doo ", L"D\u00f4 ");
 }
 
 static void testMixed() {
@@ -568,6 +653,203 @@ static void testMixed() {
         expectTyping("Mixed AI sentence", "tooi dungf qwen vaf deepseek ", L"t\u00f4i d\u00f9ng qwen v\u00e0 deepseek ");
     }
     testCfg().restoreIfWrongSpelling = 1;
+    //Package 0, known current behavior (MixedModeDecider plan v2 section
+    //4c): "doo" is the one oo-token the mixed decider restores at the
+    //boundary. Mid-word the engine forms the circumflex word, then the
+    //Space decision classifies the raw token as English (dictionary
+    //English 36, Vietnamese 0, score 31 after the lean) and puts the raw
+    //keys back. This pins the CURRENT behavior; the fix is separate
+    //behavior-change work, not part of the decider extraction.
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
+    expectTyping("Mixed doo mid-word", "doo", L"d\u00f4");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
+    expectTyping("Mixed doo known behavior", "doo ", L"doo ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
+    expectPacket("Mixed doo boundary packet", "doo ", testCfg(), 3, vRestore, 2, 3);
+    //the converting oo-neighbor and the toned form are NOT affected
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
+    expectTyping("Mixed boo neighbor", "boo ", L"b\u00f4 ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
+    expectTyping("Mixed doos converts", "doos ", L"d\u1ed1 ");
+    testCfg().mixedEnglish = 0;
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
+}
+
+//Package 0, known current behavior (MixedModeDecider plan v2 section 4c): a
+//Telex "w" after a two-vowel sequence whose mark belongs on the FIRST vowel
+//never lands, so Xauw/Xeuw stay raw instead of becoming the circumflex
+//forms. This is an engine mark-placement defect (insertAOE/insertW), not a
+//decider behavior; these rows pin the CURRENT behavior in both modes. The
+//fix is separate behavior-change work.
+static void testTrailingW() {
+    testCfg().inputType = vTelex;
+    for (int mixed = 0; mixed <= 1; mixed++) {
+        testCfg().mixedEnglish = mixed;
+        vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
+        //intermediate state right after the trailing w, before any boundary
+        expectTyping("TrailingW intermediate", "auw", L"auw");
+        expectTyping("TrailingW intermediate", "euw", L"euw");
+        expectTyping("TrailingW intermediate", "cauw", L"cauw");
+        expectTyping("TrailingW intermediate", "ceuw", L"ceuw");
+        //boundary output: the whole onset family stays raw
+        expectTyping("TrailingW boundary", "auw ", L"auw ");
+        expectTyping("TrailingW boundary", "euw ", L"euw ");
+        expectTyping("TrailingW boundary", "bauw ", L"bauw ");
+        expectTyping("TrailingW boundary", "cauw ", L"cauw ");
+        expectTyping("TrailingW boundary", "dauw ", L"dauw ");
+        expectTyping("TrailingW boundary", "gauw ", L"gauw ");
+        expectTyping("TrailingW boundary", "hauw ", L"hauw ");
+        expectTyping("TrailingW boundary", "lauw ", L"lauw ");
+        expectTyping("TrailingW boundary", "mauw ", L"mauw ");
+        expectTyping("TrailingW boundary", "nauw ", L"nauw ");
+        expectTyping("TrailingW boundary", "sauw ", L"sauw ");
+        expectTyping("TrailingW boundary", "tauw ", L"tauw ");
+        expectTyping("TrailingW boundary", "xauw ", L"xauw ");
+        expectTyping("TrailingW boundary", "beuw ", L"beuw ");
+        expectTyping("TrailingW boundary", "ceuw ", L"ceuw ");
+        expectTyping("TrailingW boundary", "deuw ", L"deuw ");
+        expectTyping("TrailingW boundary", "seuw ", L"seuw ");
+        expectTyping("TrailingW boundary", "teuw ", L"teuw ");
+        expectTyping("TrailingW boundary", "xeuw ", L"xeuw ");
+        //converting controls: the doubling path and the single-vowel w marks
+        expectTyping("TrailingW control", "caau ", L"c\u00e2u ");
+        expectTyping("TrailingW control", "daau ", L"d\u00e2u ");
+        expectTyping("TrailingW control", "oiw ", L"\u01a1i ");
+        expectTyping("TrailingW control", "uiw ", L"\u01b0i ");
+    }
+    testCfg().mixedEnglish = 0;
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
+}
+
+//Package 0 characterization for the MixedModeDecider extraction (plan v2
+//groups 1-5, 8, 9): screen- and packet-level behavior of the mixed decision
+//at the pristine 1.1.6 baseline. State-level pins live in EngineStateTests
+//(runMixedStateCells). Every expectation was derived from the baseline
+//sources and probe runs at 6dc66e73; these rows must pass on the UNMODIFIED
+//engine before any code moves.
+static void testMixedChar() {
+    testCfg().inputType = vTelex;
+    testCfg().mixedEnglish = 1;
+    testCfg().mixedFixLast = 0;
+
+    //Group 1: context drift at screen level. "as" scores +10 (English 68,
+    //Vietnamese 53, lean 5): alone it restores as English; after a clear
+    //Vietnamese word the context is -50, whose bias (-10) exactly cancels
+    //the score, and the tie decides Vietnamese (the test is score+bias > 0).
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
+    expectTyping("Pkg0 g1 as alone", "as ", L"as ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
+    expectTyping("Pkg0 g1 as after English", "this as ", L"this as ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
+    expectTyping("Pkg0 g1 as tie", "tooi as ", L"t\u00f4i \u00e1 ");
+    //a clear word stays clear in any reachable context
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
+    expectTyping("Pkg0 g1 clear after Vietnamese", "tooi muoons test ", L"t\u00f4i mu\u1ed1n test ");
+
+    //Group 2 (screen part): a code-like token stays raw and does not move
+    //the context, so the tie above still applies after it
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
+    expectTyping("Pkg0 g2 code-like neutral", "tooi user_id as ", L"t\u00f4i user_id \u00e1 ");
+
+    //Group 3 (screen part): with fix-last on, a second Space kills the
+    //pending fix. "car" (score -14) is a candidate after "this " (context
+    //50, bias +10 keeps it Vietnamese at -4); the clear word "are" would
+    //recompute it English (+1), but only across exactly one space.
+    testCfg().mixedFixLast = 1;
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
+    expectTyping("Pkg0 g3 fix across one space", "this car are ", L"this car are ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
+    expectTyping("Pkg0 g3 double space kills fix", "this car  are ", L"this c\u1ea3  are ");
+    testCfg().mixedFixLast = 0;
+
+    //Group 5: punctuation. A phrase rule needs the previous word's raw keys,
+    //which only a Space stores; ending "banhs" with '.' starves the phrase
+    //rule for "test", which then stands on its own clear English score.
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
+    expectTyping("Pkg0 g5 phrase after space", "banhs test ", L"b\u00e1nh t\u00e9t ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
+    expectTyping("Pkg0 g5 phrase starved by dot", "banhs. test ", L"b\u00e1nh. test ");
+    //but a punctuation-ended word can still fix its predecessor
+    testCfg().mixedFixLast = 1;
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
+    expectTyping("Pkg0 g5 fix at dot", "There are. ", L"There are. ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
+    expectTyping("Pkg0 g5 fix at comma", "There are, ", L"There are, ");
+    testCfg().mixedFixLast = 0;
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
+    expectTyping("Pkg0 g5 no fix at dot when off", "There are. ", L"Th\u1ec3 are. ");
+
+    //Group 8 (screen part): the boundary spelling verdict gates the mixed
+    //decision. "qaf" is not valid Vietnamese spelling: with spelling on the
+    //engine never converts it and the decider never settles it; with
+    //spelling off it converts and the unlisted-changed branch settles it
+    //Vietnamese.
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
+    expectTyping("Pkg0 g8 spelling on", "qaf ", L"qaf ");
+    testCfg().checkSpelling = 0;
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
+    expectTyping("Pkg0 g8 spelling off", "qaf ", L"q\u00e0 ");
+    testCfg().checkSpelling = 1;
+    //quick end consonant runs before the mixed decision at a Space
+    testCfg().checkSpelling = 0;
+    testCfg().restoreIfWrongSpelling = 0;
+    testCfg().quickEndConsonant = 1;
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
+    expectTyping("Pkg0 g8 quick end wins", "ag ", L"ang ");
+    testCfg().quickEndConsonant = 0;
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
+    expectTyping("Pkg0 g8 quick end off", "ag ", L"ag ");
+    testCfg().checkSpelling = 1;
+    testCfg().restoreIfWrongSpelling = 1;
+
+    //Group 9: fix-last execution. Three shapes: fix without restoring the
+    //current word (flip to Vietnamese), fix without restoring (flip to
+    //English), and restore+fix in a single packet; then post-fix editing.
+    testCfg().mixedFixLast = 1;
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
+    expectTyping("Pkg0 g9 fix to Vietnamese", "as tooi ", L"\u00e1 t\u00f4i ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
+    expectPacket("Pkg0 g9 fix-to-Vietnamese packet", "as tooi ", testCfg(), 7, vRestore, 6, 5);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
+    expectTyping("Pkg0 g9 fix to English", "this car are ", L"this car are ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
+    expectPacket("Pkg0 g9 There packet", "There are ", testCfg(), 9, vRestore, 6, 9);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
+    expectTyping("Pkg0 g9 restore plus fix", "this car test ", L"this car test ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
+    expectPacket("Pkg0 g9 restore-plus-fix packet", "this car test ", testCfg(), 13, vRestore, 6, 8);
+    //a recompute that lands on the stored language emits no rewrite
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
+    expectTyping("Pkg0 g9 no rewrite", "this car tooi ", L"this c\u1ea3 t\u00f4i ");
+    //editing after a fix: delete the trailing space and re-space; the
+    //settled text is stable and nothing is fixed twice
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
+    expectTyping("Pkg0 g9 delete and re-space", "this car are < ", L"this car are ");
+    testCfg().mixedFixLast = 0;
+
+    //Group 4: double-code tables (VNI code 2, Unicode compound 3) disable
+    //fix-last only; restoring the current word still works there, so the
+    //blocked rows below still publish a restore packet -- of the current
+    //word alone (bs 2, nc 3), without the fix part (bs 6, nc 9) that the
+    //single-code tables produce. The text applicator is Unicode-oriented,
+    //so these rows assert packets, not text.
+    testCfg().mixedFixLast = 1;
+    testCfg().codeTable = 1; //TCVN3: single-code, fix-last still applies
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
+    expectPacket("Pkg0 g4 TCVN3 fix allowed", "There are ", testCfg(), 9, vRestore, 6, 9);
+    testCfg().codeTable = 2; //VNI code: double-code
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
+    expectPacket("Pkg0 g4 VNI code fix blocked", "There are ", testCfg(), 9, vRestore, 2, 3);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
+    expectPacketCode("Pkg0 g4 VNI code restore lives", "test ", testCfg(), 4, vRestore);
+    testCfg().codeTable = 3; //Unicode compound: double-code
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
+    expectPacket("Pkg0 g4 compound fix blocked", "There are ", testCfg(), 9, vRestore, 2, 3);
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
+    expectPacketCode("Pkg0 g4 compound restore lives", "test ", testCfg(), 4, vRestore);
+    testCfg().codeTable = 0;
+    testCfg().mixedFixLast = 0;
+
     testCfg().mixedEnglish = 0;
     vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
 }
@@ -598,6 +880,9 @@ static void testVNI() {
     expectTyping("VNI quo7", "quo7 ", L"qu\u01a1 ");
     expectTyping("VNI quo73", "quo73 ", L"qu\u1edf ");
     expectTyping("VNI quo72", "quo72 ", L"qu\u1edd ");
+    //Package 0 control (MixedModeDecider plan v2 section 4c): the pure-mode
+    //VNI form of the doo token converts, like the Telex controls in testTelex
+    expectTyping("VNI do6 control", "do6 ", L"d\u00f4 ");
     testCfg().mixedEnglish = 1;
     expectTyping("VNI EV me5", "me5 ", L"m\u1eb9 ");
     expectTyping("VNI EV la2", "la2 ", L"l\u00e0 ");
@@ -5022,6 +5307,8 @@ int main(int argc, char** argv) {
         return renderWords();
     testTelex();
     testMixed();
+    testMixedChar();
+    testTrailingW();
     testVNI();
     testConvert();
     testUtf8Conversion();
