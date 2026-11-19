@@ -104,6 +104,7 @@
     <ClInclude Include="..\..\..\engine\DataType.h" />
     <ClInclude Include="..\..\..\engine\Engine.h" />
     <ClInclude Include="..\..\..\engine\Macro.h" />
+    <ClInclude Include="..\..\..\engine\MixedModeDecider.h" />
     <ClInclude Include="..\..\..\engine\MixedWords.h" />
     <ClInclude Include="..\..\..\engine\MixedWordsData.h" />
     <ClInclude Include="..\..\..\engine\platforms\linux.h" />
@@ -142,6 +143,7 @@
     <ClCompile Include="..\..\..\engine\ConvertTool.cpp" />
     <ClCompile Include="..\..\..\engine\Engine.cpp" />
     <ClCompile Include="..\..\..\engine\Macro.cpp" />
+    <ClCompile Include="..\..\..\engine\MixedModeDecider.cpp" />
     <ClCompile Include="..\..\..\engine\MixedWords.cpp" />
     <ClCompile Include="..\..\..\engine\SmartSwitchKey.cpp" />
     <ClCompile Include="..\..\..\engine\Vietnamese.cpp" />

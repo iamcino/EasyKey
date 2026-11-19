@@ -4,7 +4,7 @@
 // The signed plan also requires the engine's session STATE at event
 // boundaries: a CapsLock keydown must leave no hidden unit, no special
 // chars, no typing states, no raw keys and no macro key, and it must
-// preserve _mixedContext. Those fields are file-static inside
+// preserve _mixedDecider.mixedContextForTest(). Those fields are file-static inside
 // Engine.cpp, so -- exactly like the debate probe harnesses -- this
 // driver includes Engine.cpp in its own translation unit and reads
 // them directly. Test-only: nothing here is linked into the app, and
@@ -132,39 +132,39 @@ static void runStateCells() {
                (int)_index, _specialChar.size(), _typingStates.size(), _rawKeys.size(),
                _spaceCount, pData->macroKey.size());
     }
-    //_mixedContext preservation: measured before the toggle, after
+    //_mixedDecider.mixedContextForTest() preservation: measured before the toggle, after
     //each toggle direction, and after the ambiguous word, against the
     //no-toggle control measured at the same boundaries
     testCfg().mixedEnglish = 1;
     vKeySetConfig(testCfg());
     isolateRow(testCfg());
     driveKeys("hello ", testCfg());
-    int contextBefore = _mixedContext;
+    int contextBefore = _mixedDecider.mixedContextForTest();
     driveKeys("as ", testCfg());
-    int contextControl = _mixedContext;
+    int contextControl = _mixedDecider.mixedContextForTest();
     for (int toggles = 1; toggles <= 2; toggles++) {
         isolateRow(testCfg());
         driveKeys("hello ", testCfg());
         total++;
-        if (_mixedContext != contextBefore) {
+        if (_mixedDecider.mixedContextForTest() != contextBefore) {
             failures++;
-            printf("FAIL [State mixed] setup: context %d, control setup %d\n", _mixedContext, contextBefore);
+            printf("FAIL [State mixed] setup: context %d, control setup %d\n", _mixedDecider.mixedContextForTest(), contextBefore);
         }
         for (int i = 0; i < toggles; i++) {
             fireCapsLock(testCfg(), 0);
             total++;
-            if (_mixedContext != contextBefore) {
+            if (_mixedDecider.mixedContextForTest() != contextBefore) {
                 failures++;
                 printf("FAIL [State mixed] toggles=%d after toggle %d: context %d, before %d\n",
-                       toggles, i + 1, _mixedContext, contextBefore);
+                       toggles, i + 1, _mixedDecider.mixedContextForTest(), contextBefore);
             }
         }
         driveKeys("as ", testCfg());
         total++;
-        if (_mixedContext != contextControl) {
+        if (_mixedDecider.mixedContextForTest() != contextControl) {
             failures++;
             printf("FAIL [State mixed] toggles=%d after word: context %d, control %d\n",
-                   toggles, _mixedContext, contextControl);
+                   toggles, _mixedDecider.mixedContextForTest(), contextControl);
         }
     }
     testCfg().mixedEnglish = 0;
@@ -175,7 +175,7 @@ static void expectState(const char* name, bool ok, const char* detail) {
     if (!ok) {
         failures++;
         printf("FAIL [State %s] %s (context=%d hasLast=%d lastRawLen=%d)\n", name, detail,
-               _mixedContext, (int)_hasMixedLast, (int)_lastRawLen);
+               _mixedDecider.mixedContextForTest(), (int)_mixedDecider.hasMixedLastForTest(), (int)_mixedDecider.lastRawLenForTest());
     }
 }
 
@@ -194,47 +194,47 @@ static void runMixedStateCells() {
     //Group 1: exact context drift, English side: 0 -> 50 -> 75 -> 87
     isolateRow(testCfg());
     driveKeys("this ", testCfg());
-    expectState("g1 ctx after this", _mixedContext == 50, "want 50");
+    expectState("g1 ctx after this", _mixedDecider.mixedContextForTest() == 50, "want 50");
     driveKeys("this ", testCfg());
-    expectState("g1 ctx after this x2", _mixedContext == 75, "want 75");
+    expectState("g1 ctx after this x2", _mixedDecider.mixedContextForTest() == 75, "want 75");
     driveKeys("this ", testCfg());
-    expectState("g1 ctx after this x3", _mixedContext == 87, "want 87");
+    expectState("g1 ctx after this x3", _mixedDecider.mixedContextForTest() == 87, "want 87");
     //Group 1: exact context drift, Vietnamese side (unlisted changed words
     //settle clear Vietnamese): 0 -> -50 -> -75 -> -87
     isolateRow(testCfg());
     driveKeys("tooi ", testCfg());
-    expectState("g1 ctx after tooi", _mixedContext == -50, "want -50");
+    expectState("g1 ctx after tooi", _mixedDecider.mixedContextForTest() == -50, "want -50");
     driveKeys("muoons ", testCfg());
-    expectState("g1 ctx after muoons", _mixedContext == -75, "want -75");
+    expectState("g1 ctx after muoons", _mixedDecider.mixedContextForTest() == -75, "want -75");
     driveKeys("tooi ", testCfg());
-    expectState("g1 ctx after tooi x2", _mixedContext == -87, "want -87");
+    expectState("g1 ctx after tooi x2", _mixedDecider.mixedContextForTest() == -87, "want -87");
     //Group 1: the tie: at context -50 the bias (-10) exactly cancels the
     //score of "as" (+10); the decision is Vietnamese and context averages on
     isolateRow(testCfg());
     driveKeys("tooi as ", testCfg());
-    expectState("g1 ctx after tie", _mixedContext == -75, "want -75");
+    expectState("g1 ctx after tie", _mixedDecider.mixedContextForTest() == -75, "want -75");
     //Group 1: fix-last recomputes contextBefore from the flipped word, so
     //the same two words land on a different context than without the fix
     testCfg().mixedFixLast = 1;
     vKeySetConfig(testCfg());
     isolateRow(testCfg());
     driveKeys("as tooi ", testCfg());
-    expectState("g1 ctx fix recomputed", _mixedContext == -75, "want -75");
+    expectState("g1 ctx fix recomputed", _mixedDecider.mixedContextForTest() == -75, "want -75");
     testCfg().mixedFixLast = 0;
     vKeySetConfig(testCfg());
     isolateRow(testCfg());
     driveKeys("as tooi ", testCfg());
-    expectState("g1 ctx no fix", _mixedContext == -25, "want -25");
+    expectState("g1 ctx no fix", _mixedDecider.mixedContextForTest() == -25, "want -25");
 
     //Group 2: a code-like word restores but never moves the context and is
     //never stored as a candidate; a listed clear word does both
     isolateRow(testCfg());
     driveKeys("this user_id ", testCfg());
-    expectState("g2 ctx after code-like", _mixedContext == 50, "want 50");
-    expectState("g2 code-like not candidate", !_hasMixedLast, "want no candidate");
+    expectState("g2 ctx after code-like", _mixedDecider.mixedContextForTest() == 50, "want 50");
+    expectState("g2 code-like not candidate", !_mixedDecider.hasMixedLastForTest(), "want no candidate");
     isolateRow(testCfg());
     driveKeys("this test ", testCfg());
-    expectState("g2 ctx after clear word", _mixedContext == 75, "want 75");
+    expectState("g2 ctx after clear word", _mixedDecider.mixedContextForTest() == 75, "want 75");
     //the token classifier itself: letter+digit is code-like outside VNI only
     {
         vector<Uint32> a1 = { KEY_A, KEY_1 };
@@ -251,54 +251,54 @@ static void runMixedStateCells() {
     //Delete clears candidate and phrase memory, keeps the context
     isolateRow(testCfg());
     driveKeys("this car ", testCfg());
-    expectState("g36 setup", _hasMixedLast && _lastRawLen == 3 && _mixedContext == -25, "want candidate, car, -25");
+    expectState("g36 setup", _mixedDecider.hasMixedLastForTest() && _mixedDecider.lastRawLenForTest() == 3 && _mixedDecider.mixedContextForTest() == -25, "want candidate, car, -25");
     vKeyHandleEvent(vKeyEvent::Keyboard, vKeyEventState::KeyDown, KEY_DELETE, testCfg(), 0, false);
-    expectState("g3 delete clears", !_hasMixedLast && _lastRawLen == 0 && _mixedContext == -25, "want cleared, ctx -25");
+    expectState("g3 delete clears", !_mixedDecider.hasMixedLastForTest() && _mixedDecider.lastRawLenForTest() == 0 && _mixedDecider.mixedContextForTest() == -25, "want cleared, ctx -25");
     //a second Space clears the same way
     isolateRow(testCfg());
     driveKeys("this car ", testCfg());
     vKeyHandleEvent(vKeyEvent::Keyboard, vKeyEventState::KeyDown, KEY_SPACE, testCfg(), 0, false);
-    expectState("g3 second space clears", !_hasMixedLast && _lastRawLen == 0 && _mixedContext == -25, "want cleared, ctx -25");
+    expectState("g3 second space clears", !_mixedDecider.hasMixedLastForTest() && _mixedDecider.lastRawLenForTest() == 0 && _mixedDecider.mixedContextForTest() == -25, "want cleared, ctx -25");
     //a keyboard word-break ('.') clears candidate and phrase memory but,
     //unlike a Mouse break, keeps the context
     isolateRow(testCfg());
     driveKeys("this car.", testCfg());
-    expectState("g6 dot break", !_hasMixedLast && _lastRawLen == 0 && _mixedContext == -25, "want cleared, ctx -25");
+    expectState("g6 dot break", !_mixedDecider.hasMixedLastForTest() && _mixedDecider.lastRawLenForTest() == 0 && _mixedDecider.mixedContextForTest() == -25, "want cleared, ctx -25");
     //a Mouse break additionally zeroes the context
     isolateRow(testCfg());
     driveKeys("this car ", testCfg());
     vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
-    expectState("g6 mouse break", !_hasMixedLast && _lastRawLen == 0 && _mixedContext == 0, "want cleared, ctx 0");
+    expectState("g6 mouse break", !_mixedDecider.hasMixedLastForTest() && _mixedDecider.lastRawLenForTest() == 0 && _mixedDecider.mixedContextForTest() == 0, "want cleared, ctx 0");
     //startNewSession and vKeyInit do NOT reset any mixed state
     isolateRow(testCfg());
     driveKeys("this car ", testCfg());
     startNewSession();
-    expectState("g6 session keeps state", _hasMixedLast && _lastRawLen == 3 && _mixedContext == -25, "want kept");
+    expectState("g6 session keeps state", _mixedDecider.hasMixedLastForTest() && _mixedDecider.lastRawLenForTest() == 3 && _mixedDecider.mixedContextForTest() == -25, "want kept");
     vKeyInit();
-    expectState("g6 init keeps state", _hasMixedLast && _lastRawLen == 3 && _mixedContext == -25, "want kept");
+    expectState("g6 init keeps state", _mixedDecider.hasMixedLastForTest() && _mixedDecider.lastRawLenForTest() == 3 && _mixedDecider.mixedContextForTest() == -25, "want kept");
     //CapsLock between words leaves the mixed state untouched
     fireCapsLock(testCfg(), 0);
-    expectState("g6 capslock keeps state", _hasMixedLast && _lastRawLen == 3 && _mixedContext == -25, "want kept");
+    expectState("g6 capslock keeps state", _mixedDecider.hasMixedLastForTest() && _mixedDecider.lastRawLenForTest() == 3 && _mixedDecider.mixedContextForTest() == -25, "want kept");
 
     //Group 6: Escape. A successful restore (changed current word) clears
     //candidate and phrase memory and keeps the context.
     isolateRow(testCfg());
     driveKeys("this vieejt", testCfg());
     vKeyHandleEvent(vKeyEvent::Keyboard, vKeyEventState::KeyDown, KEY_ESC, testCfg(), 0, false);
-    expectState("g6 esc success", !_hasMixedLast && _lastRawLen == 0 && _mixedContext == 50, "want cleared, ctx 50");
+    expectState("g6 esc success", !_mixedDecider.hasMixedLastForTest() && _mixedDecider.lastRawLenForTest() == 0 && _mixedDecider.mixedContextForTest() == 50, "want cleared, ctx 50");
     //"are" is Telex-changed mid-word (a + r puts the hoi tone on the a),
     //so Esc restores it too: vWillProcess packet, context kept at -25.
     isolateRow(testCfg());
     driveKeys("this car are", testCfg());
     vKeyHandleEvent(vKeyEvent::Keyboard, vKeyEventState::KeyDown, KEY_ESC, testCfg(), 0, false);
-    expectState("g6 esc restores are", !_hasMixedLast && _lastRawLen == 0 && _mixedContext == -25 && pData->code == vWillProcess, "want cleared, ctx -25, restore packet");
+    expectState("g6 esc restores are", !_mixedDecider.hasMixedLastForTest() && _mixedDecider.lastRawLenForTest() == 0 && _mixedDecider.mixedContextForTest() == -25 && pData->code == vWillProcess, "want cleared, ctx -25, restore packet");
     //A failed restore (a current word nothing converted) falls through to
     //ordinary break dispatch: no packet, and candidate and phrase memory
     //are cleared by the break path instead; the context is kept.
     isolateRow(testCfg());
     driveKeys("this car bcdfg", testCfg());
     vKeyHandleEvent(vKeyEvent::Keyboard, vKeyEventState::KeyDown, KEY_ESC, testCfg(), 0, false);
-    expectState("g6 esc failure", !_hasMixedLast && _lastRawLen == 0 && _mixedContext == -25 && pData->code == vDoNothing, "want cleared, ctx -25, no packet");
+    expectState("g6 esc failure", !_mixedDecider.hasMixedLastForTest() && _mixedDecider.lastRawLenForTest() == 0 && _mixedDecider.mixedContextForTest() == -25 && pData->code == vDoNothing, "want cleared, ctx -25, no packet");
 
     //Groups 6/7: a rejected word (over the 32-unit buffer) consumes the
     //pending candidate but updates nothing else: context and phrase memory
@@ -306,23 +306,23 @@ static void runMixedStateCells() {
     isolateRow(testCfg());
     driveKeys("this car ", testCfg());
     driveKeys("bcdfgbcdfgbcdfgbcdfgbcdfgbcdfgbcd ", testCfg()); //33 letters
-    expectState("g6 rejected word", !_hasMixedLast && _lastRawLen == 3 && _mixedContext == -25, "want candidate consumed, phrase and ctx kept");
+    expectState("g6 rejected word", !_mixedDecider.hasMixedLastForTest() && _mixedDecider.lastRawLenForTest() == 3 && _mixedDecider.mixedContextForTest() == -25, "want candidate consumed, phrase and ctx kept");
     //Group 7: phrase memory stores at most 15 raw characters
     isolateRow(testCfg());
     driveKeys("abcdefghijklmnopqrst ", testCfg()); //20 letters
-    expectState("g7 phrase truncated", _lastRawLen == 15, "want 15");
+    expectState("g7 phrase truncated", _mixedDecider.lastRawLenForTest() == 15, "want 15");
 
     //Group 8: the boundary spelling verdict gates the decision, at context
     //level: "qaf" never converts with spelling on, so no decision runs;
     //with spelling off it converts and settles clear Vietnamese
     isolateRow(testCfg());
     driveKeys("qaf ", testCfg());
-    expectState("g8 spelling on ctx", _mixedContext == 0, "want 0");
+    expectState("g8 spelling on ctx", _mixedDecider.mixedContextForTest() == 0, "want 0");
     testCfg().checkSpelling = 0;
     vKeySetConfig(testCfg());
     isolateRow(testCfg());
     driveKeys("qaf ", testCfg());
-    expectState("g8 spelling off ctx", _mixedContext == -50, "want -50");
+    expectState("g8 spelling off ctx", _mixedDecider.mixedContextForTest() == -50, "want -50");
     testCfg().checkSpelling = 1;
     vKeySetConfig(testCfg());
 
@@ -344,14 +344,13 @@ static void runMixedStateCells() {
         auto runFixture = [&](int vietLen, int keysLen, bool currentChanged) {
             vKeySetConfig(fixCfg);
             isolateRow(fixCfg);
-            _mixedLast.keys.assign(keysLen, KEY_A);
-            _mixedLast.vietnamese.assign(vietLen, KEY_A);
-            _mixedLast.score = 0;
-            _mixedLast.contextBefore = 0;
-            _mixedLast.english = false;
-            _hasMixedLast = true;
-            _lastRawLen = 0;
-            _lastRaw[0] = '\0';
+            MixedWord fixtureWord;
+            fixtureWord.keys.assign(keysLen, KEY_A);
+            fixtureWord.vietnamese.assign(vietLen, KEY_A);
+            fixtureWord.score = 0;
+            fixtureWord.contextBefore = 0;
+            fixtureWord.english = false;
+            _mixedDecider.setMixedLastForTest(fixtureWord);
             tempDisableKey = false;
             _longWordHelper.clear();
             _typingStates.clear();

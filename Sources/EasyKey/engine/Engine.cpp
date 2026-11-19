@@ -17,6 +17,7 @@
 #include <list>
 #include "Macro.h"
 #include "MixedWords.h"
+#include "MixedModeDecider.h"
 
 //the engine's own copy of the application configuration; vKeyHandleEvent
 //refreshes it on every call and the application refreshes it through
@@ -142,22 +143,10 @@ static bool _isCharKeyCode;
 static vector<Uint32> _specialChar;
 static bool _hasHandleQuickConsonant;
 
-//mixed English and Vietnamese: the language of the last words, from -100 (Vietnamese) to 100 (English)
-static int _mixedContext = 0;
-//Zipf x10 points: a word reads as English when its English value beats its Vietnamese one by this much,
-//the language of the last words moves that by up to MIXED_CONTEXT_WEIGHT,
-//and a word that leads by MIXED_CLEAR or more can settle the word before it
-#define MIXED_VIETNAMESE_LEAN 5
-#define MIXED_CONTEXT_WEIGHT 20
-#define MIXED_CLEAR 20
-//the last word, when it could be read both ways and only one space follows it
-struct MixedWord {
-    vector<Uint32> keys, vietnamese;
-    int score, contextBefore;
-    bool english;
-};
-static MixedWord _mixedLast;
-static bool _hasMixedLast = false;
+//mixed English and Vietnamese: the decider owns the mixed-mode state
+//(the language context, the last word, the phrase memory); this file
+//gathers its inputs at the end of a word and executes its decision
+static MixedModeDecider _mixedDecider;
 
 //function prototype
 void findAndCalculateVowel(const bool& forGrammar=false);
@@ -1540,148 +1529,47 @@ bool checkRestoreIfWrongSpelling(const int& handleCode) {
     return false;
 }
 
-//token classifier for code-like identifiers, camelCase, URLs, and emails in Mixed mode
-static bool isCodeLikeToken(const vector<Uint32>& rawKeys, int inputType) {
-    if (rawKeys.empty())
-        return false;
-    bool hasLowerToUpper = false;
-    bool hasLetter = false, hasDigit = false;
-    bool hasUnderscore = false, hasAtSign = false;
-    bool prevWasLower = false;
-    for (size_t i = 0; i < rawKeys.size(); i++) {
-        Uint16 key = rawKeys[i] & CHAR_MASK;
-        bool isCaps = (rawKeys[i] & CAPS_MASK) != 0;
-        Uint16 c = keyCodeToCharacter(key);
-        if (key == KEY_MINUS) {
-            if (isCaps) {
-                hasUnderscore = true;
-            }
-            prevWasLower = false;
-        } else if (key == KEY_2 && isCaps) {
-            hasAtSign = true;
-            prevWasLower = false;
-        } else if (c >= 'a' && c <= 'z') {
-            hasLetter = true;
-            if (isCaps) {
-                if (prevWasLower) {
-                    hasLowerToUpper = true;
-                }
-                prevWasLower = false;
-            } else {
-                prevWasLower = true;
-            }
-        } else if (c >= '0' && c <= '9' && !isCaps) {
-            hasDigit = true;
-            prevWasLower = false;
-        } else {
-            prevWasLower = false;
-        }
-    }
-    if (hasUnderscore)
-        return true;
-    if (hasAtSign)
-        return true;
-    if (hasLowerToUpper)
-        return true;
-    if (inputType != vVNI && hasLetter && hasDigit)
-        return true;
-    return false;
-}
-
-static char _lastRaw[16] = {0};
-static Byte _lastRawLen = 0;
-
-static int mixedBias(const int& context) {
-    return MIXED_CONTEXT_WEIGHT * context / 100;
-}
-
 //mixed mode, at the end of a word: decide if it is English or Vietnamese from how common each reading is
 //and from the language of the last words, then put back every key as typed for an English word ("this", not "thí").
 //A word that is clearly one language also settles the one before it: "Thể are" turns into "There are"
+//The decision itself lives in MixedModeDecider; this adapter gathers the
+//engine-side inputs in the original order and executes the decision.
 bool checkMixedEnglish(const int& handleCode, const bool& spaceFollows) {
-    bool hadLast = _hasMixedLast;
-    _hasMixedLast = false;
-    if (_index == 0 || _rawKeys.size() == 0 || _rawKeys.size() > MAX_BUFF || _longWordHelper.size() > 0)
-        return false;
-    if (!tempDisableKey && vKeyActiveConfig().checkSpelling)
-        checkSpelling(true);
-    bool changed = _index != _rawKeys.size();
-    for (ii = 0; !changed && ii < _index; ii++)
-        changed = TypingWord[ii] != _rawKeys[ii];
-    string keys;
-    bool allCaps = _rawKeys.size() >= 2;
-    for (ii = 0; ii < _rawKeys.size(); ii++) {
-        Uint16 c = keyCodeToCharacter(_rawKeys[ii] & CHAR_MASK);
-        if (c < 'a' || c > 'z') {
-            keys.clear();
-            allCaps = false;
-            break;
+    MixedWordInput in{};
+    in.valid = !(_index == 0 || _rawKeys.size() == 0 || _rawKeys.size() > MAX_BUFF || _longWordHelper.size() > 0);
+    in.spaceFollows = spaceFollows;
+    if (in.valid) {
+        if (!tempDisableKey && vKeyActiveConfig().checkSpelling)
+            checkSpelling(true);
+        in.spellingOk = !tempDisableKey;
+        in.changed = _index != _rawKeys.size();
+        for (ii = 0; !in.changed && ii < _index; ii++)
+            in.changed = TypingWord[ii] != _rawKeys[ii];
+        in.allCaps = _rawKeys.size() >= 2;
+        for (ii = 0; ii < _rawKeys.size(); ii++) {
+            Uint16 c = keyCodeToCharacter(_rawKeys[ii] & CHAR_MASK);
+            if (c < 'a' || c > 'z') {
+                in.keys.clear();
+                in.allCaps = false;
+                break;
+            }
+            if (!(_rawKeys[ii] & CAPS_MASK)) {
+                in.allCaps = false;
+            }
+            in.keys += (char)c;
         }
-        if (!(_rawKeys[ii] & CAPS_MASK)) {
-            allCaps = false;
-        }
-        keys += (char)c;
+        in.codeLike = isCodeLikeToken(_rawKeys, vKeyActiveConfig().inputType);
+        in.fixLastEnabled = vKeyActiveConfig().mixedFixLast;
+        in.doubleCode = IS_DOUBLE_CODE(vKeyActiveConfig().codeTable);
+        in.rawKeys = _rawKeys.data();
+        in.rawCount = _rawKeys.size();
+        in.vietnamese = TypingWord;
+        in.vietnameseCount = _index;
+        in.shownLength = _index;
     }
-    int english = 0, vietnamese = 0, score = 0, language = 0; //1: English, -1: Vietnamese, 0: can't tell
-    bool codeLike = isCodeLikeToken(_rawKeys, vKeyActiveConfig().inputType);
-    bool curatedEnglish = !codeLike && !keys.empty() &&
-        (isCuratedSafeEnglish(keys) || isAllCapsEnglishAcronym(keys, allCaps));
-    int phraseMatch = (!codeLike && !keys.empty() && !allCaps) ? checkMixedPhrase(_lastRaw, _lastRawLen, keys) : 0;
-    bool listed = !codeLike && !keys.empty() && findMixedWord(keys, english, vietnamese), clear = false;
-    bool protectedVietnamese = changed && !tempDisableKey && !allCaps &&
-        isProtectedShortVietnamese(keys, english, vietnamese, _mixedContext);
-    // Explicit phrase/curated/protection decisions must survive the next word.
-    bool reconsider = listed && !curatedEnglish && phraseMatch == 0 && !protectedVietnamese;
-    if (codeLike) {
-        language = 1;
-        clear = false;
-    } else if (curatedEnglish) {
-        language = 1;
-        clear = true;
-    } else if (phraseMatch != 0) {
-        language = phraseMatch;
-        clear = true;
-    } else if (protectedVietnamese) {
-        language = -1;
-        clear = false;
-    } else if (listed) {
-        score = english - vietnamese - MIXED_VIETNAMESE_LEAN;
-        language = score + mixedBias(_mixedContext) > 0 ? 1 : -1;
-        clear = score >= MIXED_CLEAR || score <= -MIXED_CLEAR;
-    } else if (changed && !tempDisableKey) {
-        language = -1; //a Vietnamese word the list doesn't have
-        clear = true;
-    }
-    int contextBefore = _mixedContext;
-    bool restore = language == 1 && changed;
-    
-    //read the last word again with this one as its context
-    //(not with VNI Windows and compound Unicode, there a letter on screen may take two backspaces)
-    bool fixLast = false;
-    vector<Uint32> lastText; //the last word as it should be now
-    if (vKeyActiveConfig().mixedFixLast && hadLast && clear && !IS_DOUBLE_CODE(vKeyActiveConfig().codeTable)) {
-        bool english = _mixedLast.score + mixedBias((_mixedLast.contextBefore + language * 100) / 2) > 0;
-        lastText = english ? _mixedLast.keys : _mixedLast.vietnamese;
-        size_t shown = english ? _mixedLast.vietnamese.size() : _mixedLast.keys.size();
-        if (english != _mixedLast.english && shown + 1 + _index < MAX_BUFF &&
-            lastText.size() + 1 + (restore ? _rawKeys.size() : _index) <= MAX_BUFF) {
-            fixLast = true;
-            _mixedLast.english = english;
-            contextBefore = (_mixedLast.contextBefore + (english ? 100 : -100)) / 2;
-        }
-    }
-    if (language != 0 && !codeLike)
-        _mixedContext = (contextBefore + language * 100) / 2;
-    //this word may be the next one's "last word"
-    MixedWord word;
-    if (spaceFollows && reconsider) {
-        word.keys = _rawKeys;
-        word.vietnamese.assign(TypingWord, TypingWord + _index);
-        word.score = score;
-        word.contextBefore = contextBefore;
-        word.english = language == 1;
-    }
-    
+    MixedDecision decision = _mixedDecider.decide(in);
+    bool restore = decision.restore;
+    bool fixLast = decision.fixLast;
     if (restore || fixLast) {
         hCode = handleCode;
         hBPC = _index;
@@ -1693,15 +1581,15 @@ bool checkMixedEnglish(const int& handleCode, const bool& spaceFollows) {
         }
         vector<Uint32> text;
         if (fixLast) {
-            hBPC += (Byte)(1 + (_mixedLast.english ? _mixedLast.vietnamese.size() : _mixedLast.keys.size())); //and the space
-            for (i = 0; i < lastText.size(); i++)
-                text.push_back(GET(lastText[i]));
+            hBPC += (Byte)(1 + decision.lastShownCount); //and the space
+            for (i = 0; i < decision.lastText.size(); i++)
+                text.push_back(GET(decision.lastText[i]));
             text.push_back(KEY_SPACE);
             //the line history keeps the last word, then the space: it is what backspace brings back
             auto it = _typingStates.end();
             if (_typingStates.size() >= 2 && (--it)->typingWord.size() == 1 && it->typingWord[0] == KEY_SPACE) {
                 --it;
-                it->typingWord = lastText;
+                it->typingWord = decision.lastText;
                 it->keyStates.clear();
                 it->rawKeys.clear();
             }
@@ -1711,22 +1599,6 @@ bool checkMixedEnglish(const int& handleCode, const bool& spaceFollows) {
         hNCC = (Byte)text.size();
         for (i = 0; i < hNCC; i++)
             hData[hNCC - 1 - i] = text[i];
-    }
-    if (spaceFollows && reconsider) {
-        _mixedLast = word;
-        _hasMixedLast = true;
-    }
-    if (spaceFollows) {
-        _lastRawLen = 0;
-        for (i = 0; i < _rawKeys.size() && i < 15; i++) {
-            Uint16 c = keyCodeToCharacter(_rawKeys[i] & CHAR_MASK);
-            if (c >= 'A' && c <= 'Z') c = c - 'A' + 'a';
-            _lastRaw[_lastRawLen++] = (char)c;
-        }
-        _lastRaw[_lastRawLen] = '\0';
-    } else {
-        _lastRawLen = 0;
-        _lastRaw[0] = '\0';
     }
     return restore || fixLast;
 }
@@ -1746,9 +1618,7 @@ bool restoreRawKeys() {
     startNewSession();
     _specialChar.clear();
     _typingStates.clear();
-    _hasMixedLast = false;
-    _lastRawLen = 0;
-    _lastRaw[0] = '\0';
+    _mixedDecider.forgetLast();
     hMacroKey.clear();
     hCode = vWillProcess;
     hBPC = backspaceCount;
@@ -1897,11 +1767,11 @@ void vKeyHandleEvent(const vKeyEvent& event,
             }
         }
         
-        _hasMixedLast = false; //only a space may come between two words read together
-        _lastRawLen = 0;
-        _lastRaw[0] = '\0';
+        //only a space may come between two words read together
         if (event == vKeyEvent::Mouse)
-            _mixedContext = 0; //the caret may be somewhere else now
+            _mixedDecider.forgetAll(); //the caret may be somewhere else now
+        else
+            _mixedDecider.forgetLast();
         
         _isCharKeyCode = state == KeyDown && std::find(_charKeyCode.begin(), _charKeyCode.end(), data) != _charKeyCode.end();
         if (!_isCharKeyCode) { //clear all line cache
@@ -1947,9 +1817,7 @@ void vKeyHandleEvent(const vKeyEvent& event,
             checkSpelling(true); //force check spelling
         }
         if (_spaceCount > 0) {
-            _hasMixedLast = false;
-            _lastRawLen = 0;
-            _lastRaw[0] = '\0';
+            _mixedDecider.forgetLast();
         }
         if (vKeyActiveConfig().useMacro && !_hasHandledMacro && findMacro(hMacroKey, hMacroData)) { //macro
             hCode = vReplaceMaro;
@@ -1986,9 +1854,7 @@ void vKeyHandleEvent(const vKeyEvent& event,
     } else if (data == KEY_DELETE) {
         hCode = vDoNothing;
         hExt = 2; //delete
-        _hasMixedLast = false;
-        _lastRawLen = 0;
-        _lastRaw[0] = '\0';
+        _mixedDecider.forgetLast();
         if (_specialChar.size() > 0) {
             _specialChar.pop_back();
             if (_specialChar.size() == 0) {

@@ -17,6 +17,7 @@ add_executable(EngineTests
     ${ENGINE_DIR}/Engine.cpp
     ${ENGINE_DIR}/Macro.cpp
     ${ENGINE_DIR}/MixedWords.cpp
+    ${ENGINE_DIR}/MixedModeDecider.cpp
     ${ENGINE_DIR}/SmartSwitchKey.cpp
     ${ENGINE_DIR}/Vietnamese.cpp
 )
@@ -41,6 +42,7 @@ add_executable(EngineStateTests
     ${ENGINE_DIR}/ConvertTool.cpp
     ${ENGINE_DIR}/Macro.cpp
     ${ENGINE_DIR}/MixedWords.cpp
+    ${ENGINE_DIR}/MixedModeDecider.cpp
     ${ENGINE_DIR}/SmartSwitchKey.cpp
     ${ENGINE_DIR}/Vietnamese.cpp
 )
@@ -59,6 +61,7 @@ add_executable(PacketDeliveryTests
     ${ENGINE_DIR}/Engine.cpp
     ${ENGINE_DIR}/Macro.cpp
     ${ENGINE_DIR}/MixedWords.cpp
+    ${ENGINE_DIR}/MixedModeDecider.cpp
     ${ENGINE_DIR}/SmartSwitchKey.cpp
     ${ENGINE_DIR}/Vietnamese.cpp
 )
@@ -68,6 +71,13 @@ if(MSVC)
 elseif(UNIX AND NOT APPLE)
     target_compile_definitions(PacketDeliveryTests PRIVATE LINUX)
 endif()
+
+#Package 1 (MixedModeDecider): the test-only inspection accessors exist only
+#under EASYKEY_TEST, defined for the three engine-bearing test targets and
+#never for the app build, so production code cannot call them
+target_compile_definitions(EngineTests PRIVATE EASYKEY_TEST)
+target_compile_definitions(EngineStateTests PRIVATE EASYKEY_TEST)
+target_compile_definitions(PacketDeliveryTests PRIVATE EASYKEY_TEST)
 
 enable_testing()
 add_test(NAME EngineTests COMMAND EngineTests)
