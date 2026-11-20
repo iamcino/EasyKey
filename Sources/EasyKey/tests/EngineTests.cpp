@@ -653,19 +653,18 @@ static void testMixed() {
         expectTyping("Mixed AI sentence", "tooi dungf qwen vaf deepseek ", L"t\u00f4i d\u00f9ng qwen v\u00e0 deepseek ");
     }
     testCfg().restoreIfWrongSpelling = 1;
-    //Package 0, known current behavior (MixedModeDecider plan v2 section
-    //4c): "doo" is the one oo-token the mixed decider restores at the
-    //boundary. Mid-word the engine forms the circumflex word, then the
-    //Space decision classifies the raw token as English (dictionary
-    //English 36, Vietnamese 0, score 31 after the lean) and puts the raw
-    //keys back. This pins the CURRENT behavior; the fix is separate
-    //behavior-change work, not part of the decider extraction.
+    //Mixed "doo" is protected short Vietnamese: the decider keeps the
+    //converted word (dô) at neutral/Vietnamese context instead of restoring
+    //the raw keys. Mid-word the engine forms the circumflex word; at the
+    //space the protection wins (context-gated, non-all-caps, spelling-OK),
+    //so the space is a pass-through with no restore and no replacement
+    //packet (the bs/nc the driver carries are stale and ignored).
     vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed doo mid-word", "doo", L"d\u00f4");
     vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
-    expectTyping("Mixed doo known behavior", "doo ", L"doo ");
+    expectTyping("Mixed doo protected", "doo ", L"d\u00f4 ");
     vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
-    expectPacket("Mixed doo boundary packet", "doo ", testCfg(), 3, vRestore, 2, 3);
+    expectPacket("Mixed doo boundary packet", "doo ", testCfg(), 3, vDoNothing, 1, 1);
     //the converting oo-neighbor and the toned form are NOT affected
     vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed boo neighbor", "boo ", L"b\u00f4 ");
@@ -675,48 +674,77 @@ static void testMixed() {
     vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
 }
 
-//Package 0, known current behavior (MixedModeDecider plan v2 section 4c): a
-//Telex "w" after a two-vowel sequence whose mark belongs on the FIRST vowel
-//never lands, so Xauw/Xeuw stay raw instead of becoming the circumflex
-//forms. This is an engine mark-placement defect (insertAOE/insertW), not a
-//decider behavior; these rows pin the CURRENT behavior in both modes. The
-//fix is separate behavior-change work.
+//Telex "w" after au/eu lands the circumflex on the first vowel (the mark
+//the aau/eeu doubling path gives): auw -> âu, euw -> êu, in both pure and
+//mixed mode. Mixed mode then keeps the converted forms (unlisted + changed +
+//spelling-OK Vietnamese). Pairs with no valid marked reading stay raw.
 static void testTrailingW() {
     testCfg().inputType = vTelex;
     for (int mixed = 0; mixed <= 1; mixed++) {
         testCfg().mixedEnglish = mixed;
         vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
         //intermediate state right after the trailing w, before any boundary
-        expectTyping("TrailingW intermediate", "auw", L"auw");
-        expectTyping("TrailingW intermediate", "euw", L"euw");
-        expectTyping("TrailingW intermediate", "cauw", L"cauw");
-        expectTyping("TrailingW intermediate", "ceuw", L"ceuw");
-        //boundary output: the whole onset family stays raw
-        expectTyping("TrailingW boundary", "auw ", L"auw ");
-        expectTyping("TrailingW boundary", "euw ", L"euw ");
-        expectTyping("TrailingW boundary", "bauw ", L"bauw ");
-        expectTyping("TrailingW boundary", "cauw ", L"cauw ");
-        expectTyping("TrailingW boundary", "dauw ", L"dauw ");
-        expectTyping("TrailingW boundary", "gauw ", L"gauw ");
-        expectTyping("TrailingW boundary", "hauw ", L"hauw ");
-        expectTyping("TrailingW boundary", "lauw ", L"lauw ");
-        expectTyping("TrailingW boundary", "mauw ", L"mauw ");
-        expectTyping("TrailingW boundary", "nauw ", L"nauw ");
-        expectTyping("TrailingW boundary", "sauw ", L"sauw ");
-        expectTyping("TrailingW boundary", "tauw ", L"tauw ");
-        expectTyping("TrailingW boundary", "xauw ", L"xauw ");
-        expectTyping("TrailingW boundary", "beuw ", L"beuw ");
-        expectTyping("TrailingW boundary", "ceuw ", L"ceuw ");
-        expectTyping("TrailingW boundary", "deuw ", L"deuw ");
-        expectTyping("TrailingW boundary", "seuw ", L"seuw ");
-        expectTyping("TrailingW boundary", "teuw ", L"teuw ");
-        expectTyping("TrailingW boundary", "xeuw ", L"xeuw ");
+        expectTyping("TrailingW intermediate", "auw", L"\u00e2u");
+        expectTyping("TrailingW intermediate", "euw", L"\u00eau");
+        expectTyping("TrailingW intermediate", "cauw", L"c\u00e2u");
+        expectTyping("TrailingW intermediate", "ceuw", L"c\u00eau");
+        //boundary output: the whole onset family converts
+        expectTyping("TrailingW boundary", "auw ", L"\u00e2u ");
+        expectTyping("TrailingW boundary", "euw ", L"\u00eau ");
+        expectTyping("TrailingW boundary", "bauw ", L"b\u00e2u ");
+        expectTyping("TrailingW boundary", "cauw ", L"c\u00e2u ");
+        expectTyping("TrailingW boundary", "dauw ", L"d\u00e2u ");
+        expectTyping("TrailingW boundary", "gauw ", L"g\u00e2u ");
+        expectTyping("TrailingW boundary", "hauw ", L"h\u00e2u ");
+        expectTyping("TrailingW boundary", "lauw ", L"l\u00e2u ");
+        expectTyping("TrailingW boundary", "mauw ", L"m\u00e2u ");
+        expectTyping("TrailingW boundary", "nauw ", L"n\u00e2u ");
+        expectTyping("TrailingW boundary", "sauw ", L"s\u00e2u ");
+        expectTyping("TrailingW boundary", "tauw ", L"t\u00e2u ");
+        expectTyping("TrailingW boundary", "xauw ", L"x\u00e2u ");
+        expectTyping("TrailingW boundary", "beuw ", L"b\u00eau ");
+        expectTyping("TrailingW boundary", "ceuw ", L"c\u00eau ");
+        expectTyping("TrailingW boundary", "deuw ", L"d\u00eau ");
+        expectTyping("TrailingW boundary", "seuw ", L"s\u00eau ");
+        expectTyping("TrailingW boundary", "teuw ", L"t\u00eau ");
+        expectTyping("TrailingW boundary", "xeuw ", L"x\u00eau ");
+        //tones after the mark go through the normal tone placement
+        expectTyping("TrailingW tone after mark", "auws ", L"\u1ea5u ");
+        expectTyping("TrailingW tone after mark", "auwf ", L"\u1ea7u ");
+        expectTyping("TrailingW tone after mark", "euws ", L"\u1ebfu ");
+        expectTyping("TrailingW tone after mark", "euwf ", L"\u1ec1u ");
+        //breve typed first upgrades to circumflex; a second w is absorbed
+        expectTyping("TrailingW upgrade", "awuw ", L"\u00e2u ");
+        expectTyping("TrailingW absorbed repeat", "auww ", L"\u00e2u ");
+        //pairs with no valid marked reading stay raw
+        expectTyping("TrailingW negative", "iuw ", L"iuw ");
+        expectTyping("TrailingW negative", "ouw ", L"ouw ");
+        expectTyping("TrailingW negative", "uew ", L"uew ");
+        expectTyping("TrailingW negative", "auow ", L"auow ");
+        expectTyping("TrailingW negative", "aunw ", L"aunw ");
+        expectTyping("TrailingW negative", "eunw ", L"eunw ");
+        //existing-path control: (U,O) marks both vowels
+        expectTyping("TrailingW control", "uow ", L"\u01b0\u01a1 ");
+        //existing restore behavior: a second w on a TONEW pair restores it
+        expectTyping("TrailingW restore", "oiww ", L"oiw ");
+        expectTyping("TrailingW restore", "uiww ", L"uiw ");
         //converting controls: the doubling path and the single-vowel w marks
         expectTyping("TrailingW control", "caau ", L"c\u00e2u ");
         expectTyping("TrailingW control", "daau ", L"d\u00e2u ");
         expectTyping("TrailingW control", "oiw ", L"\u01a1i ");
         expectTyping("TrailingW control", "uiw ", L"\u01b0i ");
     }
+    //Simple Telex variants use the same W mark path: pin actual outputs
+    testCfg().inputType = vSimpleTelex1;
+    testCfg().mixedEnglish = 0;
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
+    expectTyping("TrailingW SimpleTelex1", "cauw ", L"c\u00e2u ");
+    expectTyping("TrailingW SimpleTelex1", "auw ", L"\u00e2u ");
+    testCfg().inputType = vSimpleTelex2;
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
+    expectTyping("TrailingW SimpleTelex2", "cauw ", L"c\u00e2u ");
+    expectTyping("TrailingW SimpleTelex2", "auw ", L"\u00e2u ");
+    testCfg().inputType = vTelex;
     testCfg().mixedEnglish = 0;
     vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
 }
@@ -883,6 +911,10 @@ static void testVNI() {
     //Package 0 control (MixedModeDecider plan v2 section 4c): the pure-mode
     //VNI form of the doo token converts, like the Telex controls in testTelex
     expectTyping("VNI do6 control", "do6 ", L"d\u00f4 ");
+    //VNI numeric modifiers are not the Telex mark path: au/eu + 7/8 stay raw
+    expectTyping("VNI au7 stays raw", "au7 ", L"au7 ");
+    expectTyping("VNI eu7 stays raw", "eu7 ", L"eu7 ");
+    expectTyping("VNI au8 stays raw", "au8 ", L"au8 ");
     testCfg().mixedEnglish = 1;
     expectTyping("VNI EV me5", "me5 ", L"m\u1eb9 ");
     expectTyping("VNI EV la2", "la2 ", L"l\u00e0 ");
