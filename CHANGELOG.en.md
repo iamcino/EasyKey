@@ -4,6 +4,11 @@
 
 ## 1.1.7 - 2026-11-20
 
+### Fixed
+
+- **Mixed mode restored the raw keys for `doo`**: typing `doo` in mixed English mode was reverted to the raw keys instead of `dô`; it now yields `dô` as in pure Vietnamese mode (inside an established English sentence, `doo` is still kept as typed).
+- **The `w` key could not place the circumflex after `au`/`eu`**: words such as `cauw`, `bauw`, `euw` stayed raw; they now yield `câu`, `bâu`, `êu`, matching the `aau`/`eeu` doubling input.
+
 ### Security
 
 - **Rollback floor raised to 1.1.6**: when updating, EasyKey no longer accepts any version older than 1.1.6 — 1.1.6 is the release that fixed the Backspace whole-word deletion, so a compromised or mistaken distribution host cannot push a build carrying that flaw to users, even if the old build is properly signed. When this protection applies: the new floor ships in 1.1.7 and later; 1.1.5 and 1.1.6 keep the previous 1.1.4 floor until they update to 1.1.7.

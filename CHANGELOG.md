@@ -4,6 +4,11 @@
 
 ## 1.1.7 - 2026-11-20
 
+### Fixed
+
+- **Chế độ trộn trả lại chữ thô cho từ `doo`**: gõ `doo` ở chế độ trộn tiếng Anh từng bị đổi lại thành chữ thô thay vì `dô`; nay `doo` cho ra `dô` như ở chế độ tiếng Việt thuần (trong câu tiếng Anh đã rõ ngữ cảnh, `doo` vẫn giữ nguyên như trước).
+- **Phím `w` không đặt được dấu mũ sau `au`/`eu`**: các từ như `cauw`, `bauw`, `euw` từng giữ nguyên chữ thô; nay cho ra `câu`, `bâu`, `êu` như cách gõ đôi `aau`/`eeu`.
+
 ### Security
 
 - **Nâng sàn chống cài lại bản cũ lên 1.1.6**: khi cập nhật, EasyKey không còn chấp nhận bất kỳ bản nào cũ hơn 1.1.6 — 1.1.6 là bản đã sửa lỗi Backspace xóa cả từ, nên một máy chủ phân phối bị xâm nhập hoặc cấu hình sai không thể đẩy bản còn lỗi đó xuống người dùng, kể cả khi bản cũ được ký đúng. Hiệu lực của cơ chế này: sàn mới chỉ có trong các bản từ 1.1.7; các bản 1.1.5 và 1.1.6 vẫn giữ sàn cũ 1.1.4 cho tới khi cập nhật lên 1.1.7.

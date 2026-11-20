@@ -392,6 +392,108 @@ static void runMixedStateCells() {
     vKeySetConfig(testCfg());
 }
 
+//doo protection state pins: isolated mixed `doo` keeps dô (protected
+//Vietnamese) instead of restoring, with the context/bias arithmetic from
+//MixedModeDecider.cpp:111-169. Each row starts with a Mouse break: a bare
+//startNewSession does NOT reset the decider context.
+static void runDooStateCells() {
+    testCfg().inputType = vTelex;
+    testCfg().mixedEnglish = 1;
+    testCfg().mixedFixLast = 0;
+    vKeySetConfig(testCfg());
+
+    //isolated `doo `: protected, context -50, no candidate, raw memory kept
+    isolateRow(testCfg());
+    {
+        wstring text = driveKeys("doo ", testCfg());
+        expectState("doo ctx", _mixedDecider.mixedContextForTest() == -50, "want -50");
+        expectState("doo no candidate", !_mixedDecider.hasMixedLastForTest(), "want no candidate");
+        expectState("doo rawlen", _mixedDecider.lastRawLenForTest() == 3, "want 3");
+        expectState("doo screen", text == L"d\u00f4 ", "want do with circumflex");
+    }
+    //`Doo `: title-case still protects (allCaps false, keys lowercased)
+    isolateRow(testCfg());
+    {
+        wstring text = driveKeys("Doo ", testCfg());
+        expectState("Doo ctx", _mixedDecider.mixedContextForTest() == -50, "want -50");
+        expectState("Doo no candidate", !_mixedDecider.hasMixedLastForTest(), "want no candidate");
+        expectState("Doo screen", text == L"D\u00f4 ", "want Do with circumflex");
+    }
+    //`DOO `: all-caps is excluded from protection, restores as listed English
+    isolateRow(testCfg());
+    {
+        wstring text = driveKeys("DOO ", testCfg());
+        expectState("DOO ctx", _mixedDecider.mixedContextForTest() == 50, "want 50");
+        expectState("DOO candidate", _mixedDecider.hasMixedLastForTest(), "want candidate");
+        expectState("DOO screen", text == L"DOO ", "want raw DOO");
+    }
+    //strong English context bypasses protection (context 50 > gate 20)
+    isolateRow(testCfg());
+    {
+        wstring text = driveKeys("this doo ", testCfg());
+        expectState("this doo ctx", _mixedDecider.mixedContextForTest() == 75, "want 75");
+        expectState("this doo screen", text == L"this doo ", "want raw this doo");
+    }
+    //Vietnamese context keeps protection
+    isolateRow(testCfg());
+    {
+        wstring text = driveKeys("tooi doo ", testCfg());
+        expectState("tooi doo ctx", _mixedDecider.mixedContextForTest() == -75, "want -75");
+        expectState("tooi doo screen", text == L"t\u00f4i d\u00f4 ", "want toi do with circumflexes");
+    }
+    //fix-last: `doo` survives the following clear English word
+    testCfg().mixedFixLast = 1;
+    vKeySetConfig(testCfg());
+    isolateRow(testCfg());
+    {
+        wstring text = driveKeys("doo test ", testCfg());
+        expectState("doo test ctx", _mixedDecider.mixedContextForTest() == 25, "want 25");
+        expectState("doo test screen", text == L"d\u00f4 test ", "want do circumflex plus test");
+    }
+    //fix-last: protected `doo` (clear=false) does not flip the preceding `as`
+    isolateRow(testCfg());
+    driveKeys("tooi ", testCfg());
+    expectState("tooi as doo tooi", _mixedDecider.mixedContextForTest() == -50, "want -50");
+    {
+        wstring text = driveKeys("as ", testCfg());
+        expectState("tooi as doo as", _mixedDecider.mixedContextForTest() == -75, "want -75");
+        expectState("tooi as doo as viet", text == L"\u00e1 ", "want as as a-acute");
+    }
+    {
+        wstring text = driveKeys("doo ", testCfg());
+        expectState("tooi as doo ctx", _mixedDecider.mixedContextForTest() == -87, "want -87");
+        expectState("tooi as doo no fix", !_mixedDecider.hasMixedLastForTest(), "want no candidate");
+        expectState("tooi as doo screen", text == L"d\u00f4 ", "want do with circumflex");
+    }
+    testCfg().mixedFixLast = 0;
+    vKeySetConfig(testCfg());
+    //gate chain A: protection applies at context 12 (<= 20)
+    isolateRow(testCfg());
+    driveKeys("tooi ", testCfg());
+    expectState("gateA tooi", _mixedDecider.mixedContextForTest() == -50, "want -50");
+    driveKeys("tooi ", testCfg());
+    expectState("gateA tooi x2", _mixedDecider.mixedContextForTest() == -75, "want -75");
+    driveKeys("test ", testCfg());
+    expectState("gateA test", _mixedDecider.mixedContextForTest() == 12, "want 12");
+    {
+        wstring text = driveKeys("doo ", testCfg());
+        expectState("gateA doo ctx", _mixedDecider.mixedContextForTest() == -44, "want -44");
+        expectState("gateA doo no candidate", !_mixedDecider.hasMixedLastForTest(), "want no candidate");
+        expectState("gateA doo screen", text == L"d\u00f4 ", "want do with circumflex");
+    }
+    //gate chain B: no protection at context 25 (> 20), restores raw English
+    isolateRow(testCfg());
+    driveKeys("tooi ", testCfg());
+    expectState("gateB tooi", _mixedDecider.mixedContextForTest() == -50, "want -50");
+    driveKeys("test ", testCfg());
+    expectState("gateB test", _mixedDecider.mixedContextForTest() == 25, "want 25");
+    {
+        wstring text = driveKeys("doo ", testCfg());
+        expectState("gateB doo ctx", _mixedDecider.mixedContextForTest() == 62, "want 62");
+        expectState("gateB doo screen", text == L"doo ", "want raw doo");
+    }
+}
+
 
 #endif //_WIN32
 
@@ -400,6 +502,7 @@ int main() {
 #ifdef _WIN32
     runStateCells();
     runMixedStateCells();
+    runDooStateCells();
     printf("%d/%d engine state tests passed\n", total - failures, total);
     return failures ? 1 : 0;
 #else
