@@ -492,6 +492,7 @@ bool isProtectedShortVietnamese(const string& keys, int english, int vietnamese,
     // (e.g. "er" -> "ẻ", colloquial euphemism in everyday Vietnamese chat)
     static const char* const kCuratedProtectedShortViet[] = {
         "bus",
+        "doo",
         "er",
         "too",
         "us",
