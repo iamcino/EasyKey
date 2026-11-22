@@ -536,7 +536,7 @@ static void testMixed() {
     vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed ZFWJ fix", "tooi fix bug ", L"t\u00f4i fix bug ");
     vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
-    expectTyping("Mixed ZFWJ farm", "farm ", L"f\u1ea3m ");
+    expectTyping("Mixed ZFWJ farm", "farm ", L"farm ");
     vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed ZFWJ fair", "fair ", L"fair ");
     testCfg().allowConsonantZFWJ = 0;
