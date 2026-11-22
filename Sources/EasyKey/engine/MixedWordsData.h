@@ -7,7 +7,7 @@
 //  SPDX-License-Identifier: GPL-3.0-only AND CC-BY-SA-4.0
 //
 
-#define MIXED_WORD_COUNT 3315
+#define MIXED_WORD_COUNT 3316
 
 static const char MIXED_WORDS[] =
     "azh\naaX0\naaaVS\naacN0\naapS0\nabilityb0\nablef0\naboutp0\naboved0\nabsolutelyb0\nacaS0\naccessb0\naccordinge0\n"
@@ -117,7 +117,7 @@ static const char MIXED_WORDS[] =
     "excessiveY0\nexcessivelyR0\nexcited_0\nexecQ0\nexecsN0\nexesOR\nexists]0\nexoN0\nexpU0\nexpectb0\nexpectedb0\n"
     "experiencee0\nexplaina0\nexplore[0\nexpress_0\nexpressed]0\nexpressesT0\nexpressingX0\nexpression^0\n"
     "expressionsW0\nexpressiveR0\nexpresslyS0\nexpresswayO0\nextrab0\nexxonO0\neyeb0\neyesd0\nfc0\nfacef0\n"
-    "factf0\nfairb0\nfallc0\nfamilyi0\nfana0\nfansb0\nfarg0\nfastc0\nfathere0\nfavoriteb0\nfearb0\nfebruaryb0\n"
+    "factf0\nfairb0\nfallc0\nfamilyi0\nfana0\nfansb0\nfarg0\nfarmc0\nfastc0\nfathere0\nfavoriteb0\nfearb0\nfebruaryb0\n"
     "federalc0\nfeeli0\nfeelingc0\nfeetb0\nfeltc0\nfemaleb0\nfewh0\nfieldd0\nfightd0\nfigurec0\nfilmd0\nfinale0\n"
     "finallyd0\nfinancialc0\nfindj0\nfined0\nfiree0\nfirstm0\nfitb0\nfivef0\nfix`0\nfixed_0\nfixesT0\nfixingY0\n"
     "focusb0\nfollowc0\nfollowedb0\nfollowingg0\nfoodf0\nfootballc0\nforv0\nforced0\nforcesb0\nforeignc0\n"

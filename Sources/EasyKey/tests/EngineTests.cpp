@@ -535,7 +535,13 @@ static void testMixed() {
     expectTyping("Mixed ZFWJ fix", "fix ", L"fix ");
     vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Mixed ZFWJ fix", "tooi fix bug ", L"t\u00f4i fix bug ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
+    expectTyping("Mixed ZFWJ farm", "farm ", L"farm ");
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
+    expectTyping("Mixed ZFWJ fair", "fair ", L"fair ");
     testCfg().allowConsonantZFWJ = 0;
+    vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
+    expectTyping("Mixed farm", "farm ", L"farm ");
     //backspace across word boundary must not eat earlier word
     vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0, testCfg());
     expectTyping("Backspace across space", "dungf back <<<<<space ", L"d\u00f9ng space ");
