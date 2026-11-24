@@ -2,6 +2,12 @@
 
 [Tiếng Việt](CHANGELOG.md) · **English**
 
+## 1.1.8 - 2026-11-24
+
+### Fixed
+
+- **The word farm is no longer changed to fảm**: in mixed typing mode, with the option that allows z, w, j, f as first consonants turned on, the English word "farm" was converted to "fảm". "farm" now stays as typed, like "for" and "fast".
+
 ## 1.1.7 - 2026-11-20
 
 ### Fixed

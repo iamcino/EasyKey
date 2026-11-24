@@ -29,8 +29,8 @@ See LICENSE and NOTICE.
 #pragma comment(lib, "comctl32.lib")
 
 //shown once after updating to this version; change it with each release
-#define WHATS_NEW_VI L"• Sửa lỗi gõ doo ở chế độ trộn bị trả về chữ thô: nay doo cho ra dô như chế độ tiếng Việt thuần.\n• Sửa lỗi phím w không đặt được dấu mũ sau au/eu: cauw nay cho ra câu, euw cho ra êu.\n• Sàn chống cài lại bản cũ được nâng lên 1.1.6: trình cập nhật không còn chấp nhận các bản cũ hơn 1.1.6.\n• Tái cấu trúc bên trong bộ quyết định chế độ trộn tiếng Anh; hành vi gõ không thay đổi."
-#define WHATS_NEW_EN L"• Fixed doo being restored to raw keys in mixed mode: it now yields dô as in pure Vietnamese mode.\n• Fixed the w key not placing the circumflex after au/eu: cauw now yields câu, euw yields êu.\n• The rollback floor is raised to 1.1.6: the updater no longer accepts versions older than 1.1.6.\n• Internal restructuring of the mixed English-mode decider; typing behavior is unchanged."
+#define WHATS_NEW_VI L"• Sửa lỗi: ở chế độ gõ trộn tiếng Anh, khi bật tuỳ chọn cho phép z, w, j, f làm phụ âm đầu, từ farm bị đổi thành fảm — nay giữ nguyên là farm."
+#define WHATS_NEW_EN L"• Fixed: in mixed typing mode, with the option allowing z, w, j, f as first consonants turned on, the word farm was changed to fảm — it now stays farm."
 
 //6 hours
 #define UPDATE_CHECK_INTERVAL (6 * 60 * 60 * 1000)

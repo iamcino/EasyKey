@@ -2,6 +2,12 @@
 
 **Tiếng Việt** · [English](CHANGELOG.en.md)
 
+## 1.1.8 - 2026-11-24
+
+### Fixed
+
+- **Từ farm không còn bị đổi thành fảm**: ở chế độ gõ trộn tiếng Anh, khi bật tuỳ chọn cho phép z, w, j, f làm phụ âm đầu, từ tiếng Anh "farm" bị bộ gõ đổi thành "fảm". Nay "farm" được giữ nguyên, giống "for" và "fast".
+
 ## 1.1.7 - 2026-11-20
 
 ### Fixed
