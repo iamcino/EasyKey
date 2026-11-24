@@ -6,8 +6,7 @@
 
 ### Fixed
 
-- **Vietnamese could not be typed in PowerPoint**: PowerPoint on Windows 11 reports an IME as open even when only an English keyboard is installed, so EasyKey passed every key through and no marks were added; EasyKey now steps aside only when the active keyboard really is a Japanese, Chinese or Korean IME or the Windows Vietnamese keyboard.
-- **Mixed mode converted `farm`**: `farm` now stays as typed in mixed English mode with the Z, F, W, J consonants on.
+- **The word farm is no longer changed to fảm**: in mixed typing mode, with the option that allows z, w, j, f as first consonants turned on, the English word "farm" was converted to "fảm". "farm" now stays as typed, like "for" and "fast".
 
 ## 1.1.7 - 2026-11-20
 

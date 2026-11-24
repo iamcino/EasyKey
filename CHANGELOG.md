@@ -6,8 +6,7 @@
 
 ### Fixed
 
-- **Không gõ được tiếng Việt trong PowerPoint**: PowerPoint trên Windows 11 báo bộ gõ IME đang bật dù máy chỉ có bàn phím tiếng Anh, nên EasyKey nhường mọi phím và không bỏ dấu được; nay EasyKey chỉ nhường khi bàn phím đang dùng thật sự là IME Nhật, Trung, Hàn hoặc bàn phím Tiếng Việt của Windows.
-- **Chế độ trộn đổi chữ `farm`**: `farm` nay được giữ nguyên ở chế độ trộn tiếng Anh khi bật phụ âm Z, F, W, J.
+- **Từ farm không còn bị đổi thành fảm**: ở chế độ gõ trộn tiếng Anh, khi bật tuỳ chọn cho phép z, w, j, f làm phụ âm đầu, từ tiếng Anh "farm" bị bộ gõ đổi thành "fảm". Nay "farm" được giữ nguyên, giống "for" và "fast".
 
 ## 1.1.7 - 2026-11-20
 

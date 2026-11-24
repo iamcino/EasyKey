@@ -29,8 +29,8 @@ See LICENSE and NOTICE.
 #pragma comment(lib, "comctl32.lib")
 
 //shown once after updating to this version; change it with each release
-#define WHATS_NEW_VI L"• Sửa lỗi không gõ được tiếng Việt trong PowerPoint trên máy chỉ có bàn phím tiếng Anh.\n• Chế độ trộn tiếng Anh nay giữ nguyên chữ farm khi bật phụ âm Z, F, W, J."
-#define WHATS_NEW_EN L"• Fixed Vietnamese not typing in PowerPoint on machines with only an English keyboard.\n• Mixed English mode now keeps farm as typed with the Z, F, W, J consonants on."
+#define WHATS_NEW_VI L"• Sửa lỗi: ở chế độ gõ trộn tiếng Anh, khi bật tuỳ chọn cho phép z, w, j, f làm phụ âm đầu, từ farm bị đổi thành fảm — nay giữ nguyên là farm."
+#define WHATS_NEW_EN L"• Fixed: in mixed typing mode, with the option allowing z, w, j, f as first consonants turned on, the word farm was changed to fảm — it now stays farm."
 
 //6 hours
 #define UPDATE_CHECK_INTERVAL (6 * 60 * 60 * 1000)
