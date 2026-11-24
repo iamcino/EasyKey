@@ -22,6 +22,7 @@ See LICENSE and NOTICE.
 #include "../../../app-core/ExeName.h"
 #include "../../../app-core/AppProfileState.h"
 #include "../../../app-core/PacketDelivery.h"
+#include "../../../app-core/ImeGate.h"
 #include <algorithm>
 #include <atomic>
 #include <cassert>
@@ -2379,7 +2380,7 @@ LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 	HWND hWnd = (fg != NULL) ? fg : GetForegroundWindow();
 	DWORD_PTR isImeON = 0;
 	DWORD foregroundProcess = 0;
-	GetWindowThreadProcessId(hWnd, &foregroundProcess);
+	DWORD foregroundThread = GetWindowThreadProcessId(hWnd, &foregroundProcess);
 	//EasyKey's own windows (the shortcut list) take Vietnamese and never an IME
 	if (foregroundProcess != GetCurrentProcessId()) {
 		HWND hIME = ImmGetDefaultIMEWnd(hWnd);
@@ -2388,6 +2389,13 @@ LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 	}
 	if (vDebugKeyLog) {
 		writeDebugKeyLog(wParam, isImeON);
+	}
+	//PowerPoint reports the IME as open on a plain en-US layout: only a CJK
+	//layout's open IME is composing and needs the keys
+	if (isImeON) {
+		HKL foregroundLayout = GetKeyboardLayout(foregroundThread);
+		if (!ImeGate::shouldBypassForIme(true, (uint16_t)LOWORD((DWORD_PTR)foregroundLayout)))
+			isImeON = 0;
 	}
 	if (isImeON) {
 		return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
