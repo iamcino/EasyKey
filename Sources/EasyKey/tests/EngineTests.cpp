@@ -27,6 +27,7 @@
 #include "../app-core/ExeName.h"
 #include "../app-core/VersionInfo.h"
 #include "../app-core/AppProfileState.h"
+#include "../app-core/ImeGate.h"
 
 //engine settings: the engine now takes a vKeyConfig on every vKeyHandleEvent
 //call (see Engine.h). The suite keeps one shared config, initialized with the
@@ -4315,6 +4316,18 @@ static void testAppProfileState() {
     }
 }
 
+static void testImeGate() {
+    // PowerPoint reports the IME open on en-US (0x0409): EasyKey must keep typing
+    expectRobust("ime gate: open flag on en-US is ignored", !ImeGate::shouldBypassForIme(true, 0x0409));
+    expectRobust("ime gate: open flag on en-GB is ignored", !ImeGate::shouldBypassForIme(true, 0x0809));
+    expectRobust("ime gate: Windows Vietnamese keyboard open bypasses", ImeGate::shouldBypassForIme(true, 0x042A));
+    expectRobust("ime gate: Japanese IME open bypasses", ImeGate::shouldBypassForIme(true, 0x0411));
+    expectRobust("ime gate: Chinese (PRC) IME open bypasses", ImeGate::shouldBypassForIme(true, 0x0804));
+    expectRobust("ime gate: Chinese (Taiwan) IME open bypasses", ImeGate::shouldBypassForIme(true, 0x0404));
+    expectRobust("ime gate: Korean IME open bypasses", ImeGate::shouldBypassForIme(true, 0x0412));
+    expectRobust("ime gate: Japanese IME closed does not bypass", !ImeGate::shouldBypassForIme(false, 0x0411));
+}
+
 static void testLiteralK() {
     //Part C (plan v2.2): a preserved literal k after exactly one supported
     //vowel unit. Before the fix, two gates refused every tone key there, so
@@ -5370,6 +5383,7 @@ int main(int argc, char** argv) {
     testConfigIndependence();
     testConfigStoredCopy();
     testAppProfileState();
+    testImeGate();
     printf("%d/%d engine tests passed\n", total - failures, total);
     return failures == 0 ? 0 : 1;
 }
