@@ -2,6 +2,12 @@
 
 **Tiếng Việt** · [English](CHANGELOG.en.md)
 
+## 1.1.9 - 2026-11-24
+
+### Fixed
+
+- **Không gõ được tiếng Việt trong PowerPoint**: PowerPoint trên Windows 11 báo bộ gõ IME đang bật dù máy chỉ có bàn phím tiếng Anh, nên EasyKey nhường mọi phím và không bỏ dấu được; nay EasyKey chỉ nhường khi bàn phím đang dùng thật sự là IME Nhật, Trung, Hàn hoặc bàn phím Tiếng Việt của Windows.
+
 ## 1.1.8 - 2026-11-24
 
 ### Fixed

@@ -2,6 +2,12 @@
 
 [Tiếng Việt](CHANGELOG.md) · **English**
 
+## 1.1.9 - 2026-11-24
+
+### Fixed
+
+- **Vietnamese could not be typed in PowerPoint**: PowerPoint on Windows 11 reports an IME as open even when only an English keyboard is installed, so EasyKey passed every key through and no marks were added; EasyKey now steps aside only when the active keyboard really is a Japanese, Chinese or Korean IME or the Windows Vietnamese keyboard.
+
 ## 1.1.8 - 2026-11-24
 
 ### Fixed
