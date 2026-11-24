@@ -4319,7 +4319,8 @@ static void testAppProfileState() {
 static void testImeGate() {
     // PowerPoint reports the IME open on en-US (0x0409): EasyKey must keep typing
     expectRobust("ime gate: open flag on en-US is ignored", !ImeGate::shouldBypassForIme(true, 0x0409));
-    expectRobust("ime gate: open flag on Vietnamese layout is ignored", !ImeGate::shouldBypassForIme(true, 0x042A));
+    expectRobust("ime gate: open flag on en-GB is ignored", !ImeGate::shouldBypassForIme(true, 0x0809));
+    expectRobust("ime gate: Windows Vietnamese keyboard open bypasses", ImeGate::shouldBypassForIme(true, 0x042A));
     expectRobust("ime gate: Japanese IME open bypasses", ImeGate::shouldBypassForIme(true, 0x0411));
     expectRobust("ime gate: Chinese (PRC) IME open bypasses", ImeGate::shouldBypassForIme(true, 0x0804));
     expectRobust("ime gate: Chinese (Taiwan) IME open bypasses", ImeGate::shouldBypassForIme(true, 0x0404));

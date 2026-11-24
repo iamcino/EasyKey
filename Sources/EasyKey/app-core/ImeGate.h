@@ -20,11 +20,15 @@ namespace ImeGate {
     constexpr uint16_t kLangChinese  = 0x04;
     constexpr uint16_t kLangJapanese = 0x11;
     constexpr uint16_t kLangKorean   = 0x12;
+    constexpr uint16_t kLangVietnamese = 0x2A;
 
-    // keyboardLayout: the low word of the foreground thread's HKL (its language id).
+    // keyboardLangId: the low word of the foreground thread's HKL (its language id).
+    // Vietnamese is kept: the Windows Vietnamese Telex keyboard composes on its
+    // own, and typing through it and EasyKey at once doubles the marks.
     inline bool layoutUsesComposingIme(uint16_t keyboardLangId) {
         uint16_t primary = (uint16_t)(keyboardLangId & 0x3FF);
-        return primary == kLangChinese || primary == kLangJapanese || primary == kLangKorean;
+        return primary == kLangChinese || primary == kLangJapanese || primary == kLangKorean ||
+            primary == kLangVietnamese;
     }
 
     // imeOpen: the IMC_GETOPENSTATUS answer from the window's default IME window.

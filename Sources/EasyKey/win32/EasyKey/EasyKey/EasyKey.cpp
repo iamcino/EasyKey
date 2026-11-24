@@ -2390,8 +2390,8 @@ LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 	if (vDebugKeyLog) {
 		writeDebugKeyLog(wParam, isImeON);
 	}
-	//PowerPoint reports the IME as open on a plain en-US layout: only a CJK
-	//layout's open IME is composing and needs the keys
+	//PowerPoint reports the IME as open on a plain en-US layout: only an open
+	//IME on a CJK or Windows Vietnamese keyboard is composing and needs the keys
 	if (isImeON) {
 		HKL foregroundLayout = GetKeyboardLayout(foregroundThread);
 		if (!ImeGate::shouldBypassForIme(true, (uint16_t)LOWORD((DWORD_PTR)foregroundLayout)))
