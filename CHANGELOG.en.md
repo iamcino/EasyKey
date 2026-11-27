@@ -2,6 +2,12 @@
 
 [Tiếng Việt](CHANGELOG.md) · **English**
 
+## 1.1.10 - 2026-11-27
+
+### Fixed
+
+- **Text in the Shortcut list input boxes was invisible in light mode**: text rendered white on white and could not be read; it now renders dark and readable, and in dark mode the input boxes no longer appear lighter than the surrounding field.
+
 ## 1.1.9 - 2026-11-24
 
 ### Fixed
