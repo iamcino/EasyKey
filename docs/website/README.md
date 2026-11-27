@@ -1,8 +1,7 @@
 # Trang web EasyKey
 
-Landing page tĩnh cho EasyKey, lấy cảm hứng từ bố cục của trang chủ
-[AliasVault](https://aliasvault.bayleet.io/) (hero + dải số liệu + lưới tính năng +
-FAQ accordion + CTA đổi màu), nhưng toàn bộ nội dung viết riêng cho EasyKey.
+Landing page tĩnh cho EasyKey, gồm hero, dải số liệu, lưới tính năng,
+FAQ accordion và CTA đổi màu.
 
 ## Chạy thử
 
