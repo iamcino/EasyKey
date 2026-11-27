@@ -2233,6 +2233,19 @@ static LRESULT CALLBACK rawInputProc(HWND hWnd, UINT message, WPARAM wParam, LPA
 	return DefWindowProc(hWnd, message, wParam, lParam);
 }
 
+static void registerRawKeyboardDevice(bool enable) {
+	if (!s_rawInputWindow)
+		return;
+	RAWINPUTDEVICE device = {};
+	device.usUsagePage = 0x01; //generic desktop
+	device.usUsage = 0x06;     //keyboard
+	//RIDEV_REMOVE requires a null target. While the device is removed, Windows
+	//calls this process's low-level keyboard hook for its own windows again.
+	device.dwFlags = enable ? RIDEV_INPUTSINK : RIDEV_REMOVE;
+	device.hwndTarget = enable ? s_rawInputWindow : NULL;
+	RegisterRawInputDevices(&device, 1, sizeof(device));
+}
+
 static void watchRawKeyboard() {
 	WNDCLASS wc = {};
 	wc.lpfnWndProc = rawInputProc;
@@ -2243,12 +2256,15 @@ static void watchRawKeyboard() {
 	s_rawInputWindow = window;
 	if (!window)
 		return;
-	RAWINPUTDEVICE device = {};
-	device.usUsagePage = 0x01; //generic desktop
-	device.usUsage = 0x06;     //keyboard
-	device.dwFlags = RIDEV_INPUTSINK; //also while other apps are in front
-	device.hwndTarget = window;
-	RegisterRawInputDevices(&device, 1, sizeof(device));
+	registerRawKeyboardDevice(true);
+}
+
+void setRawKeyboardWatch(bool enable) {
+	if (enable && !s_rawInputWindow) {
+		watchRawKeyboard();
+		return;
+	}
+	registerRawKeyboardDevice(enable);
 }
 
 LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {

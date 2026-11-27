@@ -17,7 +17,9 @@ the MIT license, see LICENSES/MIT.txt.
 #include <cmath>
 #include "FluentWindow.h"
 #include "AppDelegate.h"
+#include "EasyKeyHelper.h"
 #include "ThemeHelper.h"
+#include "../../../app-core/OwnWindowInput.h"
 
 #pragma comment(lib, "comctl32.lib")
 
@@ -104,7 +106,20 @@ void FluentWindow::close() {
 		PostMessage(hWnd, WM_CLOSE, 0, 0);
 }
 
+void FluentWindow::noteTypingFocus(bool active) {
+	//a raw-input registration silences this process's keyboard hook while one
+	//of its windows is in front. The Shortcut list turns the watch off for
+	//that time so Telex and VNI reach its edits, and turns it back on after.
+	if (!suspendRawWatchWhileActive())
+		return;
+	if (active == holdingRawWatch)
+		return;
+	holdingRawWatch = active;
+	setRawKeyboardWatch(rawWatchShouldRun(active));
+}
+
 void FluentWindow::destroy() {
+	noteTypingFocus(false);
 	if (!hWnd)
 		return;
 	for (auto& edit : edits)
@@ -1123,6 +1138,9 @@ LRESULT FluentWindow::handleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	case WM_SYSCHAR:
 		if (capturing >= 0)
 			return 0;
+		break;
+	case WM_ACTIVATE:
+		noteTypingFocus(LOWORD(wParam) != WA_INACTIVE);
 		break;
 	case WM_SETFOCUS:
 	case WM_KILLFOCUS:

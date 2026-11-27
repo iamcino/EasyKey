@@ -101,6 +101,7 @@
     <ClInclude Include="..\..\..\app-core\ExeName.h" />
     <ClInclude Include="..\..\..\app-core\PacketDelivery.h" />
     <ClInclude Include="..\..\..\app-core\ImeGate.h" />
+    <ClInclude Include="..\..\..\app-core\OwnWindowInput.h" />
     <ClInclude Include="..\..\..\engine\ConvertTool.h" />
     <ClInclude Include="..\..\..\engine\DataType.h" />
     <ClInclude Include="..\..\..\engine\Engine.h" />
@@ -174,6 +175,9 @@
     </ClCompile>
     <ClCompile Include="SystemTrayHelper.cpp" />
     <ClCompile Include="ThemeHelper.cpp" />
+    <ClCompile Include="..\..\..\tests\OwnWindowInputTests.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="EasyKey.rc" />

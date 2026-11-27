@@ -51,6 +51,9 @@
     <ClInclude Include="..\..\..\app-core\ImeGate.h">
       <Filter>app-core</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\app-core\OwnWindowInput.h">
+      <Filter>app-core</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\..\app-core\AppProfileState.h">
       <Filter>app-core</Filter>
     </ClInclude>
@@ -165,6 +168,9 @@
       <Filter>app-core</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\app-core\AppProfileState.cpp">
+      <Filter>app-core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\tests\OwnWindowInputTests.cpp">
       <Filter>app-core</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\engine\ConvertTool.cpp">

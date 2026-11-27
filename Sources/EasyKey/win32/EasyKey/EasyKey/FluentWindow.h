@@ -83,6 +83,8 @@ private:
 	vector<pair<int, HWND>> edits;
 	bool trackingMouse = false, customDrag = false;
 	bool placed = false;
+	bool holdingRawWatch = false;
+	void noteTypingFocus(bool active);
 private:
 	static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 	static LRESULT CALLBACK editProc(HWND hEdit, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR id, DWORD_PTR data);
@@ -159,6 +161,9 @@ protected:
 	virtual bool onCustomMouse(const Control& c, const UINT& uMsg, const POINT& pt) { return false; }
 	virtual bool onCustomKey(const Control& c, const WPARAM& key) { return false; }
 	virtual bool onWheel(const POINT& pt, const int& delta) { return false; }
+	//true for a window whose edits must take Vietnamese. While it is in front
+	//the raw-keyboard watchdog is removed so the low-level hook runs here.
+	virtual bool suspendRawWatchWhileActive() const { return false; }
 	//after WM_CLOSE: by default AppDelegate deletes the window
 	virtual void onClosed();
 public:
