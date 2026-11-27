@@ -2,6 +2,12 @@
 
 **Tiếng Việt** · [English](CHANGELOG.en.md)
 
+## 1.1.10 - 2026-11-27
+
+### Fixed
+
+- **Chữ trong hai ô nhập của danh sách Shortcut bị tàng hình ở giao diện sáng**: chữ hiện màu trắng trên nền trắng nên không đọc được; nay chữ hiện màu tối rõ ràng, và ở giao diện tối ô nhập không còn sáng hơn nền xung quanh.
+
 ## 1.1.9 - 2026-11-24
 
 ### Fixed

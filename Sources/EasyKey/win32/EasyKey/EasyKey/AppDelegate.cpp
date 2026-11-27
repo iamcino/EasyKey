@@ -29,8 +29,8 @@ See LICENSE and NOTICE.
 #pragma comment(lib, "comctl32.lib")
 
 //shown once after updating to this version; change it with each release
-#define WHATS_NEW_VI L"• Sửa lỗi không gõ được tiếng Việt trong PowerPoint trên máy chỉ có bàn phím tiếng Anh."
-#define WHATS_NEW_EN L"• Fixed Vietnamese not typing in PowerPoint on machines with only an English keyboard."
+#define WHATS_NEW_VI L"• Sửa lỗi chữ trong hai ô nhập của danh sách Shortcut bị tàng hình ở giao diện sáng."
+#define WHATS_NEW_EN L"• Fixed the Shortcut list input text being invisible in light mode."
 
 //6 hours
 #define UPDATE_CHECK_INTERVAL (6 * 60 * 60 * 1000)
