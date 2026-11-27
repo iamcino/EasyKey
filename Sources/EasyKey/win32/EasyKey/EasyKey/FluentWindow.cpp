@@ -146,6 +146,9 @@ int FluentWindow::clientHeight() const {
 	return rc.bottom;
 }
 
+//forward declaration; defined above addEdit()
+static void setEditSurface(const HWND& edit, const bool& translucent);
+
 void FluentWindow::applyTheme() {
 	dark = ThemeHelper::isAppDarkMode();
 	COLORREF solid = dark ? RGB(0x20, 0x20, 0x20) : RGB(0xF3, 0xF3, 0xF3);
@@ -157,8 +160,10 @@ void FluentWindow::applyTheme() {
 	if (editBrush)
 		DeleteObject(editBrush);
 	editBrush = CreateSolidBrush(editBack);
-	for (auto& edit : edits)
+	for (auto& edit : edits) {
+		setEditSurface(edit.second, translucent); //Mica can switch on/off with EnableTransparency
 		InvalidateRect(edit.second, NULL, TRUE);
+	}
 	InvalidateRect(hWnd, NULL, FALSE);
 }
 
@@ -357,6 +362,26 @@ int FluentWindow::addHotKeyRow(const int& id, const wstring& label, const int& h
 	return add(c);
 }
 
+//on Mica the client area is one sheet of glass and DWM reads its alpha byte; GDI, which the
+//edit control draws with, leaves that byte 0, so DWM adds the backdrop to every pixel and
+//dark text bleaches to white. A layered child gets its own surface, composed at a constant
+//alpha, so the edit stays opaque. Windows 8+ only; Mica implies Windows 11
+static void setEditSurface(const HWND& edit, const bool& translucent) {
+	LONG_PTR ex = GetWindowLongPtr(edit, GWL_EXSTYLE);
+	bool layered = (ex & WS_EX_LAYERED) != 0;
+	if (translucent && !layered) {
+		SetWindowLongPtr(edit, GWL_EXSTYLE, ex | WS_EX_LAYERED);
+		SetLayeredWindowAttributes(edit, 0, 255, LWA_ALPHA);
+		//an extended-style change only takes effect after a frame-changed reposition;
+		//the edit is created after its parent is shown, so this applies on both the
+		//creation path and the applyTheme path
+		SetWindowPos(edit, NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+	} else if (!translucent && layered) {
+		SetWindowLongPtr(edit, GWL_EXSTYLE, ex & ~WS_EX_LAYERED);
+		SetWindowPos(edit, NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+	}
+}
+
 int FluentWindow::addEdit(const int& id, const RECT& rc, const wstring& placeholder) {
 	Control c;
 	c.kind = F_EDIT;
@@ -369,6 +394,7 @@ int FluentWindow::addEdit(const int& id, const RECT& rc, const wstring& placehol
 		edit = CreateWindowEx(0, WC_EDIT, _T(""), WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_AUTOHSCROLL,
 			0, 0, 10, 10, hWnd, (HMENU)(INT_PTR)id, hInstance, NULL);
 		SetWindowSubclass(edit, editProc, id, (DWORD_PTR)this);
+		setEditSurface(edit, translucent);
 		SendMessage(edit, WM_SETFONT, (WPARAM)editFont, FALSE);
 		SendMessage(edit, EM_SETMARGINS, EC_LEFTMARGIN | EC_RIGHTMARGIN, 0);
 		edits.push_back(make_pair(id, edit));
