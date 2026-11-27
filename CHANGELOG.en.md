@@ -2,6 +2,12 @@
 
 [Tiếng Việt](CHANGELOG.md) · **English**
 
+## 1.1.11 - 2026-11-28
+
+### Fixed
+
+- **Could not type Vietnamese in the Shortcut list**: typing Telex/VNI in the two input boxes (Shortcut/Text) only produced raw unaccented letters; Vietnamese input now works normally.
+
 ## 1.1.10 - 2026-11-27
 
 ### Fixed
