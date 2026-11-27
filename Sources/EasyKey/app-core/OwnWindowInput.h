@@ -12,8 +12,9 @@
 //  of its windows is in front. The Shortcut list is such a window, so Telex
 //  and VNI never run there and the two edits show the raw letters.
 //
-//  rawWatchShouldRun is the decision the watchdog uses. These tests lock what
-//  it does today: the watch stays registered no matter which window is in front.
+//  rawWatchShouldRun is the decision the watchdog uses. The watch is off while
+//  the Shortcut list is in front, so the low-level hook is called and Telex
+//  and VNI reach the two edits. It is on for every other foreground window.
 //
 
 #ifndef OwnWindowInput_h
@@ -22,8 +23,7 @@
 // ownTypingWindowActive: an EasyKey window whose edits take Vietnamese
 // (the Shortcut list) is the foreground window.
 inline bool rawWatchShouldRun(bool ownTypingWindowActive) {
-    (void)ownTypingWindowActive;
-    return true;
+    return !ownTypingWindowActive;
 }
 
 #endif /* OwnWindowInput_h */

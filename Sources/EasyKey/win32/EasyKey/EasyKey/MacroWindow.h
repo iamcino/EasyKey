@@ -46,6 +46,7 @@ public:
 protected:
 	void layout() override;
 	wstring title() const override;
+	bool suspendRawWatchWhileActive() const override { return true; }
 	void onActivate(const int& id) override;
 	void onToggle(const int& id) override;
 	void onEditChange(const int& id) override;

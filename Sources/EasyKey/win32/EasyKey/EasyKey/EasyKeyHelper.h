@@ -73,3 +73,8 @@ public:
 	static wstring findOtherKeyboard();
 };
 
+//raw keyboard watch for a lost low-level hook. Off while the Shortcut list is
+//in front: a process registered for raw keyboard input does not receive its
+//own WH_KEYBOARD_LL calls, so Vietnamese would never reach those edits.
+void setRawKeyboardWatch(bool enable);
+
