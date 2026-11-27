@@ -2,6 +2,12 @@
 
 **Tiếng Việt** · [English](CHANGELOG.en.md)
 
+## 1.1.11 - 2026-11-28
+
+### Fixed
+
+- **Không gõ được tiếng Việt trong danh sách Shortcut**: gõ Telex/VNI trong hai ô nhập (Shortcut/Text) chỉ ra chữ thô không dấu; nay gõ được tiếng Việt bình thường.
+
 ## 1.1.10 - 2026-11-27
 
 ### Fixed
