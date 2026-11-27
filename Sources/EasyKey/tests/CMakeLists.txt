@@ -84,6 +84,15 @@ add_test(NAME EngineTests COMMAND EngineTests)
 add_test(NAME EngineStateTests COMMAND EngineStateTests)
 add_test(NAME PacketDeliveryTests COMMAND PacketDeliveryTests)
 
+# Shortcut list: the raw-keyboard watchdog's decision while that window is in front
+add_executable(OwnWindowInputTests OwnWindowInputTests.cpp)
+if(MSVC)
+    target_compile_options(OwnWindowInputTests PRIVATE /utf-8)
+elseif(UNIX AND NOT APPLE)
+    target_compile_definitions(OwnWindowInputTests PRIVATE LINUX)
+endif()
+add_test(NAME OwnWindowInputTests COMMAND OwnWindowInputTests)
+
 #Windows-only: deleting EasyKey.old.exe after an update (locked, read-only, directory),
 #and the updater's Authenticode check against the pinned EasyKey certificate
 if(WIN32)
